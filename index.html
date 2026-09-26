@@ -353,9 +353,21 @@ function addMsg(t,c){const d=document.createElement('div');d.className='msg '+c;
 function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function formatBytes(n){if(n<1024)return n+' B';if(n<1048576)return (n/1024).toFixed(1)+' KB';return (n/1048576).toFixed(1)+' MB'}
 const qs=new URLSearchParams(location.search);
-if(qs.get('credits')==='success'){
-  setTimeout(()=>addMsg('Stripe payment completed. NEXUS is verifying the top-up; your balance will refresh automatically when the payment event is confirmed.','ai'),700);
+async function pollCreditTopup(){
+  if(qs.get('credits')!=='success'||!currentUser)return;
+  const before=currentBalance;
+  addMsg('Stripe payment completed. NEXUS is verifying the top-up now.','ai');
+  for(let i=0;i<15;i++){
+    await new Promise(r=>setTimeout(r,2000));
+    await refreshAccountData();
+    if(currentBalance>before){
+      addMsg('Credits verified and added. New balance: '+currentBalance+'.','ai');
+      history.replaceState({},'',location.pathname);
+      return;
+    }
+  }
+  addMsg('Payment received, but the credit event is still processing. Your balance will update automatically after Stripe confirmation.','ai');
 }
-loadSession();
+loadSession().then(()=>pollCreditTopup());
 </script>
 </body></html>
