@@ -14,7 +14,7 @@
 .app{min-height:100vh;display:grid;grid-template-columns:270px 1fr}.side{border-right:1px solid var(--line);background:#070a0f;padding:18px;display:flex;flex-direction:column;gap:18px;position:sticky;top:0;height:100vh}
 .brand{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:.08em}.mark{width:32px;height:32px;border:1px solid var(--accent);border-radius:10px;display:grid;place-items:center;color:var(--accent)}
 .newchat,.navbtn{width:100%;border:1px solid var(--line);background:#0c121b;color:var(--text);border-radius:11px;padding:11px 12px;text-align:left;cursor:pointer}.newchat{background:var(--accent);color:#04100b;border-color:var(--accent);font-weight:800}
-.snav{display:grid;gap:8px}.snav a,.snav button{display:flex;justify-content:space-between;align-items:center}.small{color:var(--muted);font-size:12px}.credit{margin-top:auto;border:1px solid var(--line);border-radius:14px;padding:14px;background:#0b1118}.credit strong{font-size:24px}.buycredit{width:100%;margin-top:10px;border:0;background:var(--accent);color:#04100b;border-radius:10px;padding:9px 10px;font-weight:900;cursor:pointer}.creditbar{height:6px;background:#172230;border-radius:999px;margin:9px 0;overflow:hidden}.creditbar i{display:block;height:100%;width:72%;background:var(--accent)}
+.snav{display:grid;gap:8px}.snav a,.snav button{display:flex;justify-content:space-between;align-items:center}.small{color:var(--muted);font-size:12px}.historybox{min-height:0;display:flex;flex-direction:column;gap:8px}.historytitle{font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.08em}.historylist{display:grid;gap:6px;max-height:220px;overflow:auto}.historyitem{width:100%;border:1px solid var(--line);background:#090e15;color:#cdd9e6;border-radius:9px;padding:9px 10px;text-align:left;cursor:pointer}.historyitem strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}.historyitem small{color:var(--muted);font-size:10px}.credit{margin-top:auto;border:1px solid var(--line);border-radius:14px;padding:14px;background:#0b1118}.credit strong{font-size:24px}.buycredit{width:100%;margin-top:10px;border:0;background:var(--accent);color:#04100b;border-radius:10px;padding:9px 10px;font-weight:900;cursor:pointer}.creditbar{height:6px;background:#172230;border-radius:999px;margin:9px 0;overflow:hidden}.creditbar i{display:block;height:100%;width:72%;background:var(--accent)}
 .main{min-width:0;display:flex;flex-direction:column;min-height:100vh}.top{height:66px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:rgba(5,7,11,.9);position:sticky;top:0;z-index:10;backdrop-filter:blur(12px)}
 .levels{display:flex;gap:8px}.level{border:1px solid var(--line);background:#0b1118;color:var(--muted);border-radius:999px;padding:7px 10px;cursor:pointer;font-size:12px;font-weight:800}.level.active{color:#06100b;background:var(--accent);border-color:var(--accent)}.level[data-level="deep"].active{background:var(--gold);border-color:var(--gold)}
 .account{display:flex;gap:9px;align-items:center}.account button,.account a{border:1px solid var(--line);background:#0b1118;border-radius:10px;padding:8px 11px;color:var(--text);cursor:pointer}
@@ -39,6 +39,10 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <a class="navbtn" href="https://lab.nexusword.it/shop.html"><span>NEXUS Shop</span><span>↗</span></a>
     <a class="navbtn" href="https://lab.nexusword.it/#work"><span>Request work</span><span>↗</span></a>
     <a class="navbtn" href="https://lab.nexusword.it/"><span>NEXUS Lab</span><span>↗</span></a>
+  </div>
+  <div class="historybox">
+    <div class="historytitle">Recent chats</div>
+    <div class="historylist" id="historyList"><div class="small">Sign in to load chats.</div></div>
   </div>
   <div class="credit">
     <div class="small">Credits</div>
@@ -137,7 +141,8 @@ const ROUTER_URL='https://nexus-ai-router.ilario-coppola.workers.dev/chat';
 const creditCost={free:1,smart:3,deep:6};
 const levelText={free:'Free · 1 credit',smart:'Smart · 3 credits',deep:'Deep · 6 credits'};
 
-document.querySelectorAll('.level').forEach(b=>b.onclick=()=>{document.querySelectorAll('.level').forEach(x=>x.classList.remove('active'));b.classList.add('active');level=b.dataset.level;document.getElementById('levelHint').textContent=levelText[level]});
+function setLevel(next){level=['free','smart','deep'].includes(next)?next:'free';document.querySelectorAll('.level').forEach(x=>x.classList.toggle('active',x.dataset.level===level));document.getElementById('levelHint').textContent=levelText[level]}
+document.querySelectorAll('.level').forEach(b=>b.onclick=()=>setLevel(b.dataset.level));
 document.getElementById('attachBtn').onclick=()=>input.click();
 input.onchange=()=>{selectedFiles=[...input.files];filesEl.innerHTML=selectedFiles.map(f=>'<span class="filechip">'+escapeHtml(f.name)+' · '+formatBytes(f.size)+'</span>').join('');filesEl.classList.toggle('has',selectedFiles.length>0)};
 document.querySelectorAll('[data-prompt]').forEach(b=>b.onclick=()=>{promptEl.value=b.dataset.prompt;promptEl.focus()});
@@ -206,6 +211,13 @@ document.getElementById('sendBtn').onclick=async()=>{
      think.textContent=data.reply;
      chatHistory.push({role:'assistant',content:data.reply});
 
+     const saved=await client.rpc('nexus_store_assistant_message',{
+       p_conversation_id:cid,
+       p_content:data.reply,
+       p_metadata:{level,model:data.model||null,provider:data.provider||null}
+     });
+     if(saved.error) console.warn('Could not persist assistant message',saved.error);
+
      const debit=await client.rpc('nexus_consume_level',{p_level:level});
      const debitRow=Array.isArray(debit.data)?debit.data[0]:debit.data;
      if(debit.error || !debitRow?.ok){
@@ -224,7 +236,7 @@ document.getElementById('sendBtn').onclick=async()=>{
  }
 };
 
-document.getElementById('newChat').onclick=()=>{currentConversationId=null;chatHistory=[];messages.innerHTML='';messages.classList.remove('has');intro.style.display='block';promptEl.value=''};
+document.getElementById('newChat').onclick=()=>{currentConversationId=null;chatHistory=[];messages.innerHTML='';messages.classList.remove('has');intro.style.display='block';promptEl.value='';setLevel('free')};
 document.getElementById('jobsBtn').onclick=async()=>{
  if(!currentUser){openAuth();return}
  const {data,error}=await client.from('nexus_jobs').select('id,kind,status,level,estimated_credits,charged_credits,created_at').order('created_at',{ascending:false}).limit(20);
@@ -276,6 +288,37 @@ async function loadSession(){
    }else setLoggedOutUI();
  }catch(e){setAuthNotice('Auth unavailable: '+(e?.message||String(e)));setLoggedOutUI()}
 }
+async function loadConversation(id,conversationLevel='free'){
+ if(!currentUser)return;
+ const {data,error}=await client.from('nexus_messages').select('role,content,metadata,created_at').eq('conversation_id',id).order('created_at',{ascending:true});
+ if(error){alert(error.message);return}
+ currentConversationId=id;
+ setLevel(conversationLevel);
+ intro.style.display='none';
+ messages.innerHTML='';
+ messages.classList.add('has');
+ chatHistory=[];
+ (data||[]).forEach(m=>{
+   const cls=m.role==='user'?'me':'ai';
+   addMsg(m.content,cls);
+   if(m.role==='user'||m.role==='assistant') chatHistory.push({role:m.role,content:m.content});
+ });
+}
+function renderHistory(items){
+ const box=document.getElementById('historyList');
+ if(!currentUser){box.innerHTML='<div class="small">Sign in to load chats.</div>';return}
+ if(!items?.length){box.innerHTML='<div class="small">No chats yet.</div>';return}
+ box.innerHTML='';
+ items.forEach(c=>{
+   const b=document.createElement('button');
+   b.className='historyitem';
+   const strong=document.createElement('strong'); strong.textContent=c.title||'New chat';
+   const small=document.createElement('small'); small.textContent=(c.level||'free').toUpperCase();
+   b.append(strong,small);
+   b.onclick=()=>loadConversation(c.id,c.level||'free');
+   box.appendChild(b);
+ });
+}
 async function refreshAccountData(){
  if(!currentUser)return;
  const [profile,convos,jobs]=await Promise.all([
@@ -292,8 +335,9 @@ async function refreshAccountData(){
    document.getElementById('creditStatus').textContent=(profile.data.plan||'free').toUpperCase()+' plan · real account balance';
  }
  document.querySelector('#jobsBtn .small').textContent=jobs.data?.length||0;
+ renderHistory(convos.data||[]);
 }
-function setLoggedOutUI(){currentBalance=0;document.getElementById('loginBtn').textContent='Sign in';document.getElementById('creditBalance').textContent='—';document.getElementById('creditAllowance').textContent=' / —';document.getElementById('creditBar').style.width='0%';document.getElementById('creditStatus').textContent='Sign in to load your real NEXUS balance.'}
+function setLoggedOutUI(){currentBalance=0;renderHistory([]);document.getElementById('loginBtn').textContent='Sign in';document.getElementById('creditBalance').textContent='—';document.getElementById('creditAllowance').textContent=' / —';document.getElementById('creditBar').style.width='0%';document.getElementById('creditStatus').textContent='Sign in to load your real NEXUS balance.'}
 function openAuth(){modal.classList.add('show');document.getElementById('authEmail').focus()}
 function setAuthNotice(t){document.getElementById('authNotice').textContent=t}
 function addMsg(t,c){const d=document.createElement('div');d.className='msg '+c;d.textContent=t;messages.appendChild(d);d.scrollIntoView({behavior:'smooth',block:'end'});return d}
