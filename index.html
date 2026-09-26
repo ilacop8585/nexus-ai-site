@@ -138,6 +138,7 @@ const client = createClient('https://ep-sparkling-forest-b2v7x4ux.c-6.eu-central
 const promptEl=document.getElementById('prompt'), filesEl=document.getElementById('files'), input=document.getElementById('fileInput'), messages=document.getElementById('messages'), intro=document.getElementById('intro');
 let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0;
 const ROUTER_URL='https://nexus-ai-router.ilario-coppola.workers.dev/chat';
+const FILES_URL='https://br-jolly-scene-b2wyu6gt-nexusfiles.compute.c-6.eu-central-1.aws.neon.tech/';
 const creditCost={free:1,smart:3,deep:6};
 const levelText={free:'Free · 1 credit',smart:'Smart · 3 credits',deep:'Deep · 6 credits'};
 
@@ -159,6 +160,50 @@ document.getElementById('buyCreditsBtn').onclick=openCredits;
 document.getElementById('topBuyCredits').onclick=openCredits;
 document.getElementById('closeCredits').onclick=()=>creditModal.classList.remove('show');
 creditModal.onclick=e=>{if(e.target.id==='creditModal')creditModal.classList.remove('show')};
+
+function detectJobKind(file){
+  const type=(file?.type||'').toLowerCase(),name=(file?.name||'').toLowerCase();
+  if(type.startsWith('image/'))return 'image_edit';
+  if(type.startsWith('video/'))return 'video_edit';
+  if(type.startsWith('audio/'))return 'audio_task';
+  if(/\.(zip|7z|rar|tar|gz)$/.test(name))return 'archive_task';
+  if(/\.(py|js|ts|tsx|jsx|html|css|java|c|cpp|h|hpp|rs|go|php|sql|sh|ps1|json|xml|yaml|yml)$/.test(name))return 'code_task';
+  if(type.includes('pdf')||type.includes('document')||type.includes('text')||/\.(pdf|docx?|xlsx?|pptx?|txt|md|csv)$/.test(name))return 'document_task';
+  return 'general_file';
+}
+async function uploadOne(file,cid){
+  const ticket=await client.rpc('nexus_create_upload_ticket',{
+    p_conversation_id:cid,
+    p_filename:file.name,
+    p_mime:file.type||'application/octet-stream',
+    p_size:file.size
+  });
+  if(ticket.error)throw ticket.error;
+  const t=Array.isArray(ticket.data)?ticket.data[0]:ticket.data;
+  if(!t?.ticket_id)throw new Error('upload_ticket_missing');
+
+  const pres=await fetch(FILES_URL+'presign',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ticketId:t.ticket_id})
+  });
+  const pd=await pres.json().catch(()=>({}));
+  if(!pres.ok||!pd?.uploadUrl)throw new Error(pd?.error||('presign_http_'+pres.status));
+
+  const put=await fetch(pd.uploadUrl,{
+    method:'PUT',
+    headers:{'Content-Type':file.type||'application/octet-stream'},
+    body:file
+  });
+  if(!put.ok)throw new Error('storage_upload_http_'+put.status);
+
+  const done=await fetch(FILES_URL+'complete',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ticketId:t.ticket_id})
+  });
+  const dd=await done.json().catch(()=>({}));
+  if(!done.ok||!dd?.attachmentId)throw new Error(dd?.error||('complete_http_'+done.status));
+  return {attachmentId:dd.attachmentId,objectKey:dd.objectKey,name:file.name};
+}
 
 async function ensureConversation(firstText){
   if(currentConversationId) return currentConversationId;
@@ -197,8 +242,33 @@ document.getElementById('sendBtn').onclick=async()=>{
    }
 
    if(selectedFiles.length){
+     const originalFiles=[...selectedFiles];
+     const uploaded=[];
+     for(let i=0;i<originalFiles.length;i++){
+       think.textContent='Uploading '+(i+1)+'/'+originalFiles.length+': '+originalFiles[i].name;
+       uploaded.push(await uploadOne(originalFiles[i],cid));
+     }
+     const jobKind=detectJobKind(originalFiles[0]);
+     const job=await client.rpc('nexus_create_job',{
+       p_conversation_id:cid,
+       p_kind:jobKind,
+       p_level:level,
+       p_attachment_ids:uploaded.map(x=>x.attachmentId),
+       p_summary:q||('Process '+originalFiles.map(x=>x.name).join(', '))
+     });
+     if(job.error)throw job.error;
+     const jr=Array.isArray(job.data)?job.data[0]:job.data;
+     const shortId=String(jr?.job_id||'').slice(0,8);
+     const ack='Upload verified. '+uploaded.length+' file'+(uploaded.length===1?'':'s')+' stored securely. NEXUS job '+shortId+' is queued. No job credits have been charged yet.';
      think.className='msg ai';
-     think.textContent='The text chat is live. Secure file upload is the next worker path being connected, so these files have not been sent or charged yet.';
+     think.textContent=ack;
+     chatHistory.push({role:'assistant',content:ack});
+     const savedAck=await client.rpc('nexus_store_assistant_message',{
+       p_conversation_id:cid,p_content:ack,p_metadata:{level,kind:jobKind,job_id:jr?.job_id||null}
+     });
+     if(savedAck.error){
+       await client.from('nexus_messages').insert({conversation_id:cid,role:'assistant',content:ack,metadata:{level,kind:jobKind,job_id:jr?.job_id||null}});
+     }
    } else {
      const response=await fetch(ROUTER_URL,{
        method:'POST',
