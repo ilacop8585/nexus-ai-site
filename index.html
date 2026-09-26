@@ -73,7 +73,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <div class="intro" id="intro">
       <div class="ey">NEXUS AI · public beta interface</div>
       <h1>Ask. Attach. Build. Route the work.</h1>
-      <p>Chat, images, video, documents, archives and code will enter one NEXUS workflow. Free, Smart and Deep define how much depth and compute a job may use.</p>
+      <p>Chat, documents, archives and code are live. Images, video and audio use the same secure intake and wait for an available NEXUS media worker. Free, Smart and Deep define how much depth and compute a job may use.</p>
       <div class="quick">
         <button data-prompt="Analyse this document and tell me the important points.">📄 Analyse a document</button>
         <button data-prompt="I want to edit an image. I will attach it and describe the changes.">🖼️ Edit an image</button>
@@ -152,7 +152,7 @@ import { createClient } from 'https://esm.sh/@neondatabase/neon-js@0.7.0-beta';
 const client = createClient('https://ep-sparkling-forest-b2v7x4ux.c-6.eu-central-1.aws.neon.tech/neondb');
 
 const promptEl=document.getElementById('prompt'), filesEl=document.getElementById('files'), input=document.getElementById('fileInput'), messages=document.getElementById('messages'), intro=document.getElementById('intro');
-let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null;
+let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null, computeCapabilities=new Set();
 const ROUTER_URL='https://nexus-ai-router.ilario-coppola.workers.dev/chat';
 const FILES_URL='https://br-jolly-scene-b2wyu6gt-nexusfiles.compute.c-6.eu-central-1.aws.neon.tech/';
 const STATUS_URL='https://br-jolly-scene-b2wyu6gt-nexusstatus.compute.c-6.eu-central-1.aws.neon.tech/';
@@ -164,6 +164,7 @@ async function refreshComputeStatus(){
   try{
     const r=await fetch(STATUS_URL,{cache:'no-store'}),d=await r.json();
     const active=(d.workers||[]).find(w=>w.online);
+    computeCapabilities=new Set(active?.capabilities||[]);
     el.className='compute-pill '+(active?.status==='busy'?'busy':active?'online':'');
     el.querySelector('span').textContent=active?.status==='busy'?'PC worker busy':active?'PC worker online':'Cloud only';
     el.title=active?'NEXUS worker '+active.worker_id+' · last seen '+new Date(active.last_seen).toLocaleString():'NEXUS cloud chat remains available; local compute is not currently reporting.';
@@ -291,7 +292,12 @@ document.getElementById('sendBtn').onclick=async()=>{
      if(job.error)throw job.error;
      const jr=Array.isArray(job.data)?job.data[0]:job.data;
      const shortId=String(jr?.job_id||'').slice(0,8);
-     const ack='Upload verified. '+uploaded.length+' file'+(uploaded.length===1?'':'s')+' stored securely. NEXUS job '+shortId+' is queued. No job credits have been charged yet.';
+     const capMap={image_edit:'image',video_edit:'video',audio_task:'audio',document_task:'document',code_task:'code',archive_task:'archive',general_file:'general-file'};
+     const requiredCap=capMap[jobKind]||'general-file';
+     const waitingMedia=['image_edit','video_edit','audio_task'].includes(jobKind)&&!computeCapabilities.has(requiredCap);
+     const ack=waitingMedia
+       ? 'Upload verified and stored securely. NEXUS job '+shortId+' is queued waiting for a media worker. No job credits have been charged.'
+       : 'Upload verified. '+uploaded.length+' file'+(uploaded.length===1?'':'s')+' stored securely. NEXUS job '+shortId+' is queued. No job credits have been charged yet.';
      think.className='msg ai';
      think.textContent=ack;
      chatHistory.push({role:'assistant',content:ack});
@@ -372,6 +378,7 @@ async function loadJobs(){
    if(j.input_summary){const s=document.createElement('div');s.className='jobsummary';s.textContent=j.input_summary;row.appendChild(s)}
    if(j.output_summary){const o=document.createElement('div');o.className='jobresult';o.textContent=j.output_summary;row.appendChild(o)}
    if(j.error_code){const e=document.createElement('div');e.className='jobresult';e.textContent='Error: '+j.error_code;row.appendChild(e)}
+   if(['image_edit','video_edit','audio_task'].includes(j.kind)&&j.status==='queued'){const wait=document.createElement('div');wait.className='jobmeta';wait.textContent='Waiting for NEXUS media worker · no credits charged';row.appendChild(wait)}
    if(j.completed_at){const done=document.createElement('div');done.className='jobmeta';done.textContent='Completed '+fmtDate(j.completed_at);row.appendChild(done)}
    const actions=document.createElement('div');actions.className='jobactions';
    if(j.conversation_id){
