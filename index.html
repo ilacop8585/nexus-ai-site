@@ -41,10 +41,10 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <a class="navbtn" href="https://lab.nexusword.it/"><span>NEXUS Lab</span><span>↗</span></a>
   </div>
   <div class="credit">
-    <div class="small">Daily beta credits</div>
-    <strong>72</strong><span class="small"> / 100</span>
-    <div class="creditbar"><i></i></div>
-    <div class="small">Credit accounting is preview-only until account backend is enabled.</div>
+    <div class="small">Credits</div>
+    <strong id="creditBalance">—</strong><span class="small" id="creditAllowance"> / —</span>
+    <div class="creditbar"><i id="creditBar" style="width:0%"></i></div>
+    <div class="small" id="creditStatus">Sign in to load your real NEXUS balance.</div>
   </div>
 </aside>
 <main class="main">
@@ -93,38 +93,142 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 
 <div class="modal" id="loginModal">
   <div class="modal-card">
-    <h2>NEXUS account</h2>
-    <p>Accounts will preserve chats, files, credits and jobs. The Supabase project exists, but Auth is currently returning HTTP 402, so sign-in is not exposed as working until the service is available.</p>
-    <div class="notice">No payment method is being added automatically. Google sign-in and email/password will be enabled only after the auth service responds normally.</div>
+    <h2 id="authTitle">Sign in to NEXUS</h2>
+    <p>Your account preserves chats, credits and jobs. Files and private content remain tied to your account.</p>
+    <form id="authForm">
+      <input id="authName" type="text" placeholder="Name" autocomplete="name" style="display:none">
+      <input id="authEmail" type="email" placeholder="Email" autocomplete="email" required>
+      <input id="authPassword" type="password" placeholder="Password" autocomplete="current-password" minlength="8" required>
+      <button class="send" id="authSubmit" type="submit">Sign in</button>
+    </form>
     <div class="modal-actions">
-      <a class="iconbtn" href="mailto:nexus-revenue@agentmail.to?subject=NEXUS%20AI%20beta%20access">Request beta access</a>
-      <button class="iconbtn" id="closeLogin">Close</button>
+      <button class="iconbtn" id="googleLogin" type="button">Continue with Google</button>
+      <button class="iconbtn" id="toggleAuth" type="button">Create account</button>
+      <button class="iconbtn" id="closeLogin" type="button">Close</button>
     </div>
+    <div class="notice" id="authNotice">NEXUS accounts are powered by Neon Auth. Passwords are handled by the authentication service, not stored in the page.</div>
   </div>
 </div>
 
-<script>
+<script type="module">
+import { createClient } from 'https://esm.sh/@neondatabase/neon-js@0.7.0-beta.1';
+
+const client = createClient('https://ep-sparkling-forest-b2v7x4ux.c-6.eu-central-1.aws.neon.tech/neondb');
+
 const promptEl=document.getElementById('prompt'), filesEl=document.getElementById('files'), input=document.getElementById('fileInput'), messages=document.getElementById('messages'), intro=document.getElementById('intro');
-let selectedFiles=[], level='free';
+let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false;
 const levelText={free:'Free · fast / low-cost path',smart:'Smart · balanced depth',deep:'Deep · advanced / high-compute path'};
+
 document.querySelectorAll('.level').forEach(b=>b.onclick=()=>{document.querySelectorAll('.level').forEach(x=>x.classList.remove('active'));b.classList.add('active');level=b.dataset.level;document.getElementById('levelHint').textContent=levelText[level]});
 document.getElementById('attachBtn').onclick=()=>input.click();
 input.onchange=()=>{selectedFiles=[...input.files];filesEl.innerHTML=selectedFiles.map(f=>'<span class="filechip">'+escapeHtml(f.name)+' · '+formatBytes(f.size)+'</span>').join('');filesEl.classList.toggle('has',selectedFiles.length>0)};
 document.querySelectorAll('[data-prompt]').forEach(b=>b.onclick=()=>{promptEl.value=b.dataset.prompt;promptEl.focus()});
-document.getElementById('sendBtn').onclick=()=>{
+
+async function ensureConversation(firstText){
+  if(currentConversationId) return currentConversationId;
+  if(!currentUser) return null;
+  const title=(firstText||'New chat').replace(/\s+/g,' ').slice(0,72) || 'New chat';
+  const {data,error}=await client.from('nexus_conversations').insert({title,level}).select('id').single();
+  if(error) throw error;
+  currentConversationId=data.id;
+  return currentConversationId;
+}
+
+document.getElementById('sendBtn').onclick=async()=>{
  const q=promptEl.value.trim(); if(!q&&!selectedFiles.length)return;
+ if(!currentUser){ openAuth(); setAuthNotice('Sign in first so NEXUS can preserve this chat and your jobs.'); return; }
  intro.style.display='none';messages.classList.add('has');
- addMsg((q||'[File upload]')+(selectedFiles.length?'\nAttachments: '+selectedFiles.map(f=>f.name).join(', '):''),'me');
- setTimeout(()=>addMsg('NEXUS received the request in the beta interface. The public compute worker is not connected yet, so this request has not been executed or charged. Once the secure worker gateway is online, requests like this will become real jobs.','ai'),450);
+ addMsg((q||'[File upload]')+(selectedFiles.length?'\nAttachments selected: '+selectedFiles.map(f=>f.name).join(', '):''),'me');
+ try{
+   const cid=await ensureConversation(q);
+   if(q){
+     const {error}=await client.from('nexus_messages').insert({conversation_id:cid,role:'user',content:q,metadata:{level,attachment_count:selectedFiles.length}});
+     if(error) throw error;
+   }
+   if(selectedFiles.length){
+     addMsg('Your files are selected locally. Secure upload is being connected to the private NEXUS storage worker; the browser will not send them until a signed upload path is available.','ai');
+   } else {
+     addMsg('Message saved to your NEXUS account. The AI compute gateway is the next layer being connected, so this message has not consumed credits or started a worker yet.','ai');
+   }
+ }catch(e){ addMsg('NEXUS could not save this message: '+(e?.message||String(e)),'ai'); }
  promptEl.value=''; selectedFiles=[]; input.value=''; filesEl.innerHTML=''; filesEl.classList.remove('has');
+ await refreshAccountData();
 };
-document.getElementById('newChat').onclick=()=>{messages.innerHTML='';messages.classList.remove('has');intro.style.display='block';promptEl.value=''};
-document.getElementById('jobsBtn').onclick=()=>alert('Job history will activate with account storage. No jobs are being fabricated in the beta interface.');
-document.getElementById('loginBtn').onclick=()=>document.getElementById('loginModal').classList.add('show');
-document.getElementById('closeLogin').onclick=()=>document.getElementById('loginModal').classList.remove('show');
-document.getElementById('loginModal').onclick=e=>{if(e.target.id==='loginModal')e.currentTarget.classList.remove('show')};
+
+document.getElementById('newChat').onclick=()=>{currentConversationId=null;messages.innerHTML='';messages.classList.remove('has');intro.style.display='block';promptEl.value=''};
+document.getElementById('jobsBtn').onclick=async()=>{
+ if(!currentUser){openAuth();return}
+ const {data,error}=await client.from('nexus_jobs').select('id,kind,status,level,estimated_credits,charged_credits,created_at').order('created_at',{ascending:false}).limit(20);
+ if(error){alert(error.message);return}
+ alert(data?.length?data.map(j=>j.status.toUpperCase()+' · '+j.kind+' · '+j.level+' · '+j.charged_credits+' credits').join('\n'):'No NEXUS jobs yet.');
+};
+
+const modal=document.getElementById('loginModal');
+document.getElementById('loginBtn').onclick=()=> currentUser ? signOut() : openAuth();
+document.getElementById('closeLogin').onclick=()=>modal.classList.remove('show');
+modal.onclick=e=>{if(e.target.id==='loginModal')modal.classList.remove('show')};
+document.getElementById('toggleAuth').onclick=()=>{
+ isSignUp=!isSignUp;
+ document.getElementById('authTitle').textContent=isSignUp?'Create your NEXUS account':'Sign in to NEXUS';
+ document.getElementById('authSubmit').textContent=isSignUp?'Create account':'Sign in';
+ document.getElementById('toggleAuth').textContent=isSignUp?'I already have an account':'Create account';
+ document.getElementById('authName').style.display=isSignUp?'block':'none';
+ document.getElementById('authPassword').autocomplete=isSignUp?'new-password':'current-password';
+};
+
+document.getElementById('authForm').onsubmit=async e=>{
+ e.preventDefault();
+ const email=document.getElementById('authEmail').value.trim();
+ const password=document.getElementById('authPassword').value;
+ const name=document.getElementById('authName').value.trim()||email.split('@')[0]||'NEXUS user';
+ setAuthNotice(isSignUp?'Creating account…':'Signing in…');
+ const result=isSignUp
+   ? await client.auth.signUp.email({name,email,password,callbackURL:'https://nexusword.it/'})
+   : await client.auth.signIn.email({email,password,rememberMe:true,callbackURL:'https://nexusword.it/'});
+ if(result.error){setAuthNotice(result.error.message);return}
+ await loadSession();
+ modal.classList.remove('show');
+};
+
+document.getElementById('googleLogin').onclick=async()=>{
+ setAuthNotice('Opening Google sign-in…');
+ const r=await client.auth.signIn.social({provider:'google',callbackURL:'https://nexusword.it/'});
+ if(r?.error) setAuthNotice(r.error.message);
+};
+
+async function signOut(){await client.auth.signOut();currentUser=null;currentConversationId=null;setLoggedOutUI();}
+async function loadSession(){
+ try{
+   const r=await client.auth.getSession();
+   currentUser=r?.data?.user||null;
+   if(currentUser){
+     document.getElementById('loginBtn').textContent=(currentUser.name||currentUser.email||'Account').slice(0,22);
+     await refreshAccountData();
+   }else setLoggedOutUI();
+ }catch(e){setAuthNotice('Auth unavailable: '+(e?.message||String(e)));setLoggedOutUI()}
+}
+async function refreshAccountData(){
+ if(!currentUser)return;
+ const [profile,convos,jobs]=await Promise.all([
+   client.from('nexus_profiles').select('plan,credits_balance,daily_credit_allowance,analytics_opt_in,content_training_opt_in').single(),
+   client.from('nexus_conversations').select('id,title,level,updated_at').order('updated_at',{ascending:false}).limit(10),
+   client.from('nexus_jobs').select('id').limit(100)
+ ]);
+ if(profile.data){
+   const b=profile.data.credits_balance||0,a=profile.data.daily_credit_allowance||0;
+   document.getElementById('creditBalance').textContent=b;
+   document.getElementById('creditAllowance').textContent=' / '+a;
+   document.getElementById('creditBar').style.width=(a?Math.min(100,(b/a)*100):0)+'%';
+   document.getElementById('creditStatus').textContent=(profile.data.plan||'free').toUpperCase()+' plan · real account balance';
+ }
+ document.querySelector('#jobsBtn .small').textContent=jobs.data?.length||0;
+}
+function setLoggedOutUI(){document.getElementById('loginBtn').textContent='Sign in';document.getElementById('creditBalance').textContent='—';document.getElementById('creditAllowance').textContent=' / —';document.getElementById('creditBar').style.width='0%';document.getElementById('creditStatus').textContent='Sign in to load your real NEXUS balance.'}
+function openAuth(){modal.classList.add('show');document.getElementById('authEmail').focus()}
+function setAuthNotice(t){document.getElementById('authNotice').textContent=t}
 function addMsg(t,c){const d=document.createElement('div');d.className='msg '+c;d.textContent=t;messages.appendChild(d)}
 function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function formatBytes(n){if(n<1024)return n+' B';if(n<1048576)return (n/1024).toFixed(1)+' KB';return (n/1048576).toFixed(1)+' MB'}
+loadSession();
 </script>
 </body></html>
