@@ -14,7 +14,7 @@
 .app{min-height:100vh;display:grid;grid-template-columns:270px 1fr}.side{border-right:1px solid var(--line);background:#070a0f;padding:18px;display:flex;flex-direction:column;gap:18px;position:sticky;top:0;height:100vh}
 .brand{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:.08em}.mark{width:32px;height:32px;border:1px solid var(--accent);border-radius:10px;display:grid;place-items:center;color:var(--accent)}
 .newchat,.navbtn{width:100%;border:1px solid var(--line);background:#0c121b;color:var(--text);border-radius:11px;padding:11px 12px;text-align:left;cursor:pointer}.newchat{background:var(--accent);color:#04100b;border-color:var(--accent);font-weight:800}
-.snav{display:grid;gap:8px}.snav a,.snav button{display:flex;justify-content:space-between;align-items:center}.small{color:var(--muted);font-size:12px}.credit{margin-top:auto;border:1px solid var(--line);border-radius:14px;padding:14px;background:#0b1118}.credit strong{font-size:24px}.creditbar{height:6px;background:#172230;border-radius:999px;margin:9px 0;overflow:hidden}.creditbar i{display:block;height:100%;width:72%;background:var(--accent)}
+.snav{display:grid;gap:8px}.snav a,.snav button{display:flex;justify-content:space-between;align-items:center}.small{color:var(--muted);font-size:12px}.credit{margin-top:auto;border:1px solid var(--line);border-radius:14px;padding:14px;background:#0b1118}.credit strong{font-size:24px}.buycredit{width:100%;margin-top:10px;border:0;background:var(--accent);color:#04100b;border-radius:10px;padding:9px 10px;font-weight:900;cursor:pointer}.creditbar{height:6px;background:#172230;border-radius:999px;margin:9px 0;overflow:hidden}.creditbar i{display:block;height:100%;width:72%;background:var(--accent)}
 .main{min-width:0;display:flex;flex-direction:column;min-height:100vh}.top{height:66px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:rgba(5,7,11,.9);position:sticky;top:0;z-index:10;backdrop-filter:blur(12px)}
 .levels{display:flex;gap:8px}.level{border:1px solid var(--line);background:#0b1118;color:var(--muted);border-radius:999px;padding:7px 10px;cursor:pointer;font-size:12px;font-weight:800}.level.active{color:#06100b;background:var(--accent);border-color:var(--accent)}.level[data-level="deep"].active{background:var(--gold);border-color:var(--gold)}
 .account{display:flex;gap:9px;align-items:center}.account button,.account a{border:1px solid var(--line);background:#0b1118;border-radius:10px;padding:8px 11px;color:var(--text);cursor:pointer}
@@ -25,7 +25,7 @@
 .files{display:none;gap:8px;flex-wrap:wrap;margin-bottom:9px}.files.has{display:flex}.filechip{border:1px solid #2a3b4f;border-radius:10px;padding:7px 9px;color:#c0cedc;font-size:12px;background:#0f1722}
 textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:transparent;border:0;outline:0;color:var(--text);padding:6px 4px;font-size:16px}.compose-actions{display:flex;justify-content:space-between;align-items:center;gap:10px}.left-actions{display:flex;gap:8px;align-items:center}
 .iconbtn{border:1px solid var(--line);background:#0f1722;color:#c9d5e2;border-radius:10px;padding:8px 10px;cursor:pointer}.send{border:0;background:var(--accent);color:#04100b;border-radius:10px;padding:9px 14px;font-weight:900;cursor:pointer}.send[disabled]{opacity:.45;cursor:not-allowed}
-.beta{font-size:11px;color:var(--muted)}.modal{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}.modal.show{display:flex}.modal-card{width:min(100%,440px);background:#0c121b;border:1px solid #263445;border-radius:18px;padding:22px}.modal-card h2{margin:0 0 10px}.modal-card p{color:var(--muted);line-height:1.6}.modal-card input{width:100%;margin:7px 0;padding:11px;border:1px solid var(--line);background:#070b10;color:var(--text);border-radius:10px}.modal-actions{display:flex;gap:9px;margin-top:12px}.notice{border:1px solid #3b4b5e;background:#0d151f;border-radius:12px;padding:11px 12px;color:#aebed0;font-size:13px;line-height:1.55}
+.beta{font-size:11px;color:var(--muted)}.modal{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}.modal.show{display:flex}.modal-card{width:min(100%,440px);background:#0c121b;border:1px solid #263445;border-radius:18px;padding:22px}.modal-card h2{margin:0 0 10px}.modal-card p{color:var(--muted);line-height:1.6}.modal-card input{width:100%;margin:7px 0;padding:11px;border:1px solid var(--line);background:#070b10;color:var(--text);border-radius:10px}.modal-actions{display:flex;gap:9px;margin-top:12px}.notice{border:1px solid #3b4b5e;background:#0d151f;border-radius:12px;padding:11px 12px;color:#aebed0;font-size:13px;line-height:1.55}.packs{display:grid;gap:10px;margin-top:14px}.pack{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--line);background:#0a1017;border-radius:12px;padding:12px}.pack strong{font-size:17px}.pack small{display:block;color:var(--muted);margin-top:3px}.pack a{background:var(--accent);color:#04100b;border-radius:9px;padding:8px 10px;font-weight:900;white-space:nowrap}.credit-cost{color:var(--accent);font-weight:800}
 @media(max-width:820px){.app{grid-template-columns:1fr}.side{display:none}.composer-wrap{left:0}.quick{grid-template-columns:1fr 1fr}.top{padding:0 14px}.stage{padding-left:15px;padding-right:15px}.account a{display:none}}
 </style>
 </head>
@@ -45,6 +45,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <strong id="creditBalance">—</strong><span class="small" id="creditAllowance"> / —</span>
     <div class="creditbar"><i id="creditBar" style="width:0%"></i></div>
     <div class="small" id="creditStatus">Sign in to load your real NEXUS balance.</div>
+    <button class="buycredit" id="buyCreditsBtn" type="button">＋ Buy credits</button>
   </div>
 </aside>
 <main class="main">
@@ -56,6 +57,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     </div>
     <div class="account">
       <a href="https://lab.nexusword.it/shop.html">Shop</a>
+      <button id="topBuyCredits" type="button">Credits</button>
       <button id="loginBtn">Sign in</button>
     </div>
   </header>
@@ -110,20 +112,48 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
   </div>
 </div>
 
+<div class="modal" id="creditModal">
+  <div class="modal-card">
+    <h2>Buy NEXUS credits</h2>
+    <p>One-time credit packs. Credits are tied to your NEXUS account after the payment is verified.</p>
+    <div class="packs">
+      <div class="pack"><div><strong>500 credits</strong><small>€4.99 · starter top-up</small></div><a data-credit-link="500" href="https://buy.stripe.com/28E6oH9Lp1SY8JcgaIdby03">Buy</a></div>
+      <div class="pack"><div><strong>1,500 credits</strong><small>€9.99 · better value</small></div><a data-credit-link="1500" href="https://buy.stripe.com/7sYfZhe1FapuaRk8Igdby04">Buy</a></div>
+      <div class="pack"><div><strong>4,000 credits</strong><small>€19.99 · heavy use</small></div><a data-credit-link="4000" href="https://buy.stripe.com/7sY7sLe1FgNS7F87Ecdby05">Buy</a></div>
+    </div>
+    <div class="notice" style="margin-top:12px">Chat cost: <span class="credit-cost">Free 1</span> · <span class="credit-cost">Smart 3</span> · <span class="credit-cost">Deep 6</span> credits per successful text answer.</div>
+    <div class="modal-actions"><button class="iconbtn" id="closeCredits" type="button">Close</button></div>
+  </div>
+</div>
+
 <script type="module">
 import { createClient } from 'https://esm.sh/@neondatabase/neon-js@0.7.0-beta';
 
 const client = createClient('https://ep-sparkling-forest-b2v7x4ux.c-6.eu-central-1.aws.neon.tech/neondb');
 
 const promptEl=document.getElementById('prompt'), filesEl=document.getElementById('files'), input=document.getElementById('fileInput'), messages=document.getElementById('messages'), intro=document.getElementById('intro');
-let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[];
+let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0;
 const ROUTER_URL='https://nexus-ai-router.ilario-coppola.workers.dev/chat';
-const levelText={free:'Free · fast / low-cost path',smart:'Smart · balanced depth',deep:'Deep · advanced / high-compute path'};
+const creditCost={free:1,smart:3,deep:6};
+const levelText={free:'Free · 1 credit',smart:'Smart · 3 credits',deep:'Deep · 6 credits'};
 
 document.querySelectorAll('.level').forEach(b=>b.onclick=()=>{document.querySelectorAll('.level').forEach(x=>x.classList.remove('active'));b.classList.add('active');level=b.dataset.level;document.getElementById('levelHint').textContent=levelText[level]});
 document.getElementById('attachBtn').onclick=()=>input.click();
 input.onchange=()=>{selectedFiles=[...input.files];filesEl.innerHTML=selectedFiles.map(f=>'<span class="filechip">'+escapeHtml(f.name)+' · '+formatBytes(f.size)+'</span>').join('');filesEl.classList.toggle('has',selectedFiles.length>0)};
 document.querySelectorAll('[data-prompt]').forEach(b=>b.onclick=()=>{promptEl.value=b.dataset.prompt;promptEl.focus()});
+const creditModal=document.getElementById('creditModal');
+function openCredits(){
+  if(!currentUser){openAuth();setAuthNotice('Sign in first so purchased credits can be attached to your NEXUS account.');return}
+  document.querySelectorAll('[data-credit-link]').forEach(a=>{
+    const base=a.href.split('?')[0];
+    a.href=base+'?prefilled_email='+encodeURIComponent(currentUser.email||'');
+  });
+  creditModal.classList.add('show');
+}
+document.getElementById('buyCreditsBtn').onclick=openCredits;
+document.getElementById('topBuyCredits').onclick=openCredits;
+document.getElementById('closeCredits').onclick=()=>creditModal.classList.remove('show');
+creditModal.onclick=e=>{if(e.target.id==='creditModal')creditModal.classList.remove('show')};
 
 async function ensureConversation(firstText){
   if(currentConversationId) return currentConversationId;
@@ -138,6 +168,11 @@ async function ensureConversation(firstText){
 document.getElementById('sendBtn').onclick=async()=>{
  const q=promptEl.value.trim(); if(!q&&!selectedFiles.length)return;
  if(!currentUser){ openAuth(); setAuthNotice('Sign in first so NEXUS can preserve this chat and your jobs.'); return; }
+ const needed=creditCost[level]||1;
+ if(!selectedFiles.length && currentBalance < needed){
+   openCredits();
+   return;
+ }
 
  intro.style.display='none';messages.classList.add('has');
  const visibleText=(q||'[File upload]')+(selectedFiles.length?'\nAttachments selected: '+selectedFiles.map(f=>f.name).join(', '):'');
@@ -170,6 +205,14 @@ document.getElementById('sendBtn').onclick=async()=>{
      think.className='msg ai';
      think.textContent=data.reply;
      chatHistory.push({role:'assistant',content:data.reply});
+
+     const debit=await client.rpc('nexus_consume_level',{p_level:level});
+     const debitRow=Array.isArray(debit.data)?debit.data[0]:debit.data;
+     if(debit.error || !debitRow?.ok){
+       addMsg('Credit accounting warning: '+(debit.error?.message||debitRow?.error||'could not update balance')+'.','ai');
+     }else{
+       currentBalance=debitRow.balance;
+     }
    }
  }catch(e){
    think.className='msg ai';
@@ -242,6 +285,7 @@ async function refreshAccountData(){
  ]);
  if(profile.data){
    const b=profile.data.credits_balance||0,a=profile.data.daily_credit_allowance||0;
+   currentBalance=b;
    document.getElementById('creditBalance').textContent=b;
    document.getElementById('creditAllowance').textContent=' / '+a;
    document.getElementById('creditBar').style.width=(a?Math.min(100,(b/a)*100):0)+'%';
@@ -249,12 +293,16 @@ async function refreshAccountData(){
  }
  document.querySelector('#jobsBtn .small').textContent=jobs.data?.length||0;
 }
-function setLoggedOutUI(){document.getElementById('loginBtn').textContent='Sign in';document.getElementById('creditBalance').textContent='—';document.getElementById('creditAllowance').textContent=' / —';document.getElementById('creditBar').style.width='0%';document.getElementById('creditStatus').textContent='Sign in to load your real NEXUS balance.'}
+function setLoggedOutUI(){currentBalance=0;document.getElementById('loginBtn').textContent='Sign in';document.getElementById('creditBalance').textContent='—';document.getElementById('creditAllowance').textContent=' / —';document.getElementById('creditBar').style.width='0%';document.getElementById('creditStatus').textContent='Sign in to load your real NEXUS balance.'}
 function openAuth(){modal.classList.add('show');document.getElementById('authEmail').focus()}
 function setAuthNotice(t){document.getElementById('authNotice').textContent=t}
 function addMsg(t,c){const d=document.createElement('div');d.className='msg '+c;d.textContent=t;messages.appendChild(d);d.scrollIntoView({behavior:'smooth',block:'end'});return d}
 function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function formatBytes(n){if(n<1024)return n+' B';if(n<1048576)return (n/1024).toFixed(1)+' KB';return (n/1048576).toFixed(1)+' MB'}
+const qs=new URLSearchParams(location.search);
+if(qs.get('credits')==='success'){
+  setTimeout(()=>addMsg('Stripe payment completed. NEXUS is verifying the top-up; your balance will refresh automatically when the payment event is confirmed.','ai'),700);
+}
 loadSession();
 </script>
 </body></html>
