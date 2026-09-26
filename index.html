@@ -211,12 +211,21 @@ document.getElementById('sendBtn').onclick=async()=>{
      think.textContent=data.reply;
      chatHistory.push({role:'assistant',content:data.reply});
 
+     const assistantMeta={level,model:data.model||null,provider:data.provider||null};
      const saved=await client.rpc('nexus_store_assistant_message',{
        p_conversation_id:cid,
        p_content:data.reply,
-       p_metadata:{level,model:data.model||null,provider:data.provider||null}
+       p_metadata:assistantMeta
      });
-     if(saved.error) console.warn('Could not persist assistant message',saved.error);
+     if(saved.error){
+       const fallback=await client.from('nexus_messages').insert({
+         conversation_id:cid,
+         role:'assistant',
+         content:data.reply,
+         metadata:assistantMeta
+       });
+       if(fallback.error) console.warn('Could not persist assistant message',fallback.error);
+     }
 
      const debit=await client.rpc('nexus_consume_level',{p_level:level});
      const debitRow=Array.isArray(debit.data)?debit.data[0]:debit.data;
