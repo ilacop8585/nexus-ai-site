@@ -93,7 +93,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <div class="compose-actions">
       <div class="left-actions">
         <button class="iconbtn" id="attachBtn" type="button">＋ Attach</button>
-        <input id="fileInput" type="file" multiple hidden accept="image/*,video/*,audio/*,.pdf,.txt,.md,.csv,.json,.xml,.zip,.7z,.rar,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.py,.js,.ts,.tsx,.jsx,.html,.css,.java,.c,.cpp,.h,.hpp,.rs,.go,.php,.sql">
+        <input id="fileInput" type="file" multiple hidden accept="image/*,video/*,audio/*,.pdf,.txt,.md,.csv,.json,.xml,.zip,.tar,.gz,.docx,.xlsx,.pptx,.py,.js,.ts,.tsx,.jsx,.html,.css,.java,.c,.cpp,.h,.hpp,.rs,.go,.php,.sql">
         <span class="beta" id="levelHint">Free · fast / low-cost path</span>
       </div>
       <button class="send" id="sendBtn" type="button">Send</button>
@@ -178,7 +178,20 @@ refreshComputeStatus();
 function setLevel(next){level=['free','smart','deep'].includes(next)?next:'free';document.querySelectorAll('.level').forEach(x=>x.classList.toggle('active',x.dataset.level===level));document.getElementById('levelHint').textContent=levelText[level]}
 document.querySelectorAll('.level').forEach(b=>b.onclick=()=>setLevel(b.dataset.level));
 document.getElementById('attachBtn').onclick=()=>input.click();
-input.onchange=()=>{selectedFiles=[...input.files];filesEl.innerHTML=selectedFiles.map(f=>'<span class="filechip">'+escapeHtml(f.name)+' · '+formatBytes(f.size)+'</span>').join('');filesEl.classList.toggle('has',selectedFiles.length>0)};
+input.onchange=()=>{
+  const candidate=[...input.files];
+  const maxBytes=25*1024*1024;
+  if(candidate.length>5){
+    selectedFiles=[];input.value='';filesEl.innerHTML='<span class="filechip">Maximum 5 files per job.</span>';filesEl.classList.add('has');return;
+  }
+  const tooBig=candidate.find(f=>f.size>maxBytes);
+  if(tooBig){
+    selectedFiles=[];input.value='';filesEl.innerHTML='<span class="filechip">'+escapeHtml(tooBig.name)+' exceeds the 25 MB beta limit.</span>';filesEl.classList.add('has');return;
+  }
+  selectedFiles=candidate;
+  filesEl.innerHTML=selectedFiles.map(f=>'<span class="filechip">'+escapeHtml(f.name)+' · '+formatBytes(f.size)+'</span>').join('');
+  filesEl.classList.toggle('has',selectedFiles.length>0);
+};
 document.querySelectorAll('[data-prompt]').forEach(b=>b.onclick=()=>{promptEl.value=b.dataset.prompt;promptEl.focus()});
 const creditModal=document.getElementById('creditModal');
 function openCredits(){
@@ -199,7 +212,7 @@ function detectJobKind(file){
   if(type.startsWith('image/'))return 'image_edit';
   if(type.startsWith('video/'))return 'video_edit';
   if(type.startsWith('audio/'))return 'audio_task';
-  if(/\.(zip|7z|rar|tar|gz)$/.test(name))return 'archive_task';
+  if(/\.(zip|tar|gz)$/.test(name))return 'archive_task';
   if(/\.(py|js|ts|tsx|jsx|html|css|java|c|cpp|h|hpp|rs|go|php|sql|sh|ps1|json|xml|yaml|yml)$/.test(name))return 'code_task';
   if(type.includes('pdf')||type.includes('document')||type.includes('text')||/\.(pdf|docx?|xlsx?|pptx?|txt|md|csv)$/.test(name))return 'document_task';
   return 'general_file';
