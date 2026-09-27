@@ -555,10 +555,16 @@ document.getElementById('topNewChat').onclick=resetChat;
 const jobsModal=document.getElementById('jobsModal');
 function visibleJobs(items){return (items||[]).filter(j=>!String(j.input_summary||'').trim().toUpperCase().startsWith('INTERNAL'))}
 function fmtDate(v){try{return new Date(v).toLocaleString()}catch{return ''}}
-function jobStatusLabel(v){
- const labels={queued:'Queued',claimed:'Claimed',running:'Processing',qa:'Quality check',completed:'Completed',failed:'Failed'};
- return labels[String(v||'').toLowerCase()]||String(v||'Unknown');
-}
+const JOB_I18N={
+ en:{queued:'Queued',claimed:'Claimed',running:'Processing',qa:'Quality check',completed:'Completed',failed:'Failed',unknown:'Unknown',noJobs:'No NEXUS jobs yet.',credits:'credits',status:'Job status',queuedHelp:'Queued · waiting for an available NEXUS worker',claimedHelp:'Claimed · a NEXUS worker accepted this job',runningHelp:'Processing · NEXUS is working on this job',qaHelp:'Quality check · result verification in progress',mediaWait:'Waiting for NEXUS media worker · no credits charged',completedAt:'Completed',open:'Open chat',copy:'Copy result',copied:'Copied',copyFail:'Copy failed',download:'Download result',error:'Error'},
+ it:{queued:'In coda',claimed:'Preso in carico',running:'In elaborazione',qa:'Controllo qualità',completed:'Completato',failed:'Fallito',unknown:'Sconosciuto',noJobs:'Nessun lavoro NEXUS.',credits:'crediti',status:'Stato lavoro',queuedHelp:'In coda · in attesa di un worker NEXUS disponibile',claimedHelp:'Preso in carico · un worker NEXUS ha accettato il lavoro',runningHelp:'In elaborazione · NEXUS sta lavorando sul job',qaHelp:'Controllo qualità · verifica del risultato in corso',mediaWait:'In attesa del worker multimediale NEXUS · nessun credito addebitato',completedAt:'Completato',open:'Apri chat',copy:'Copia risultato',copied:'Copiato',copyFail:'Copia fallita',download:'Scarica risultato',error:'Errore'},
+ ko:{queued:'대기 중',claimed:'접수됨',running:'처리 중',qa:'품질 확인',completed:'완료',failed:'실패',unknown:'알 수 없음',noJobs:'NEXUS 작업이 없습니다.',credits:'크레딧',status:'작업 상태',queuedHelp:'대기 중 · 사용 가능한 NEXUS 워커를 기다리는 중',claimedHelp:'접수됨 · NEXUS 워커가 작업을 수락했습니다',runningHelp:'처리 중 · NEXUS가 작업하고 있습니다',qaHelp:'품질 확인 · 결과 검증 중',mediaWait:'NEXUS 미디어 워커 대기 중 · 크레딧 미차감',completedAt:'완료',open:'채팅 열기',copy:'결과 복사',copied:'복사됨',copyFail:'복사 실패',download:'결과 다운로드',error:'오류'},
+ es:{queued:'En cola',claimed:'Aceptado',running:'Procesando',qa:'Control de calidad',completed:'Completado',failed:'Fallido',unknown:'Desconocido',noJobs:'Aún no hay trabajos NEXUS.',credits:'créditos',status:'Estado del trabajo',queuedHelp:'En cola · esperando un worker NEXUS disponible',claimedHelp:'Aceptado · un worker NEXUS tomó el trabajo',runningHelp:'Procesando · NEXUS está trabajando',qaHelp:'Control de calidad · verificando el resultado',mediaWait:'Esperando worker multimedia NEXUS · sin créditos cobrados',completedAt:'Completado',open:'Abrir chat',copy:'Copiar resultado',copied:'Copiado',copyFail:'Error al copiar',download:'Descargar resultado',error:'Error'},
+ fr:{queued:'En attente',claimed:'Pris en charge',running:'Traitement',qa:'Contrôle qualité',completed:'Terminé',failed:'Échec',unknown:'Inconnu',noJobs:'Aucune tâche NEXUS.',credits:'crédits',status:'État de la tâche',queuedHelp:'En attente · recherche d’un worker NEXUS disponible',claimedHelp:'Pris en charge · un worker NEXUS a accepté la tâche',runningHelp:'Traitement · NEXUS travaille sur la tâche',qaHelp:'Contrôle qualité · vérification du résultat',mediaWait:'En attente du worker média NEXUS · aucun crédit facturé',completedAt:'Terminé',open:'Ouvrir le chat',copy:'Copier le résultat',copied:'Copié',copyFail:'Échec de copie',download:'Télécharger le résultat',error:'Erreur'},
+ de:{queued:'Warteschlange',claimed:'Übernommen',running:'In Bearbeitung',qa:'Qualitätsprüfung',completed:'Abgeschlossen',failed:'Fehlgeschlagen',unknown:'Unbekannt',noJobs:'Noch keine NEXUS-Aufgaben.',credits:'Credits',status:'Aufgabenstatus',queuedHelp:'Warteschlange · wartet auf einen verfügbaren NEXUS-Worker',claimedHelp:'Übernommen · ein NEXUS-Worker hat die Aufgabe angenommen',runningHelp:'In Bearbeitung · NEXUS arbeitet an der Aufgabe',qaHelp:'Qualitätsprüfung · Ergebnis wird geprüft',mediaWait:'Wartet auf NEXUS-Media-Worker · keine Credits berechnet',completedAt:'Abgeschlossen',open:'Chat öffnen',copy:'Ergebnis kopieren',copied:'Kopiert',copyFail:'Kopieren fehlgeschlagen',download:'Ergebnis herunterladen',error:'Fehler'}
+};
+function jt(k){return JOB_I18N[uiLang]?.[k]||JOB_I18N.en[k]||k}
+function jobStatusLabel(v){return jt(String(v||'unknown').toLowerCase())}
 async function loadJobs(){
  if(!currentUser)return;
  const {data,error}=await client.from('nexus_jobs').select('id,conversation_id,kind,status,level,charged_credits,input_summary,output_summary,error_code,created_at,completed_at').order('created_at',{ascending:false}).limit(50);
@@ -566,31 +572,31 @@ async function loadJobs(){
  if(error){box.textContent=error.message;box.setAttribute('aria-busy','false');return}
  const jobs=visibleJobs(data);
  document.querySelector('#jobsBtn .small').textContent=jobs.length;
- if(!jobs.length){box.innerHTML='<div class="notice">No NEXUS jobs yet.</div>';return}
+ if(!jobs.length){box.innerHTML='<div class="notice">'+escapeHtml(jt('noJobs'))+'</div>';box.setAttribute('aria-busy','false');return}
  box.innerHTML='';
  jobs.forEach(j=>{
    const row=document.createElement('div');row.className='jobrow';
    const head=document.createElement('div');head.className='jobhead';
    const title=document.createElement('strong');title.textContent=(j.kind||'job').replaceAll('_',' ')+' · '+String(j.id).slice(0,8);
-   const status=document.createElement('span');status.className='jobstatus '+j.status;status.textContent=jobStatusLabel(j.status);status.title='Job status: '+jobStatusLabel(j.status);
+   const status=document.createElement('span');status.className='jobstatus '+j.status;status.textContent=jobStatusLabel(j.status);status.title=jt('status')+': '+jobStatusLabel(j.status);
    head.append(title,status);row.appendChild(head);
-   const meta=document.createElement('div');meta.className='jobmeta';meta.textContent=(j.level||'free').toUpperCase()+' · '+j.charged_credits+' credits · '+fmtDate(j.created_at);row.appendChild(meta);
+   const meta=document.createElement('div');meta.className='jobmeta';meta.textContent=(j.level||'free').toUpperCase()+' · '+j.charged_credits+' '+jt('credits')+' · '+fmtDate(j.created_at);row.appendChild(meta);
    if(j.input_summary){const s=document.createElement('div');s.className='jobsummary';s.textContent=j.input_summary;row.appendChild(s)}
    if(j.output_summary){const o=document.createElement('div');o.className='jobresult';o.textContent=cleanMarkdownText(j.output_summary);row.appendChild(o)}
-   if(j.error_code){const e=document.createElement('div');e.className='jobresult';e.textContent='Error: '+j.error_code;row.appendChild(e)}
-   if(j.status==='queued'){const p=document.createElement('div');p.className='jobmeta';p.textContent='Queued · waiting for an available NEXUS worker';row.appendChild(p)}
-   if(j.status==='claimed'){const p=document.createElement('div');p.className='jobmeta';p.textContent='Claimed · a NEXUS worker accepted this job';row.appendChild(p)}
-   if(j.status==='running'){const p=document.createElement('div');p.className='jobmeta';p.textContent='Processing · NEXUS is working on this job';row.appendChild(p)}
-   if(j.status==='qa'){const p=document.createElement('div');p.className='jobmeta';p.textContent='Quality check · result verification in progress';row.appendChild(p)}
-   if(['image_edit','video_edit','audio_task'].includes(j.kind)&&j.status==='queued'){const wait=document.createElement('div');wait.className='jobmeta';wait.textContent='Waiting for NEXUS media worker · no credits charged';row.appendChild(wait)}
-   if(j.completed_at){const done=document.createElement('div');done.className='jobmeta';done.textContent='Completed '+fmtDate(j.completed_at);row.appendChild(done)}
+   if(j.error_code){const e=document.createElement('div');e.className='jobresult';e.textContent=jt('error')+': '+j.error_code;row.appendChild(e)}
+   if(j.status==='queued'){const p=document.createElement('div');p.className='jobmeta';p.textContent=jt('queuedHelp');row.appendChild(p)}
+   if(j.status==='claimed'){const p=document.createElement('div');p.className='jobmeta';p.textContent=jt('claimedHelp');row.appendChild(p)}
+   if(j.status==='running'){const p=document.createElement('div');p.className='jobmeta';p.textContent=jt('runningHelp');row.appendChild(p)}
+   if(j.status==='qa'){const p=document.createElement('div');p.className='jobmeta';p.textContent=jt('qaHelp');row.appendChild(p)}
+   if(['image_edit','video_edit','audio_task'].includes(j.kind)&&j.status==='queued'){const wait=document.createElement('div');wait.className='jobmeta';wait.textContent=jt('mediaWait');row.appendChild(wait)}
+   if(j.completed_at){const done=document.createElement('div');done.className='jobmeta';done.textContent=jt('completedAt')+' '+fmtDate(j.completed_at);row.appendChild(done)}
    const actions=document.createElement('div');actions.className='jobactions';
    if(j.conversation_id){
-     const open=document.createElement('button');open.type='button';open.textContent='Open chat';open.setAttribute('aria-label','Open the conversation linked to this job');open.onclick=async()=>{jobsModal.classList.remove('show');clearInterval(jobsPoll);jobsPoll=null;await loadConversation(j.conversation_id,j.level||'free')};actions.appendChild(open);
+     const open=document.createElement('button');open.type='button';open.textContent=jt('open');open.setAttribute('aria-label',jt('open'));open.onclick=async()=>{jobsModal.classList.remove('show');clearInterval(jobsPoll);jobsPoll=null;await loadConversation(j.conversation_id,j.level||'free')};actions.appendChild(open);
    }
    if(j.output_summary){
-     const cp=document.createElement('button');cp.type='button';cp.textContent='Copy result';cp.onclick=async()=>{try{await navigator.clipboard.writeText(j.output_summary);cp.textContent='Copied';setTimeout(()=>cp.textContent='Copy result',1400)}catch{cp.textContent='Copy failed';setTimeout(()=>cp.textContent='Copy result',1400)}};actions.appendChild(cp);
-     const dl=document.createElement('button');dl.type='button';dl.textContent='Download result';dl.onclick=()=>{
+     const cp=document.createElement('button');cp.type='button';cp.textContent=jt('copy');cp.onclick=async()=>{try{await navigator.clipboard.writeText(j.output_summary);cp.textContent=jt('copied');setTimeout(()=>cp.textContent=jt('copy'),1400)}catch{cp.textContent=jt('copyFail');setTimeout(()=>cp.textContent=jt('copy'),1400)}};actions.appendChild(cp);
+     const dl=document.createElement('button');dl.type='button';dl.textContent=jt('download');dl.onclick=()=>{
        const blob=new Blob([j.output_summary],{type:'text/plain;charset=utf-8'});const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download='NEXUS-'+String(j.id).slice(0,8)+'-result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);
      };actions.appendChild(dl);
    }
