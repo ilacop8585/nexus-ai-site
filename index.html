@@ -182,7 +182,69 @@ const ROUTER_URL='https://nexus-ai-router.ilario-coppola.workers.dev/chat';
 const FILES_URL='https://br-jolly-scene-b2wyu6gt-nexusfiles.compute.c-6.eu-central-1.aws.neon.tech/';
 const STATUS_URL='https://br-jolly-scene-b2wyu6gt-nexusstatus.compute.c-6.eu-central-1.aws.neon.tech/';
 const creditCost={free:1,smart:3,deep:6};
-const levelText={free:'Free · 1 credit',smart:'Smart · 3 credits',deep:'Deep · 6 credits'};
+const I18N={
+ en:{newChat:'New chat',jobs:'My jobs',recent:'Recent chats',credits:'Credits',buy:'Buy credits',new:'New',signIn:'Sign in',attach:'Attach',send:'Send',
+ introEy:'NEXUS AI · public beta',introTitle:'Ask. Attach. Build. Route the work.',introText:'Chat, documents, archives and code are live. Images, video and audio use the same secure intake and wait for an available NEXUS media worker.',
+ quickDoc:'📄 Analyse a document',quickImage:'🖼️ Edit an image',quickCode:'💻 Work on code',quickJob:'⚙️ Create a job',
+ prompt:'Ask NEXUS or describe what you want done…',level_free:'Free · 1 credit',level_smart:'Smart · 3 credits',level_deep:'Deep · 6 credits',
+ noChats:'No chats yet.',signInLoad:'Sign in to load chats.',lang:'Language'},
+ it:{newChat:'Nuova chat',jobs:'I miei lavori',recent:'Chat recenti',credits:'Crediti',buy:'Compra crediti',new:'Nuova',signIn:'Accedi',attach:'Allega',send:'Invia',
+ introEy:'NEXUS AI · beta pubblica',introTitle:'Chiedi. Allega. Crea. Affida il lavoro.',introText:'Chat, documenti, archivi e codice sono attivi. Immagini, video e audio usano lo stesso caricamento sicuro e attendono un worker multimediale NEXUS disponibile.',
+ quickDoc:'📄 Analizza un documento',quickImage:'🖼️ Modifica un’immagine',quickCode:'💻 Lavora sul codice',quickJob:'⚙️ Crea un lavoro',
+ prompt:'Chiedi a NEXUS o descrivi cosa vuoi fare…',level_free:'Free · 1 credito',level_smart:'Smart · 3 crediti',level_deep:'Deep · 6 crediti',
+ noChats:'Nessuna chat.',signInLoad:'Accedi per caricare le chat.',lang:'Lingua'},
+ ko:{newChat:'새 채팅',jobs:'내 작업',recent:'최근 채팅',credits:'크레딧',buy:'크레딧 구매',new:'새 채팅',signIn:'로그인',attach:'첨부',send:'보내기',
+ introEy:'NEXUS AI · 공개 베타',introTitle:'묻고, 첨부하고, 만들고, 작업을 맡기세요.',introText:'채팅, 문서, 압축 파일, 코드를 사용할 수 있습니다. 이미지·영상·오디오는 안전하게 업로드된 뒤 사용 가능한 NEXUS 미디어 워커가 처리합니다.',
+ quickDoc:'📄 문서 분석',quickImage:'🖼️ 이미지 편집',quickCode:'💻 코드 작업',quickJob:'⚙️ 작업 만들기',
+ prompt:'NEXUS에게 질문하거나 원하는 작업을 설명하세요…',level_free:'Free · 1 크레딧',level_smart:'Smart · 3 크레딧',level_deep:'Deep · 6 크레딧',
+ noChats:'채팅이 없습니다.',signInLoad:'채팅을 불러오려면 로그인하세요.',lang:'언어'},
+ es:{newChat:'Nuevo chat',jobs:'Mis trabajos',recent:'Chats recientes',credits:'Créditos',buy:'Comprar créditos',new:'Nuevo',signIn:'Entrar',attach:'Adjuntar',send:'Enviar',
+ introEy:'NEXUS AI · beta pública',introTitle:'Pregunta. Adjunta. Crea. Envía el trabajo.',introText:'Chat, documentos, archivos y código están activos. Imágenes, vídeo y audio usan la misma carga segura y esperan un worker multimedia NEXUS disponible.',
+ quickDoc:'📄 Analizar un documento',quickImage:'🖼️ Editar una imagen',quickCode:'💻 Trabajar con código',quickJob:'⚙️ Crear un trabajo',
+ prompt:'Pregunta a NEXUS o describe lo que quieres hacer…',level_free:'Free · 1 crédito',level_smart:'Smart · 3 créditos',level_deep:'Deep · 6 créditos',
+ noChats:'Aún no hay chats.',signInLoad:'Inicia sesión para cargar tus chats.',lang:'Idioma'},
+ fr:{newChat:'Nouvelle discussion',jobs:'Mes tâches',recent:'Discussions récentes',credits:'Crédits',buy:'Acheter des crédits',new:'Nouveau',signIn:'Connexion',attach:'Joindre',send:'Envoyer',
+ introEy:'NEXUS AI · bêta publique',introTitle:'Demandez. Joignez. Créez. Confiez le travail.',introText:'Le chat, les documents, les archives et le code sont actifs. Les images, vidéos et audios utilisent le même dépôt sécurisé et attendent un worker média NEXUS disponible.',
+ quickDoc:'📄 Analyser un document',quickImage:'🖼️ Modifier une image',quickCode:'💻 Travailler sur du code',quickJob:'⚙️ Créer une tâche',
+ prompt:'Demandez à NEXUS ou décrivez ce que vous voulez faire…',level_free:'Free · 1 crédit',level_smart:'Smart · 3 crédits',level_deep:'Deep · 6 crédits',
+ noChats:'Aucune discussion.',signInLoad:'Connectez-vous pour charger vos discussions.',lang:'Langue'},
+ de:{newChat:'Neuer Chat',jobs:'Meine Aufgaben',recent:'Letzte Chats',credits:'Credits',buy:'Credits kaufen',new:'Neu',signIn:'Anmelden',attach:'Anhängen',send:'Senden',
+ introEy:'NEXUS AI · öffentliche Beta',introTitle:'Fragen. Anhängen. Erstellen. Arbeit weiterleiten.',introText:'Chat, Dokumente, Archive und Code sind aktiv. Bilder, Videos und Audio werden sicher hochgeladen und warten auf einen verfügbaren NEXUS-Media-Worker.',
+ quickDoc:'📄 Dokument analysieren',quickImage:'🖼️ Bild bearbeiten',quickCode:'💻 Am Code arbeiten',quickJob:'⚙️ Aufgabe erstellen',
+ prompt:'Frage NEXUS oder beschreibe deine Aufgabe…',level_free:'Free · 1 Credit',level_smart:'Smart · 3 Credits',level_deep:'Deep · 6 Credits',
+ noChats:'Noch keine Chats.',signInLoad:'Melde dich an, um Chats zu laden.',lang:'Sprache'}
+};
+const supportedLangs=['en','it','ko','es','fr','de'];
+let uiLang=localStorage.getItem('nexus:lang')||((navigator.language||'en').split('-')[0]);
+if(!supportedLangs.includes(uiLang))uiLang='en';
+function t(k){return I18N[uiLang]?.[k]||I18N.en[k]||k}
+function applyLanguage(next){
+ uiLang=supportedLangs.includes(next)?next:'en';
+ localStorage.setItem('nexus:lang',uiLang);
+ document.documentElement.lang=uiLang;
+ const sel=document.getElementById('langSelect'); if(sel)sel.value=uiLang;
+ document.getElementById('newChat').textContent='＋ '+t('newChat');
+ document.getElementById('jobsLabel').textContent=t('jobs');
+ document.getElementById('historyTitle').textContent=t('recent');
+ document.getElementById('creditLabel').textContent=t('credits');
+ document.getElementById('buyCreditsBtn').textContent='＋ '+t('buy');
+ document.getElementById('topNewChat').textContent=t('new');
+ document.getElementById('topJobsBtn').textContent=t('jobs');
+ document.getElementById('topBuyCredits').textContent=t('buy');
+ if(!currentUser)document.getElementById('loginBtn').textContent=t('signIn');
+ document.getElementById('introEy').textContent=t('introEy');
+ document.getElementById('introTitle').textContent=t('introTitle');
+ document.getElementById('introText').textContent=t('introText');
+ document.getElementById('quickDoc').textContent=t('quickDoc');
+ document.getElementById('quickImage').textContent=t('quickImage');
+ document.getElementById('quickCode').textContent=t('quickCode');
+ document.getElementById('quickJob').textContent=t('quickJob');
+ document.getElementById('attachBtn').textContent='＋ '+t('attach');
+ document.getElementById('sendBtn').textContent=t('send');
+ promptEl.placeholder=t('prompt');
+ document.getElementById('levelHint').textContent=t('level_'+level);
+}
+document.getElementById('langSelect').addEventListener('change',e=>applyLanguage(e.target.value));
 
 async function refreshComputeStatus(){
   const el=document.getElementById('computeStatus'); if(!el)return;
@@ -200,7 +262,7 @@ async function refreshComputeStatus(){
 setInterval(refreshComputeStatus,60000);
 refreshComputeStatus();
 
-function setLevel(next){level=['free','smart','deep'].includes(next)?next:'free';document.querySelectorAll('.level').forEach(x=>x.classList.toggle('active',x.dataset.level===level));document.getElementById('levelHint').textContent=levelText[level]}
+function setLevel(next){level=['free','smart','deep'].includes(next)?next:'free';document.querySelectorAll('.level').forEach(x=>x.classList.toggle('active',x.dataset.level===level));document.getElementById('levelHint').textContent=t('level_'+level)}
 document.querySelectorAll('.level').forEach(b=>b.onclick=()=>setLevel(b.dataset.level));
 document.getElementById('attachBtn').onclick=()=>input.click();
 input.onchange=()=>{
@@ -524,8 +586,8 @@ async function loadConversation(id,conversationLevel='free'){
 }
 function renderHistory(items){
  const box=document.getElementById('historyList');
- if(!currentUser){box.innerHTML='<div class="small">Sign in to load chats.</div>';return}
- if(!items?.length){box.innerHTML='<div class="small">No chats yet.</div>';return}
+ if(!currentUser){box.innerHTML='<div class="small">'+t('signInLoad')+'</div>';return}
+ if(!items?.length){box.innerHTML='<div class="small">'+t('noChats')+'</div>';return}
  box.innerHTML='';
  items.forEach(c=>{
    const b=document.createElement('button');
@@ -556,7 +618,7 @@ async function refreshAccountData(){
  renderHistory(convos.data||[]);
  return convos.data||[];
 }
-function setLoggedOutUI(){currentBalance=0;renderHistory([]);document.getElementById('loginBtn').textContent='Sign in';document.getElementById('creditBalance').textContent='—';document.getElementById('creditAllowance').textContent=' / —';document.getElementById('creditBar').style.width='0%';document.getElementById('creditStatus').textContent='Sign in to load your real NEXUS balance.'}
+function setLoggedOutUI(){currentBalance=0;renderHistory([]);document.getElementById('loginBtn').textContent=t('signIn');document.getElementById('creditBalance').textContent='—';document.getElementById('creditAllowance').textContent=' / —';document.getElementById('creditBar').style.width='0%';document.getElementById('creditStatus').textContent='Sign in to load your real NEXUS balance.'}
 function openAuth(){modal.classList.add('show');document.getElementById('authEmail').focus()}
 function setAuthNotice(t){document.getElementById('authNotice').textContent=t}
 function addMsg(t,c){const d=document.createElement('div');d.className='msg '+c;d.textContent=t;messages.appendChild(d);d.scrollIntoView({behavior:'smooth',block:'end'});return d}
@@ -578,6 +640,7 @@ async function pollCreditTopup(){
   }
   addMsg('Payment received, but the credit event is still processing. Your balance will update automatically after Stripe confirmation.','ai');
 }
+applyLanguage(uiLang);
 loadSession().then(()=>pollCreditTopup());
 </script>
 </body></html>
