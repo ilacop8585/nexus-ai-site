@@ -448,10 +448,15 @@ async function loadJobs(){
 async function openJobs(){
  jobsModal.classList.add('show');
  clearInterval(jobsPoll);jobsPoll=null;
+ const refresh=document.getElementById('refreshJobs');
  if(!currentUser){
    document.getElementById('jobsList').innerHTML='<div class="notice">Sign in to see queued, running and completed NEXUS jobs. Jobs are private to your account.</div>';
+   refresh.textContent='Sign in';
+   refresh.onclick=()=>{jobsModal.classList.remove('show');setAuthNotice('Sign in to open your private NEXUS job history.');openAuth()};
    return;
  }
+ refresh.textContent='Refresh';
+ refresh.onclick=loadJobs;
  await loadJobs();
  jobsPoll=setInterval(()=>{if(jobsModal.classList.contains('show'))loadJobs()},5000)
 }
