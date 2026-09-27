@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "service": "NEXUS AI",
+  "canonical_url": "https://nexusword.it/",
+  "organization": "NEXUS Lab",
+  "status": "public_beta",
+  "discovery_type": "public_agent_manifest",
+  "human_interface": "https://nexusword.it/",
+  "machine_readable": {
+    "capabilities": "https://nexusword.it/capabilities.json",
+    "offers": "https://nexusword.it/offers.json",
+    "llms": "https://nexusword.it/llms.txt"
+  },
+  "interaction": {
+    "authenticated_web_chat": true,
+    "persistent_conversations": true,
+    "secure_file_intake": true,
+    "asynchronous_jobs": true,
+    "public_direct_inference_api": false,
+    "public_agent_purchase_api": false
+  },
+  "supported_work": [
+    "ai_chat",
+    "document_task",
+    "code_task",
+    "archive_task",
+    "general_file"
+  ],
+  "media": {
+    "image_video_audio_intake": true,
+    "processing_status": "expanding"
+  },
+  "commercial": {
+    "billing_model": "prepaid_credits",
+    "offers_url": "https://nexusword.it/offers.json",
+    "custom_work_url": "https://lab.nexusword.it/#work"
+  },
+  "agent_rules": [
+    "Use only public endpoints listed in this manifest.",
+    "Do not probe private infrastructure, internal hostnames, credentials, user files or private prompts.",
+    "Do not claim a capability is active unless capabilities.json marks it active.",
+    "Public machine-readable metadata is intended for discovery, not unrestricted autonomous execution."
+  ],
+  "updated": "2026-09-27"
+}
