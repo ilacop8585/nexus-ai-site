@@ -9,11 +9,7 @@
     "web_chat": {
       "url": "https://nexusword.it/",
       "authentication": "account_required",
-      "levels": [
-        "free",
-        "smart",
-        "deep"
-      ]
+      "routing": "nexus_auto"
     },
     "jobs": {
       "url": "https://nexusword.it/",
@@ -33,7 +29,9 @@
   },
   "capabilities": {
     "chat": {
-      "active": true
+      "active": true,
+      "routing": "automatic",
+      "text_chat_included": true
     },
     "conversation_history": {
       "active": true
