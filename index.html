@@ -204,7 +204,15 @@ setInterval(refreshComputeStatus,60000);
 refreshComputeStatus();
 
 function setLevel(){level='free';document.getElementById('levelHint').textContent='Chat included · credits reserved for compute-heavy work'}
-document.getElementById('attachBtn').onclick=()=>input.click();
+document.getElementById('attachBtn').onclick=()=>{
+  if(!currentUser){
+    sessionStorage.setItem('nexus_pending_attach','1');
+    setAuthNotice('Sign in before attaching files. Browsers cannot safely preserve selected files across the Google sign-in redirect.');
+    openAuth();
+    return;
+  }
+  input.click();
+};
 input.onchange=()=>{
   const candidate=[...input.files];
   const maxBytes=25*1024*1024;
@@ -222,13 +230,21 @@ input.onchange=()=>{
 document.querySelectorAll('[data-prompt]').forEach(b=>b.onclick=()=>{promptEl.value=b.dataset.prompt;promptEl.focus()});
 const creditModal=document.getElementById('creditModal');
 function openCredits(){
-  if(!currentUser){openAuth();setAuthNotice('Sign in first so purchased credits can be attached to your NEXUS account.');return}
   document.querySelectorAll('[data-credit-link]').forEach(a=>{
-    const base=a.href.split('?')[0];
-    a.href=base+'?prefilled_email='+encodeURIComponent(currentUser.email||'');
+    const base=a.dataset.baseHref||a.href.split('?')[0];
+    a.dataset.baseHref=base;
+    a.href=currentUser?base+'?prefilled_email='+encodeURIComponent(currentUser.email||''):base;
   });
   creditModal.classList.add('show');
 }
+document.querySelectorAll('[data-credit-link]').forEach(a=>a.addEventListener('click',e=>{
+  if(currentUser)return;
+  e.preventDefault();
+  sessionStorage.setItem('nexus_open_credits_after_login','1');
+  creditModal.classList.remove('show');
+  setAuthNotice('Sign in to buy this credit pack. Your selected packs and prices remain available after sign-in.');
+  openAuth();
+}));
 document.getElementById('buyCreditsBtn').onclick=openCredits;
 document.getElementById('topBuyCredits').onclick=openCredits;
 document.getElementById('closeCredits').onclick=()=>creditModal.classList.remove('show');
@@ -290,7 +306,15 @@ async function ensureConversation(firstText){
 
 document.getElementById('sendBtn').onclick=async()=>{
  const q=promptEl.value.trim(); if(!q&&!selectedFiles.length)return;
- if(!currentUser){ openAuth(); setAuthNotice('Sign in first so NEXUS can preserve this chat and your jobs.'); return; }
+ if(!currentUser){
+   if(q) sessionStorage.setItem('nexus_pending_prompt',q);
+   if(selectedFiles.length) sessionStorage.setItem('nexus_pending_attach','1');
+   setAuthNotice(selectedFiles.length
+     ? 'Sign in before sending files. After sign-in, reattach them and NEXUS will create the job.'
+     : 'Sign in once. NEXUS will automatically continue the question you already typed.');
+   openAuth();
+   return;
+ }
 
  intro.style.display='none';messages.classList.add('has');
  const visibleText=(q||'[File upload]')+(selectedFiles.length?'\nAttachments selected: '+selectedFiles.map(f=>f.name).join(', '):'');
@@ -421,7 +445,16 @@ async function loadJobs(){
    box.appendChild(row);
  });
 }
-async function openJobs(){if(!currentUser){openAuth();return}jobsModal.classList.add('show');await loadJobs();clearInterval(jobsPoll);jobsPoll=setInterval(()=>{if(jobsModal.classList.contains('show'))loadJobs()},5000)}
+async function openJobs(){
+ jobsModal.classList.add('show');
+ clearInterval(jobsPoll);jobsPoll=null;
+ if(!currentUser){
+   document.getElementById('jobsList').innerHTML='<div class="notice">Sign in to see queued, running and completed NEXUS jobs. Jobs are private to your account.</div>';
+   return;
+ }
+ await loadJobs();
+ jobsPoll=setInterval(()=>{if(jobsModal.classList.contains('show'))loadJobs()},5000)
+}
 document.getElementById('jobsBtn').onclick=openJobs;
 document.getElementById('topJobsBtn').onclick=openJobs;
 document.getElementById('refreshJobs').onclick=loadJobs;
@@ -543,6 +576,23 @@ async function pollCreditTopup(){
   }
   addMsg('Payment received, but the credit event is still processing. Your balance will update automatically after Stripe confirmation.','ai');
 }
-loadSession().then(()=>pollCreditTopup());
+async function resumePendingIntents(){
+  if(!currentUser)return;
+  if(sessionStorage.getItem('nexus_open_credits_after_login')==='1'){
+    sessionStorage.removeItem('nexus_open_credits_after_login');
+    openCredits();
+  }
+  const pending=sessionStorage.getItem('nexus_pending_prompt');
+  if(pending){
+    sessionStorage.removeItem('nexus_pending_prompt');
+    promptEl.value=pending;
+    setTimeout(()=>document.getElementById('sendBtn').click(),350);
+  }
+  if(sessionStorage.getItem('nexus_pending_attach')==='1'){
+    sessionStorage.removeItem('nexus_pending_attach');
+    addMsg('Sign-in complete. Use Attach now to choose your file; NEXUS will keep it private and create a tracked job.','ai');
+  }
+}
+loadSession().then(async()=>{await resumePendingIntents();await pollCreditTopup()});
 </script>
 </body></html>
