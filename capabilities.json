@@ -25,6 +25,10 @@
     },
     "work_requests": {
       "url": "https://lab.nexusword.it/#work"
+    },
+    "agent_discovery": {
+      "url": "https://nexusword.it/agents.json",
+      "public_direct_api": false
     }
   },
   "capabilities": {
@@ -86,7 +90,8 @@
   "machine_readable": {
     "capabilities": "https://nexusword.it/capabilities.json",
     "offers": "https://nexusword.it/offers.json",
-    "llms": "https://nexusword.it/llms.txt"
+    "llms": "https://nexusword.it/llms.txt",
+    "agents": "https://nexusword.it/agents.json"
   },
   "updated": "2026-09-27"
 }
