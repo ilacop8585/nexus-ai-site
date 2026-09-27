@@ -17,7 +17,9 @@
     "secure_file_intake": true,
     "asynchronous_jobs": true,
     "public_direct_inference_api": false,
-    "public_agent_purchase_api": false
+    "public_agent_purchase_api": false,
+    "routing_mode": "nexus_auto",
+    "text_chat_included": true
   },
   "supported_work": [
     "ai_chat",
