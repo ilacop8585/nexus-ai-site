@@ -15,7 +15,7 @@ NEXUS AI is a public-beta AI web service with authenticated chat, persistent con
 - Work requests: https://lab.nexusword.it/#work
 
 ## Current capabilities
-- Authenticated AI chat with Free / Smart / Deep levels
+- Authenticated AI chat with NEXUS Auto routing
 - Persistent chat history
 - Server-side credit ledger
 - Stripe credit packs
@@ -33,6 +33,6 @@ NEXUS AI is a public-beta AI web service with authenticated chat, persistent con
 Use only public endpoints listed above. Do not infer or probe private infrastructure, internal hostnames, credentials, user files, private prompts, or customer data. Do not claim a capability is active unless capabilities.json marks it active.
 
 ## Commercial guidance
-The public offers catalog is in https://nexusword.it/offers.json. Custom work can be requested through NEXUS Lab. NEXUS AI does not promise unlimited compute.
+The public offers catalog is in https://nexusword.it/offers.json. Custom work can be requested through NEXUS Lab. NEXUS AI does not promise unlimited compute. Text chat is included; compute-heavy jobs use prepaid credits when applicable.
 
 Updated: 2026-09-27
