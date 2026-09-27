@@ -1,0 +1,92 @@
+{
+  "schema_version": "1.0",
+  "service": "NEXUS AI",
+  "canonical_url": "https://nexusword.it/",
+  "organization": "NEXUS Lab",
+  "organization_url": "https://lab.nexusword.it/",
+  "status": "public_beta",
+  "interfaces": {
+    "web_chat": {
+      "url": "https://nexusword.it/",
+      "authentication": "account_required",
+      "levels": [
+        "free",
+        "smart",
+        "deep"
+      ]
+    },
+    "jobs": {
+      "url": "https://nexusword.it/",
+      "authentication": "account_required",
+      "tracking": true
+    },
+    "shop": {
+      "url": "https://lab.nexusword.it/shop.html"
+    },
+    "work_requests": {
+      "url": "https://lab.nexusword.it/#work"
+    }
+  },
+  "capabilities": {
+    "chat": {
+      "active": true
+    },
+    "conversation_history": {
+      "active": true
+    },
+    "credits": {
+      "active": true,
+      "server_side_ledger": true
+    },
+    "secure_file_upload": {
+      "active": true,
+      "private_storage": true,
+      "presigned_uploads": true
+    },
+    "jobs": {
+      "active": true,
+      "active_kinds": [
+        "document_task",
+        "code_task",
+        "archive_task",
+        "general_file"
+      ],
+      "media_kinds": [
+        "image_edit",
+        "video_edit",
+        "audio_task"
+      ],
+      "media_status": "intake_available_processing_expanding"
+    }
+  },
+  "billing": {
+    "currency": "EUR",
+    "model": "prepaid_credits",
+    "automatic_unlimited_plan": false,
+    "packs": [
+      {
+        "credits": 500,
+        "price_eur": 4.99
+      },
+      {
+        "credits": 1500,
+        "price_eur": 9.99
+      },
+      {
+        "credits": 4000,
+        "price_eur": 19.99
+      }
+    ]
+  },
+  "privacy": {
+    "private_user_content_not_public": true,
+    "secrets_not_exposed": true,
+    "public_machine_readable_metadata_only": true
+  },
+  "machine_readable": {
+    "capabilities": "https://nexusword.it/capabilities.json",
+    "offers": "https://nexusword.it/offers.json",
+    "llms": "https://nexusword.it/llms.txt"
+  },
+  "updated": "2026-09-27"
+}
