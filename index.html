@@ -119,14 +119,14 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 <div class="composer-wrap">
   <div class="composer">
     <div class="files" id="files"></div>
-    <textarea id="prompt" placeholder="Ask NEXUS or describe what you want done…" rows="2"></textarea>
+    <textarea id="prompt" aria-label="NEXUS message" placeholder="Ask NEXUS or describe what you want done…" rows="2"></textarea>
     <div class="compose-actions">
       <div class="left-actions">
-        <button class="iconbtn" id="attachBtn" type="button">＋ Attach</button>
+        <button class="iconbtn" id="attachBtn" type="button" aria-label="Attach files">＋ Attach</button>
         <input id="fileInput" type="file" multiple hidden accept="image/*,video/*,audio/*,.pdf,.txt,.md,.csv,.json,.xml,.zip,.tar,.gz,.docx,.xlsx,.pptx,.py,.js,.ts,.tsx,.jsx,.html,.css,.java,.c,.cpp,.h,.hpp,.rs,.go,.php,.sql">
         <span class="beta" id="levelHint">Chat included · credits reserved for compute-heavy work</span>
       </div>
-      <button class="send" id="sendBtn" type="button">Send</button>
+      <button class="send" id="sendBtn" type="button" aria-label="Send message">Send</button>
     </div>
   </div>
 </div>
@@ -351,12 +351,16 @@ document.getElementById('sendBtn').onclick=async()=>{
      if(job.error)throw job.error;
      const jr=Array.isArray(job.data)?job.data[0]:job.data;
      const shortId=String(jr?.job_id||'').slice(0,8);
+     const reserved=Number(jr?.estimated_credits||0);
      const capMap={image_edit:'image',video_edit:'video',audio_task:'audio',document_task:'document',code_task:'code',archive_task:'archive',general_file:'general-file'};
      const requiredCap=capMap[jobKind]||'general-file';
      const waitingMedia=['image_edit','video_edit','audio_task'].includes(jobKind)&&!computeCapabilities.has(requiredCap);
+     const creditNote=reserved>0
+       ? reserved+' credits reserved now and automatically refunded if the job fails or is cancelled.'
+       : 'No credits reserved.';
      const ack=waitingMedia
-       ? 'Upload verified and stored securely. NEXUS job '+shortId+' is queued waiting for a media worker. No job credits have been charged.'
-       : 'Upload verified. '+uploaded.length+' file'+(uploaded.length===1?'':'s')+' stored securely. NEXUS job '+shortId+' is queued. No job credits have been charged yet.';
+       ? 'Upload verified and stored securely. NEXUS job '+shortId+' is queued waiting for a media worker. '+creditNote
+       : 'Upload verified. '+uploaded.length+' file'+(uploaded.length===1?'':'s')+' stored securely. NEXUS job '+shortId+' is queued. '+creditNote;
      think.className='msg ai';
      think.textContent=ack;
      chatHistory.push({role:'assistant',content:ack});
@@ -413,7 +417,7 @@ function visibleJobs(items){return (items||[]).filter(j=>!String(j.input_summary
 function fmtDate(v){try{return new Date(v).toLocaleString()}catch{return ''}}
 async function loadJobs(){
  if(!currentUser)return;
- const {data,error}=await client.from('nexus_jobs').select('id,conversation_id,kind,status,level,charged_credits,input_summary,output_summary,error_code,created_at,completed_at').order('created_at',{ascending:false}).limit(50);
+ const {data,error}=await client.from('nexus_jobs').select('id,conversation_id,kind,status,level,estimated_credits,charged_credits,input_summary,output_summary,error_code,created_at,completed_at').order('created_at',{ascending:false}).limit(50);
  const box=document.getElementById('jobsList');
  if(error){box.textContent=error.message;return}
  const jobs=visibleJobs(data);
@@ -426,17 +430,28 @@ async function loadJobs(){
    const title=document.createElement('strong');title.textContent=(j.kind||'job').replaceAll('_',' ')+' · '+String(j.id).slice(0,8);
    const status=document.createElement('span');status.className='jobstatus '+j.status;status.textContent=j.status;
    head.append(title,status);row.appendChild(head);
-   const meta=document.createElement('div');meta.className='jobmeta';meta.textContent=(j.charged_credits>0?j.charged_credits+' credits · ':'')+fmtDate(j.created_at);row.appendChild(meta);
+   const meta=document.createElement('div');meta.className='jobmeta';
+   let creditText='';
+   if(j.charged_credits>0) creditText=j.charged_credits+' credits '+(j.status==='completed'?'used':'reserved')+' · ';
+   else if(['failed','cancelled'].includes(j.status)&&j.estimated_credits>0) creditText=j.estimated_credits+' credits refunded · ';
+   meta.textContent=creditText+fmtDate(j.created_at);row.appendChild(meta);
    if(j.input_summary){const s=document.createElement('div');s.className='jobsummary';s.textContent=j.input_summary;row.appendChild(s)}
-   if(j.output_summary){const o=document.createElement('div');o.className='jobresult';o.textContent=j.output_summary;row.appendChild(o)}
+   let resultBox=null;
+   if(j.output_summary){
+     const reveal=document.createElement('button');reveal.type='button';reveal.textContent='Show result';reveal.setAttribute('aria-expanded','false');
+     resultBox=document.createElement('div');resultBox.className='jobresult';resultBox.textContent=j.output_summary;resultBox.hidden=true;
+     reveal.onclick=()=>{resultBox.hidden=!resultBox.hidden;reveal.textContent=resultBox.hidden?'Show result':'Hide result';reveal.setAttribute('aria-expanded',String(!resultBox.hidden))};
+     row.appendChild(reveal);row.appendChild(resultBox);
+   }
    if(j.error_code){const e=document.createElement('div');e.className='jobresult';e.textContent='Error: '+j.error_code;row.appendChild(e)}
-   if(['image_edit','video_edit','audio_task'].includes(j.kind)&&j.status==='queued'){const wait=document.createElement('div');wait.className='jobmeta';wait.textContent='Waiting for NEXUS media worker · no credits charged';row.appendChild(wait)}
+   if(['image_edit','video_edit','audio_task'].includes(j.kind)&&j.status==='queued'){const wait=document.createElement('div');wait.className='jobmeta';wait.textContent='Waiting for NEXUS media worker · '+(j.charged_credits>0?j.charged_credits+' credits reserved':'no credits reserved');row.appendChild(wait)}
    if(j.completed_at){const done=document.createElement('div');done.className='jobmeta';done.textContent='Completed '+fmtDate(j.completed_at);row.appendChild(done)}
    const actions=document.createElement('div');actions.className='jobactions';
    if(j.conversation_id){
      const open=document.createElement('button');open.type='button';open.textContent='Open chat';open.onclick=async()=>{jobsModal.classList.remove('show');clearInterval(jobsPoll);jobsPoll=null;await loadConversation(j.conversation_id,j.level||'free')};actions.appendChild(open);
    }
    if(j.output_summary){
+     const copy=document.createElement('button');copy.type='button';copy.textContent='Copy result';copy.onclick=async()=>{try{await navigator.clipboard.writeText(j.output_summary);copy.textContent='Copied';setTimeout(()=>copy.textContent='Copy result',1200)}catch{copy.textContent='Copy failed'}};actions.appendChild(copy);
      const dl=document.createElement('button');dl.type='button';dl.textContent='Download result';dl.onclick=()=>{
        const blob=new Blob([j.output_summary],{type:'text/plain;charset=utf-8'});const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download='NEXUS-'+String(j.id).slice(0,8)+'-result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);
      };actions.appendChild(dl);
