@@ -119,7 +119,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <div class="compose-actions">
       <div class="left-actions">
         <button class="iconbtn" id="attachBtn" type="button">＋ Attach</button>
-        <input id="fileInput" type="file" multiple hidden accept="image/*,video/*,audio/*,.pdf,.txt,.md,.csv,.json,.xml,.zip,.tar,.gz,.tgz,.bz2,.xz,.7z,.rar,.apk,.aab,.apks,.xapk,.jar,.aar,.war,.ipa,.exe,.msi,.deb,.rpm,.dmg,.pkg,.appimage,.iso,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.py,.js,.mjs,.cjs,.ts,.tsx,.jsx,.html,.css,.java,.kt,.kts,.c,.cpp,.h,.hpp,.rs,.go,.php,.sql,.sh,.ps1,.yaml,.yml">
+        <input id="fileInput" type="file" multiple hidden accept="*/*">
         <span class="beta" id="levelHint">Free · fast / low-cost path</span>
       </div>
       <button class="send" id="sendBtn" type="button">Send</button>
@@ -499,7 +499,7 @@ async function loadJobs(){
    head.append(title,status);row.appendChild(head);
    const meta=document.createElement('div');meta.className='jobmeta';meta.textContent=(j.level||'free').toUpperCase()+' · '+j.charged_credits+' credits · '+fmtDate(j.created_at);row.appendChild(meta);
    if(j.input_summary){const s=document.createElement('div');s.className='jobsummary';s.textContent=j.input_summary;row.appendChild(s)}
-   if(j.output_summary){const o=document.createElement('div');o.className='jobresult';o.textContent=j.output_summary;row.appendChild(o)}
+   if(j.output_summary){const o=document.createElement('div');o.className='jobresult';o.textContent=cleanMarkdownText(j.output_summary);row.appendChild(o)}
    if(j.error_code){const e=document.createElement('div');e.className='jobresult';e.textContent='Error: '+j.error_code;row.appendChild(e)}
    if(j.status==='queued'){const p=document.createElement('div');p.className='jobmeta';p.textContent='Queued · waiting for an available NEXUS worker';row.appendChild(p)}
    if(j.status==='claimed'){const p=document.createElement('div');p.className='jobmeta';p.textContent='Claimed · a NEXUS worker accepted this job';row.appendChild(p)}
