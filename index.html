@@ -27,7 +27,7 @@
 </script>
 <style>
 :root{--bg:#05070b;--panel:#0b1017;--panel2:#0e151f;--line:#1b2634;--text:#eef4fb;--muted:#8ea0b5;--accent:#7cf5c3;--blue:#9ab4ff;--violet:#b9a7ff;--gold:#f1c97a;--danger:#ff9696}
-*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:radial-gradient(circle at 50% -10%,rgba(105,118,255,.16),transparent 36%),radial-gradient(circle at 90% 10%,rgba(68,220,177,.08),transparent 28%),var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}button,input,textarea{font:inherit}a{color:inherit;text-decoration:none}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;max-width:100%;overflow-x:hidden;background:radial-gradient(circle at 50% -10%,rgba(105,118,255,.16),transparent 36%),radial-gradient(circle at 90% 10%,rgba(68,220,177,.08),transparent 28%),var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}button,input,textarea{font:inherit}a{color:inherit;text-decoration:none}
 .app{min-height:100vh;display:grid;grid-template-columns:270px 1fr}.side{border-right:1px solid var(--line);background:#070a0f;padding:18px;display:flex;flex-direction:column;gap:18px;position:sticky;top:0;height:100vh}
 .brand{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:.08em}.mark{width:32px;height:32px;border:1px solid var(--accent);border-radius:10px;display:grid;place-items:center;color:var(--accent)}
 .newchat,.navbtn{width:100%;border:1px solid var(--line);background:#0c121b;color:var(--text);border-radius:11px;padding:11px 12px;text-align:left;cursor:pointer}.newchat{background:var(--accent);color:#04100b;border-color:var(--accent);font-weight:800}
@@ -43,8 +43,23 @@
 textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:transparent;border:0;outline:0;color:var(--text);padding:6px 4px;font-size:16px}.compose-actions{display:flex;justify-content:space-between;align-items:center;gap:10px}.left-actions{display:flex;gap:8px;align-items:center}
 .iconbtn{border:1px solid var(--line);background:#0f1722;color:#c9d5e2;border-radius:10px;padding:8px 10px;cursor:pointer}.send{border:0;background:var(--accent);color:#04100b;border-radius:10px;padding:9px 14px;font-weight:900;cursor:pointer}.send[disabled]{opacity:.45;cursor:not-allowed}
 .beta{font-size:11px;color:var(--muted)}.modal{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}.modal.show{display:flex}.modal-card{width:min(100%,440px);background:#0c121b;border:1px solid #263445;border-radius:18px;padding:22px}.modal-card h2{margin:0 0 10px}.modal-card p{color:var(--muted);line-height:1.6}.modal-card input{width:100%;margin:7px 0;padding:11px;border:1px solid var(--line);background:#070b10;color:var(--text);border-radius:10px}.modal-actions{display:flex;gap:9px;margin-top:12px}.notice{border:1px solid #3b4b5e;background:#0d151f;border-radius:12px;padding:11px 12px;color:#aebed0;font-size:13px;line-height:1.55}.packs{display:grid;gap:10px;margin-top:14px}.pack{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--line);background:#0a1017;border-radius:12px;padding:12px}.pack strong{font-size:17px}.pack small{display:block;color:var(--muted);margin-top:3px}.pack a{background:var(--accent);color:#04100b;border-radius:9px;padding:8px 10px;font-weight:900;white-space:nowrap}.credit-cost{color:var(--accent);font-weight:800}.jobs-card{width:min(100%,760px);max-height:82vh;overflow:auto}.joblist{display:grid;gap:10px;margin-top:14px}.jobrow{border:1px solid var(--line);background:#090f16;border-radius:12px;padding:12px}.jobhead{display:flex;justify-content:space-between;gap:10px;align-items:center}.jobhead strong{font-size:14px}.jobstatus{font:800 10px ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;border:1px solid #314255;border-radius:999px;padding:4px 7px}.jobstatus.completed{color:var(--accent)}.jobstatus.failed{color:var(--danger)}.jobmeta{color:var(--muted);font-size:11px;margin-top:6px}.jobsummary{white-space:pre-wrap;color:#cdd9e6;font-size:13px;line-height:1.5;margin-top:8px}.jobresult{white-space:pre-wrap;border-top:1px solid var(--line);padding-top:8px;margin-top:8px;color:#dbe7f3;font-size:13px;line-height:1.5}.jobactions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.jobactions button{border:1px solid var(--line);background:#0b1119;color:#d8e5f1;border-radius:8px;padding:7px 9px;cursor:pointer;font-size:11px}.jobactions button:hover{border-color:#3b82f6}.compute-pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:6px 9px;color:var(--muted);font-size:11px;white-space:nowrap}.compute-pill i{width:7px;height:7px;border-radius:50%;background:#64748b}.compute-pill.online{color:#9ee6b8;border-color:#24543a}.compute-pill.online i{background:#3ddc84}.compute-pill.busy{color:#fde68a;border-color:#66521c}.compute-pill.busy i{background:#facc15}
-@media(max-width:820px){.app{grid-template-columns:1fr}.side{display:none}.composer-wrap{left:0}.quick{grid-template-columns:1fr 1fr}.top{padding:8px 12px;height:auto;min-height:66px;gap:7px;flex-wrap:wrap}.stage{padding-left:15px;padding-right:15px}.account a{display:none}.account{gap:5px}.account button{padding:7px 8px;font-size:12px}}
-@media(max-width:560px){.top{min-height:78px}.account{width:100%;justify-content:flex-end}.auto-mode{font-size:11px}.compute-pill{display:none}.quick{grid-template-columns:1fr}}
+@media(max-width:820px){
+ .app{grid-template-columns:1fr}.side{display:none}.composer-wrap{left:0;padding:12px 12px 14px}.quick{grid-template-columns:1fr 1fr}
+ .top{padding:8px 12px;height:auto;min-height:66px;gap:7px;flex-wrap:wrap}.stage{width:100%;min-width:0;padding-left:15px;padding-right:15px}
+ .account a{display:none}.account{gap:5px;min-width:0}.account button{padding:7px 8px;font-size:12px}
+ .composer{width:100%;min-width:0}.compose-actions{flex-wrap:wrap}.left-actions{min-width:0;flex:1;flex-wrap:wrap}.beta{min-width:0}
+}
+@media(max-width:560px){
+ .top{min-height:92px;align-content:center}.auto-mode{font-size:11px}.compute-pill{display:none}
+ .account{width:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+ .account button{min-width:0;padding:7px 4px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .intro{margin:54px 0 110px}.intro h1{font-size:clamp(34px,10vw,42px);line-height:1.02;letter-spacing:-.04em;max-width:100%;overflow-wrap:anywhere}
+ .intro p{font-size:14px;line-height:1.55}.ey{font-size:10px;letter-spacing:.1em;overflow-wrap:anywhere}
+ .quick{grid-template-columns:1fr;margin-top:20px}.quick button{padding:13px}
+ .composer-wrap{padding:9px 10px 10px}.composer{border-radius:16px;padding:10px}.compose-actions{gap:7px}
+ .left-actions{gap:6px}.iconbtn{padding:8px 9px}.beta{display:none}.send{padding:9px 13px;margin-left:auto}
+ .msg{max-width:94%}
+}
 </style>
 </head>
 <body>
@@ -177,8 +192,8 @@ async function refreshComputeStatus(){
     const active=(d.workers||[]).find(w=>w.online);
     computeCapabilities=new Set(active?.capabilities||[]);
     el.className='compute-pill '+(active?.status==='busy'?'busy':active?'online':'');
-    el.querySelector('span').textContent=active?.status==='busy'?'PC worker busy':active?'PC worker online':'Cloud only';
-    el.title=active?'NEXUS worker '+active.worker_id+' · last seen '+new Date(active.last_seen).toLocaleString():'NEXUS cloud chat remains available; local compute is not currently reporting.';
+    el.querySelector('span').textContent=active?.status==='busy'?'Compute busy':active?'Compute online':'Cloud only';
+    el.title=active?'NEXUS compute is available. Active capabilities: '+[...(active.capabilities||[])].join(', '):'NEXUS cloud chat remains available; additional compute is not currently reporting.';
   }catch{
     el.className='compute-pill';el.querySelector('span').textContent='Cloud online';el.title='Could not read local compute heartbeat.';
   }
