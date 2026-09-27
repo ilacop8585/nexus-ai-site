@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "service": "NEXUS AI",
+  "canonical_url": "https://nexusword.it/",
+  "currency": "EUR",
+  "offers": [
+    {
+      "id": "nexus-credits-500",
+      "type": "credit_pack",
+      "credits": 500,
+      "price_eur": 4.99,
+      "purchase_url": "https://buy.stripe.com/28E6oH9Lp1SY8JcgaIdby03"
+    },
+    {
+      "id": "nexus-credits-1500",
+      "type": "credit_pack",
+      "credits": 1500,
+      "price_eur": 9.99,
+      "purchase_url": "https://buy.stripe.com/7sYfZhe1FapuaRk8Igdby04"
+    },
+    {
+      "id": "nexus-credits-4000",
+      "type": "credit_pack",
+      "credits": 4000,
+      "price_eur": 19.99,
+      "purchase_url": "https://buy.stripe.com/7sY7sLe1FgNS7F87Ecdby05"
+    },
+    {
+      "id": "custom-work",
+      "type": "service_request",
+      "price": "quote",
+      "request_url": "https://lab.nexusword.it/#work"
+    }
+  ],
+  "notes": [
+    "NEXUS AI uses prepaid credits rather than an unlimited usage promise.",
+    "File-job pricing is shown or charged only when the relevant workflow supports verified execution.",
+    "Public offers do not expose private infrastructure or customer data."
+  ],
+  "updated": "2026-09-27"
+}
