@@ -119,7 +119,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <div class="compose-actions">
       <div class="left-actions">
         <button class="iconbtn" id="attachBtn" type="button">＋ Attach</button>
-        <input id="fileInput" type="file" multiple hidden accept="image/*,video/*,audio/*,.pdf,.txt,.md,.csv,.json,.xml,.zip,.tar,.gz,.docx,.xlsx,.pptx,.py,.js,.ts,.tsx,.jsx,.html,.css,.java,.c,.cpp,.h,.hpp,.rs,.go,.php,.sql">
+        <input id="fileInput" type="file" multiple hidden accept="image/*,video/*,audio/*,.pdf,.txt,.md,.csv,.json,.xml,.zip,.tar,.gz,.tgz,.bz2,.xz,.7z,.rar,.apk,.aab,.apks,.xapk,.jar,.aar,.war,.ipa,.exe,.msi,.deb,.rpm,.dmg,.pkg,.appimage,.iso,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.py,.js,.mjs,.cjs,.ts,.tsx,.jsx,.html,.css,.java,.kt,.kts,.c,.cpp,.h,.hpp,.rs,.go,.php,.sql,.sh,.ps1,.yaml,.yml">
         <span class="beta" id="levelHint">Free · fast / low-cost path</span>
       </div>
       <button class="send" id="sendBtn" type="button">Send</button>
@@ -281,13 +281,13 @@ document.querySelectorAll('.level').forEach(b=>b.onclick=()=>setLevel(b.dataset.
 document.getElementById('attachBtn').onclick=()=>input.click();
 input.onchange=()=>{
   const candidate=[...input.files];
-  const maxBytes=25*1024*1024;
+  const maxBytes=200*1024*1024;
   if(candidate.length>5){
     selectedFiles=[];input.value='';filesEl.innerHTML='<span class="filechip">Maximum 5 files per job.</span>';filesEl.classList.add('has');return;
   }
   const tooBig=candidate.find(f=>f.size>maxBytes);
   if(tooBig){
-    selectedFiles=[];input.value='';filesEl.innerHTML='<span class="filechip">'+escapeHtml(tooBig.name)+' exceeds the 25 MB beta limit.</span>';filesEl.classList.add('has');return;
+    selectedFiles=[];input.value='';filesEl.innerHTML='<span class="filechip">'+escapeHtml(tooBig.name)+' exceeds the 200 MB per-file limit.</span>';filesEl.classList.add('has');return;
   }
   selectedFiles=candidate;
   filesEl.innerHTML=selectedFiles.map(f=>'<span class="filechip">'+escapeHtml(f.name)+' · '+formatBytes(f.size)+'</span>').join('');
@@ -313,7 +313,7 @@ function detectJobKind(file){
   if(type.startsWith('image/'))return 'image_edit';
   if(type.startsWith('video/'))return 'video_edit';
   if(type.startsWith('audio/'))return 'audio_task';
-  if(/\.(zip|tar|gz)$/.test(name))return 'archive_task';
+  if(/\.(zip|tar|gz|tgz|bz2|xz|7z|rar|apk|aab|apks|xapk|jar|aar|war|ipa|exe|msi|deb|rpm|dmg|pkg|appimage|iso)$/.test(name))return 'archive_task';
   if(/\.(py|js|ts|tsx|jsx|html|css|java|c|cpp|h|hpp|rs|go|php|sql|sh|ps1|json|xml|yaml|yml)$/.test(name))return 'code_task';
   if(type.includes('pdf')||type.includes('document')||type.includes('text')||/\.(pdf|docx?|xlsx?|pptx?|txt|md|csv)$/.test(name))return 'document_task';
   return 'general_file';
@@ -434,20 +434,21 @@ document.getElementById('sendBtn').onclick=async()=>{
      const data=await response.json().catch(()=>({}));
      if(!response.ok || !data?.ok) throw new Error(data?.message||data?.error||('HTTP '+response.status));
      think.className='msg ai';
-     think.textContent=data.reply;
-     chatHistory.push({role:'assistant',content:data.reply});
+     setMsgText(think,data.reply);
+     const cleanReply=cleanMarkdownText(data.reply);
+     chatHistory.push({role:'assistant',content:cleanReply});
 
      const assistantMeta={level,model:data.model||null,provider:data.provider||null};
      const saved=await client.rpc('nexus_store_assistant_message',{
        p_conversation_id:cid,
-       p_content:data.reply,
+       p_content:cleanReply,
        p_metadata:assistantMeta
      });
      if(saved.error){
        const fallback=await client.from('nexus_messages').insert({
          conversation_id:cid,
          role:'assistant',
-         content:data.reply,
+         content:cleanReply,
          metadata:assistantMeta
        });
        if(fallback.error) console.warn('Could not persist assistant message',fallback.error);
@@ -635,8 +636,35 @@ async function refreshAccountData(){
 function setLoggedOutUI(){currentBalance=0;renderHistory([]);document.getElementById('loginBtn').textContent=t('signIn');document.getElementById('creditBalance').textContent='—';document.getElementById('creditAllowance').textContent=' / —';document.getElementById('creditBar').style.width='0%';document.getElementById('creditStatus').textContent='Sign in to load your real NEXUS balance.'}
 function openAuth(){modal.classList.add('show');document.getElementById('authEmail').focus()}
 function setAuthNotice(t){document.getElementById('authNotice').textContent=t}
-function addMsg(t,c){const d=document.createElement('div');d.className='msg '+c;d.textContent=t;messages.appendChild(d);d.scrollIntoView({behavior:'smooth',block:'end'});return d}
-function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function normalizeDisplayText(value){
+ let s=String(value??'').normalize('NFC').replace(/\r\n?/g,'\n');
+ const fixes=[
+  ['â€”','—'],['â€“','–'],['â€™','’'],['â€˜','‘'],['â€œ','“'],['â€','”'],
+  ['â€¦','…'],['â€¢','•'],['Â·','·'],['Â ',' '],['Ã¨','è'],['Ã©','é'],
+  ['Ã ','à'],['Ã²','ò'],['Ã¹','ù'],['Ã¬','ì']
+ ];
+ for(const [bad,good] of fixes)s=s.split(bad).join(good);
+ s=s.replace(/\uFFFD+/g,'').replace(/[\u200B-\u200D\uFEFF]/g,'');
+ return s;
+}
+function cleanMarkdownText(value){
+ let s=normalizeDisplayText(value);
+ s=s.replace(/^```[^\n]*\n?/gm,'').replace(/^```\s*$/gm,'');
+ s=s.replace(/^#{1,6}\s+/gm,'');
+ s=s.replace(/^\s*[*+]\s+/gm,'• ');
+ s=s.replace(/^\s*-\s+/gm,'• ');
+ s=s.replace(/\*\*([^*\n]+)\*\*/g,'$1');
+ s=s.replace(/__([^_\n]+)__/g,'$1');
+ s=s.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g,'$1');
+ s=s.replace(/(?<!_)_([^_\n]+)_(?!_)/g,'$1');
+ s=s.replace(/~~([^~\n]+)~~/g,'$1');
+ s=s.replace(/`([^`\n]+)`/g,'$1');
+ s=s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'$1 — $2');
+ return s.trim();
+}
+function addMsg(t,c){const d=document.createElement('div');d.className='msg '+c;d.textContent=cleanMarkdownText(t);messages.appendChild(d);d.scrollIntoView({behavior:'smooth',block:'end'});return d}
+function setMsgText(el,t){el.textContent=cleanMarkdownText(t)}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function formatBytes(n){if(n<1024)return n+' B';if(n<1048576)return (n/1024).toFixed(1)+' KB';return (n/1048576).toFixed(1)+' MB'}
 const qs=new URLSearchParams(location.search);
 async function pollCreditTopup(){
