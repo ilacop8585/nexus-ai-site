@@ -148,22 +148,22 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 
 <div class="modal" id="creditModal">
   <div class="modal-card">
-    <h2>Buy NEXUS credits</h2>
-    <p>One-time credit packs. Credits are tied to your NEXUS account after the payment is verified.</p>
+    <h2 id="creditsTitle">Buy NEXUS credits</h2>
+    <p id="creditsText">One-time credit packs. Credits are tied to your NEXUS account after the payment is verified.</p>
     <div class="packs">
       <div class="pack"><div><strong>500 credits</strong><small>€4.99 · starter top-up</small></div><a data-credit-link="500" href="https://buy.stripe.com/28E6oH9Lp1SY8JcgaIdby03">Buy</a></div>
       <div class="pack"><div><strong>1,500 credits</strong><small>€9.99 · better value</small></div><a data-credit-link="1500" href="https://buy.stripe.com/7sYfZhe1FapuaRk8Igdby04">Buy</a></div>
       <div class="pack"><div><strong>4,000 credits</strong><small>€19.99 · heavy use</small></div><a data-credit-link="4000" href="https://buy.stripe.com/7sY7sLe1FgNS7F87Ecdby05">Buy</a></div>
     </div>
-    <div class="notice" style="margin-top:12px">Chat cost: <span class="credit-cost">Free 1</span> · <span class="credit-cost">Smart 3</span> · <span class="credit-cost">Deep 6</span> credits per successful text answer.</div>
+    <div class="notice" id="creditCostNotice" style="margin-top:12px">Chat cost: <span class="credit-cost">Free 1</span> · <span class="credit-cost">Smart 3</span> · <span class="credit-cost">Deep 6</span> credits per successful text answer.</div>
     <div class="modal-actions"><button class="iconbtn" id="closeCredits" type="button">Close</button></div>
   </div>
 </div>
 
 <div class="modal" id="jobsModal">
   <div class="modal-card jobs-card">
-    <h2>My NEXUS jobs</h2>
-    <p>Real queued and completed work tied to your account.</p>
+    <h2 id="jobsTitle">My NEXUS jobs</h2>
+    <p id="jobsText">Real queued and completed work tied to your account.</p>
     <div class="joblist" id="jobsList" aria-live="polite" aria-busy="false"><div class="small">Loading…</div></div>
     <div class="modal-actions">
       <button class="iconbtn" id="refreshJobs" type="button">Refresh</button>
@@ -187,12 +187,12 @@ const I18N={
  en:{newChat:'New chat',jobs:'My jobs',recent:'Recent chats',credits:'Credits',buy:'Buy credits',new:'New',signIn:'Sign in',attach:'Attach',send:'Send',
  introEy:'NEXUS AI · public beta',introTitle:'Ask. Attach. Build. Route the work.',introText:'Chat, documents, archives and code are live. Images, video and audio use the same secure intake and wait for an available NEXUS media worker.',
  quickDoc:'📄 Analyse a document',quickImage:'🖼️ Edit an image',quickCode:'💻 Work on code',quickJob:'⚙️ Create a job',
- prompt:'Ask NEXUS or describe what you want done…',level_free:'Free · 1 credit',level_smart:'Smart · 3 credits',level_deep:'Deep · 6 credits',
+ prompt:'Ask NEXUS or describe what you want done…',level_free:'Free · fast · 1 credit',level_smart:'Smart · advanced model · 3 credits',level_deep:'Deep · reasoning · 6 credits',
  noChats:'No chats yet.',signInLoad:'Sign in to load chats.',lang:'Language'},
  it:{newChat:'Nuova chat',jobs:'I miei lavori',recent:'Chat recenti',credits:'Crediti',buy:'Compra crediti',new:'Nuova',signIn:'Accedi',attach:'Allega',send:'Invia',
  introEy:'NEXUS AI · beta pubblica',introTitle:'Chiedi. Allega. Crea. Affida il lavoro.',introText:'Chat, documenti, archivi e codice sono attivi. Immagini, video e audio usano lo stesso caricamento sicuro e attendono un worker multimediale NEXUS disponibile.',
  quickDoc:'📄 Analizza un documento',quickImage:'🖼️ Modifica un’immagine',quickCode:'💻 Lavora sul codice',quickJob:'⚙️ Crea un lavoro',
- prompt:'Chiedi a NEXUS o descrivi cosa vuoi fare…',level_free:'Free · 1 credito',level_smart:'Smart · 3 crediti',level_deep:'Deep · 6 crediti',
+ prompt:'Chiedi a NEXUS o descrivi cosa vuoi fare…',level_free:'Free · veloce · 1 credito',level_smart:'Smart · modello avanzato · 3 crediti',level_deep:'Deep · reasoning · 6 crediti',
  noChats:'Nessuna chat.',signInLoad:'Accedi per caricare le chat.',lang:'Lingua'},
  ko:{newChat:'새 채팅',jobs:'내 작업',recent:'최근 채팅',credits:'크레딧',buy:'크레딧 구매',new:'새 채팅',signIn:'로그인',attach:'첨부',send:'보내기',
  introEy:'NEXUS AI · 공개 베타',introTitle:'묻고, 첨부하고, 만들고, 작업을 맡기세요.',introText:'채팅, 문서, 압축 파일, 코드를 사용할 수 있습니다. 이미지·영상·오디오는 안전하게 업로드된 뒤 사용 가능한 NEXUS 미디어 워커가 처리합니다.',
@@ -215,6 +215,18 @@ const I18N={
  prompt:'Frage NEXUS oder beschreibe deine Aufgabe…',level_free:'Free · 1 Credit',level_smart:'Smart · 3 Credits',level_deep:'Deep · 6 Credits',
  noChats:'Noch keine Chats.',signInLoad:'Melde dich an, um Chats zu laden.',lang:'Sprache'}
 };
+const EXTRA_I18N={
+ en:{thinking:'NEXUS is thinking',creditsTitle:'Buy NEXUS credits',creditsText:'One-time credit packs. Credits are added to your NEXUS account only after payment verification.',buyAction:'Buy',close:'Close',jobsTitle:'My NEXUS jobs',jobsText:'Real queued and completed work tied to your account.',refresh:'Refresh',costLine:'Chat cost: Free 1 · Smart 3 · Deep 6 credits per successful text answer.'},
+ it:{thinking:'NEXUS sta pensando',creditsTitle:'Compra crediti NEXUS',creditsText:'Pacchetti di crediti una tantum. I crediti vengono aggiunti al tuo account NEXUS solo dopo la verifica del pagamento.',buyAction:'Compra',close:'Chiudi',jobsTitle:'I miei lavori NEXUS',jobsText:'Lavori reali in coda, in elaborazione e completati collegati al tuo account.',refresh:'Aggiorna',costLine:'Costo chat: Free 1 · Smart 3 · Deep 6 crediti per risposta testuale riuscita.'},
+ ko:{thinking:'NEXUS가 생각 중입니다',creditsTitle:'NEXUS 크레딧 구매',creditsText:'일회성 크레딧 팩입니다. 결제가 확인된 후에만 NEXUS 계정에 크레딧이 추가됩니다.',buyAction:'구매',close:'닫기',jobsTitle:'내 NEXUS 작업',jobsText:'계정에 연결된 실제 대기·처리·완료 작업입니다.',refresh:'새로고침',costLine:'채팅 비용: Free 1 · Smart 3 · Deep 6 크레딧.'},
+ es:{thinking:'NEXUS está pensando',creditsTitle:'Comprar créditos NEXUS',creditsText:'Paquetes de créditos de un solo pago. Los créditos se añaden solo después de verificar el pago.',buyAction:'Comprar',close:'Cerrar',jobsTitle:'Mis trabajos NEXUS',jobsText:'Trabajos reales en cola, en proceso y completados de tu cuenta.',refresh:'Actualizar',costLine:'Coste del chat: Free 1 · Smart 3 · Deep 6 créditos por respuesta correcta.'},
+ fr:{thinking:'NEXUS réfléchit',creditsTitle:'Acheter des crédits NEXUS',creditsText:'Packs de crédits à paiement unique. Les crédits sont ajoutés seulement après vérification du paiement.',buyAction:'Acheter',close:'Fermer',jobsTitle:'Mes tâches NEXUS',jobsText:'Tâches réelles en attente, en cours et terminées liées à votre compte.',refresh:'Actualiser',costLine:'Coût du chat : Free 1 · Smart 3 · Deep 6 crédits par réponse réussie.'},
+ de:{thinking:'NEXUS denkt nach',creditsTitle:'NEXUS-Credits kaufen',creditsText:'Einmalige Credit-Pakete. Credits werden erst nach bestätigter Zahlung gutgeschrieben.',buyAction:'Kaufen',close:'Schließen',jobsTitle:'Meine NEXUS-Aufgaben',jobsText:'Echte wartende, laufende und abgeschlossene Aufgaben Ihres Kontos.',refresh:'Aktualisieren',costLine:'Chat-Kosten: Free 1 · Smart 3 · Deep 6 Credits pro erfolgreicher Textantwort.'}
+};
+const PACK_NOTES={
+ en:['starter top-up','better value','heavy use'],it:['ricarica iniziale','più conveniente','uso intensivo'],ko:['시작 충전','더 나은 가치','집중 사용'],es:['recarga inicial','mejor valor','uso intensivo'],fr:['recharge de départ','meilleur rapport','usage intensif'],de:['Starter-Aufladung','besserer Wert','intensive Nutzung']
+};
+for(const k of Object.keys(EXTRA_I18N))Object.assign(I18N[k],EXTRA_I18N[k]);
 const QUICK_PROMPTS={
  en:['Analyse this document and tell me the important points.','I want to edit an image. I will attach it and describe the changes.','I need help modifying a software project or source file.','I want to submit a longer job to NEXUS.'],
  it:['Analizza questo documento e dimmi i punti importanti.','Voglio modificare un’immagine. La allego e descrivo le modifiche.','Ho bisogno di aiuto per modificare un progetto software o un file sorgente.','Voglio affidare un lavoro più lungo a NEXUS.'],
@@ -257,6 +269,17 @@ function applyLanguage(next){
  document.getElementById('sendBtn').textContent=t('send');
  promptEl.placeholder=t('prompt');
  document.getElementById('levelHint').textContent=t('level_'+level);
+ const creditsTitle=document.getElementById('creditsTitle');if(creditsTitle)creditsTitle.textContent=t('creditsTitle');
+ const creditsText=document.getElementById('creditsText');if(creditsText)creditsText.textContent=t('creditsText');
+ document.querySelectorAll('[data-credit-link]').forEach(a=>a.textContent=t('buyAction'));
+ const notes=PACK_NOTES[uiLang]||PACK_NOTES.en;
+ document.querySelectorAll('.pack small').forEach((el,i)=>{const prices=['€4.99','€9.99','€19.99'];el.textContent=prices[i]+' · '+notes[i]});
+ const costNotice=document.getElementById('creditCostNotice');if(costNotice)costNotice.textContent=t('costLine');
+ const closeCredits=document.getElementById('closeCredits');if(closeCredits)closeCredits.textContent=t('close');
+ const jobsTitle=document.getElementById('jobsTitle');if(jobsTitle)jobsTitle.textContent=t('jobsTitle');
+ const jobsText=document.getElementById('jobsText');if(jobsText)jobsText.textContent=t('jobsText');
+ const refreshJobs=document.getElementById('refreshJobs');if(refreshJobs)refreshJobs.textContent=t('refresh');
+ const closeJobs=document.getElementById('closeJobs');if(closeJobs)closeJobs.textContent=t('close');
 }
 document.getElementById('langSelect').addEventListener('change',e=>applyLanguage(e.target.value));
 
@@ -267,7 +290,7 @@ async function refreshComputeStatus(){
     const active=(d.workers||[]).find(w=>w.online);
     computeCapabilities=new Set(active?.capabilities||[]);
     el.className='compute-pill '+(active?.status==='busy'?'busy':active?'online':'');
-    el.querySelector('span').textContent=active?.status==='busy'?'NEXUS compute busy':active?'NEXUS compute online':'Cloud only';
+    el.querySelector('span').textContent=active?.status==='busy'?'NEXUS PC worker busy':active?'NEXUS PC worker online':'Cloud only';
     el.title=active?'NEXUS compute available · last seen '+new Date(active.last_seen).toLocaleString():'NEXUS cloud chat remains available; local compute is not currently reporting.';
   }catch{
     el.className='compute-pill';el.querySelector('span').textContent='Cloud online';el.title='Could not read local compute heartbeat.';
@@ -382,7 +405,14 @@ document.getElementById('sendBtn').onclick=async()=>{
  const historyForRouter=chatHistory.slice(-12);
  if(q) chatHistory.push({role:'user',content:q});
 
- const think=addMsg('NEXUS is thinking','ai thinking');
+ const chatOnly=!selectedFiles.length;
+ const thinkingStarted=Date.now();
+ const think=addMsg(t('thinking')+'… 0s','ai thinking');
+ const thinkingTimer=chatOnly?setInterval(()=>{
+   const sec=Math.max(1,Math.floor((Date.now()-thinkingStarted)/1000));
+   think.textContent=t('thinking')+'… '+sec+'s';
+   think.scrollIntoView({behavior:'smooth',block:'center'});
+ },1000):null;
  document.getElementById('sendBtn').disabled=true;
 
  try{
@@ -435,6 +465,7 @@ document.getElementById('sendBtn').onclick=async()=>{
      if(!response.ok || !data?.ok) throw new Error(data?.message||data?.error||('HTTP '+response.status));
      think.className='msg ai';
      setMsgText(think,data.reply);
+     think.scrollIntoView({behavior:'smooth',block:'center'});
      const cleanReply=cleanMarkdownText(data.reply);
      chatHistory.push({role:'assistant',content:cleanReply});
 
@@ -466,13 +497,15 @@ document.getElementById('sendBtn').onclick=async()=>{
    think.className='msg ai';
    think.textContent='NEXUS could not answer this request: '+(e?.message||String(e));
  }finally{
+   if(thinkingTimer)clearInterval(thinkingTimer);
    document.getElementById('sendBtn').disabled=false;
    promptEl.value=''; selectedFiles=[]; input.value=''; filesEl.innerHTML=''; filesEl.classList.remove('has');
    await refreshAccountData();
  }
 };
 
-function resetChat(){currentConversationId=null;forgetConversation();chatHistory=[];messages.innerHTML='';messages.classList.remove('has');intro.style.display='block';promptEl.value='';setLevel('free')}
+promptEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();document.getElementById('sendBtn').click()}});
+function resetChat(){currentConversationId=null;forgetConversation();chatHistory=[];messages.innerHTML='';messages.classList.remove('has');intro.style.display='block';promptEl.value='';setLevel('free');setTimeout(()=>promptEl.focus(),0)}
 document.getElementById('newChat').onclick=resetChat;
 document.getElementById('topNewChat').onclick=resetChat;
 const jobsModal=document.getElementById('jobsModal');
@@ -598,6 +631,7 @@ async function loadConversation(id,conversationLevel='free'){
    addMsg(m.content,cls);
    if(m.role==='user'||m.role==='assistant') chatHistory.push({role:m.role,content:m.content});
  });
+ setTimeout(()=>messages.lastElementChild?.scrollIntoView({behavior:'auto',block:'end'}),0);
 }
 function renderHistory(items){
  const box=document.getElementById('historyList');
