@@ -683,9 +683,10 @@ promptEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isCo
 promptEl.addEventListener('input',()=>{promptEl.style.height='auto';promptEl.style.height=Math.min(180,promptEl.scrollHeight)+'px'});
 const qs=new URLSearchParams(location.search);
 async function pollCreditTopup(){
-  if(qs.get('credits')!=='success'||!currentUser)return;
+  const sessionId=qs.get('session_id')||'';
+  if(qs.get('credits')!=='success'||!sessionId.startsWith('cs_')||!currentUser)return;
   const before=currentBalance;
-  addMsg('Stripe payment completed. NEXUS is verifying the top-up now.','ai');
+  addMsg('Returned from Stripe. NEXUS is verifying the credit top-up now.','ai');
   for(let i=0;i<15;i++){
     await new Promise(r=>setTimeout(r,2000));
     await refreshAccountData();
@@ -695,7 +696,7 @@ async function pollCreditTopup(){
       return;
     }
   }
-  addMsg('Payment received, but the credit event is still processing. Your balance will update automatically after Stripe confirmation.','ai');
+  addMsg('NEXUS has not verified this credit top-up yet. If Stripe completed the payment successfully, the signed webhook will update your balance automatically; no credits are available for use until they appear in your balance.','ai');
 }
 async function resumePendingIntents(){
   if(!currentUser)return;
