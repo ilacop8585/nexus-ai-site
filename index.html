@@ -62,6 +62,22 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
  .iconbtn{padding:8px 9px}.beta{display:none}.send{display:block;padding:9px 13px;margin:0;white-space:nowrap}
  textarea{min-width:0;max-width:100%}.msg{max-width:94%}
 }
+
+.mobile-only{display:none}.internal-status{display:none!important}.historysearch{width:100%;border:1px solid var(--line);background:#090e15;color:var(--text);border-radius:9px;padding:9px 10px;outline:none}.historysearch:focus{border-color:#3c536d}.historymore{font-size:12px;text-align:center;justify-content:center!important}.side-backdrop{display:none}
+@media(max-width:820px){
+ .mobile-only{display:inline-flex}
+ .side{display:flex;position:fixed;left:0;top:0;bottom:0;width:min(86vw,340px);height:100dvh;z-index:60;transform:translateX(-105%);transition:transform .2s ease;box-shadow:24px 0 60px rgba(0,0,0,.45)}
+ .side.open{transform:translateX(0)}
+ .side-backdrop{display:block;position:fixed;inset:0;background:rgba(0,0,0,.58);z-index:55;opacity:0;pointer-events:none;transition:opacity .2s ease}
+ .side-backdrop.show{opacity:1;pointer-events:auto}
+ .historybox{flex:1}.historylist{max-height:none;flex:1;min-height:0}
+ .top{min-height:66px}.account{flex-wrap:wrap;justify-content:flex-end}
+}
+@media(max-width:560px){
+ .top{min-height:96px;overflow:visible;align-content:center}
+ .account{width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+ .account button{width:100%;min-width:0}
+}
 </style>
 </head>
 <body>
@@ -71,13 +87,12 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
   <button class="newchat" id="newChat">＋ New chat</button>
   <div class="snav">
     <button class="navbtn" id="jobsBtn"><span>My jobs</span><span class="small">0</span></button>
-    <a class="navbtn" href="https://lab.nexusword.it/shop.html"><span>NEXUS Shop</span><span>↗</span></a>
-    <a class="navbtn" href="https://lab.nexusword.it/#work"><span>Request work</span><span>↗</span></a>
-    <a class="navbtn" href="https://lab.nexusword.it/"><span>NEXUS Lab</span><span>↗</span></a>
   </div>
   <div class="historybox">
-    <div class="historytitle">Recent chats</div>
+    <div class="historytitle">Your chats</div>
+    <input class="historysearch" id="historySearch" type="search" placeholder="Search chats" autocomplete="off" aria-label="Search chats">
     <div class="historylist" id="historyList"><div class="small">Sign in to load chats.</div></div>
+    <button class="navbtn historymore" id="loadMoreChats" type="button" hidden>Load more chats</button>
   </div>
   <div class="credit">
     <div class="small">Credits</div>
@@ -87,13 +102,14 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <button class="buycredit" id="buyCreditsBtn" type="button">＋ Buy credits</button>
   </div>
 </aside>
+<div class="side-backdrop" id="sideBackdrop" aria-hidden="true"></div>
 <main class="main">
   <header class="top">
     <div class="auto-mode" title="NEXUS automatically routes each request to the safest available path"><i></i><span>NEXUS Auto</span></div>
     <div class="account">
-      <span class="compute-pill" id="computeStatus" title="NEXUS compute status"><i></i><span>Checking compute…</span></span>
-      <a href="https://lab.nexusword.it/shop.html">Shop</a>
-      <button id="topNewChat" type="button">New</button>
+      <span class="compute-pill internal-status" id="computeStatus" aria-hidden="true"><i></i><span>Checking…</span></span>
+      <button class="mobile-only" id="mobileChatsBtn" type="button">Chats</button>
+      <button id="topNewChat" type="button">New chat</button>
       <button id="topJobsBtn" type="button">Jobs</button>
       <button id="topBuyCredits" type="button">Buy credits</button>
       <button id="loginBtn">Sign in</button>
@@ -101,9 +117,9 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
   </header>
   <section class="stage">
     <div class="intro" id="intro">
-      <div class="ey">NEXUS AI · one interface, many workers</div>
-      <h1>Ask once. NEXUS routes the work.</h1>
-      <p>Text chat is included. Attach documents, code, images, video or audio when you need real work done; NEXUS routes the request to available workers and uses credits only for heavier compute or delivered jobs.</p>
+      <div class="ey">NEXUS AI · your AI workspace</div>
+      <h1>Talk to NEXUS. Continue anywhere.</h1>
+      <p>Chat, attach files and submit longer tasks from one account. When you sign in, your conversations, jobs and credit balance stay available across your devices.</p>
       <div class="quick">
         <button data-prompt="Analyse this document and tell me the important points.">📄 Analyse a document</button>
         <button data-prompt="I want to work with an image. I will attach it and describe what I need.">🖼️ Work with an image</button>
@@ -182,10 +198,32 @@ import { createClient } from 'https://esm.sh/@neondatabase/neon-js@0.7.0-beta';
 const client = createClient('https://ep-sparkling-forest-b2v7x4ux.c-6.eu-central-1.aws.neon.tech/neondb');
 
 const promptEl=document.getElementById('prompt'), filesEl=document.getElementById('files'), input=document.getElementById('fileInput'), messages=document.getElementById('messages'), intro=document.getElementById('intro');
-let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null, computeCapabilities=new Set();
+let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null, computeCapabilities=new Set(), allConversations=[], historyLimit=50, lastConversationBatchSize=0, retryConversationId=null, retryPrompt='';
 const ROUTER_URL='https://nexus-ai-router.ilario-coppola.workers.dev/chat';
 const FILES_URL='https://br-jolly-scene-b2wyu6gt-nexusfiles.compute.c-6.eu-central-1.aws.neon.tech/';
 const STATUS_URL='https://br-jolly-scene-b2wyu6gt-nexusstatus.compute.c-6.eu-central-1.aws.neon.tech/';
+
+async function callNexus(payload){
+  let lastError=null;
+  for(let attempt=0;attempt<2;attempt++){
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),30000);
+    try{
+      const response=await fetch(ROUTER_URL,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload),
+        signal:controller.signal
+      });
+      const data=await response.json().catch(()=>({}));
+      if(response.ok&&data?.ok&&data?.reply)return data;
+      lastError=new Error('temporarily_unavailable');
+    }catch(e){lastError=e}
+    finally{clearTimeout(timer)}
+    if(attempt===0)await new Promise(r=>setTimeout(r,650));
+  }
+  throw lastError||new Error('temporarily_unavailable');
+}
 
 async function refreshComputeStatus(){
   const el=document.getElementById('computeStatus'); if(!el)return;
@@ -195,9 +233,9 @@ async function refreshComputeStatus(){
     computeCapabilities=new Set(active?.capabilities||[]);
     el.className='compute-pill '+(active?.status==='busy'?'busy':active?'online':'');
     el.querySelector('span').textContent=active?.status==='busy'?'Compute busy':active?'Compute online':'Cloud only';
-    el.title=active?'NEXUS compute is available. Active capabilities: '+[...(active.capabilities||[])].join(', '):'NEXUS cloud chat remains available; additional compute is not currently reporting.';
+    el.title='NEXUS service available';
   }catch{
-    el.className='compute-pill';el.querySelector('span').textContent='Cloud online';el.title='Could not read local compute heartbeat.';
+    el.className='compute-pill';el.querySelector('span').textContent='Available';el.title='NEXUS service available';
   }
 }
 setInterval(refreshComputeStatus,60000);
@@ -320,15 +358,17 @@ document.getElementById('sendBtn').onclick=async()=>{
  const visibleText=(q||'[File upload]')+(selectedFiles.length?'\nAttachments selected: '+selectedFiles.map(f=>f.name).join(', '):'');
  addMsg(visibleText,'me');
 
+ const retryingSame=!!(q&&currentConversationId&&retryConversationId===currentConversationId&&retryPrompt===q);
  const historyForRouter=chatHistory.slice(-12);
- if(q) chatHistory.push({role:'user',content:q});
+ if(q&&!retryingSame) chatHistory.push({role:'user',content:q});
 
  const think=addMsg('NEXUS is thinking','ai thinking');
  document.getElementById('sendBtn').disabled=true;
+ let sendSucceeded=false;
 
  try{
    const cid=await ensureConversation(q);
-   if(q){
+   if(q&&!retryingSame){
      const {error}=await client.from('nexus_messages').insert({conversation_id:cid,role:'user',content:q,metadata:{level,attachment_count:selectedFiles.length}});
      if(error) throw error;
    }
@@ -359,7 +399,7 @@ document.getElementById('sendBtn').onclick=async()=>{
        ? reserved+' credits reserved now and automatically refunded if the job fails or is cancelled.'
        : 'No credits reserved.';
      const ack=waitingMedia
-       ? 'Upload verified and stored securely. NEXUS job '+shortId+' is queued waiting for a media worker. '+creditNote
+       ? 'Upload verified and stored securely. NEXUS job '+shortId+' is queued and will run as soon as capacity is available. '+creditNote
        : 'Upload verified. '+uploaded.length+' file'+(uploaded.length===1?'':'s')+' stored securely. NEXUS job '+shortId+' is queued. '+creditNote;
      think.className='msg ai';
      think.textContent=ack;
@@ -370,14 +410,9 @@ document.getElementById('sendBtn').onclick=async()=>{
      if(savedAck.error){
        await client.from('nexus_messages').insert({conversation_id:cid,role:'assistant',content:ack,metadata:{level,kind:jobKind,job_id:jr?.job_id||null}});
      }
+     sendSucceeded=true;retryConversationId=null;retryPrompt='';
    } else {
-     const response=await fetch(ROUTER_URL,{
-       method:'POST',
-       headers:{'Content-Type':'application/json'},
-       body:JSON.stringify({message:q,level,history:historyForRouter})
-     });
-     const data=await response.json().catch(()=>({}));
-     if(!response.ok || !data?.ok) throw new Error(data?.message||data?.error||('HTTP '+response.status));
+     const data=await callNexus({message:q,level,history:historyForRouter});
      think.className='msg ai';
      think.textContent=data.reply;
      chatHistory.push({role:'assistant',content:data.reply});
@@ -397,19 +432,33 @@ document.getElementById('sendBtn').onclick=async()=>{
        });
        if(fallback.error) console.warn('Could not persist assistant message',fallback.error);
      }
+     sendSucceeded=true;retryConversationId=null;retryPrompt='';
 
    }
  }catch(e){
    think.className='msg ai';
-   think.textContent='NEXUS could not answer this request: '+(e?.message||String(e));
+   const safeFailure='NEXUS is temporarily having trouble answering. Your message is saved in this chat and no extra credit was used. You can retry without retyping it.';
+   think.textContent=safeFailure;
+   retryConversationId=currentConversationId;retryPrompt=q;
+   if(q)promptEl.value=q;
  }finally{
    document.getElementById('sendBtn').disabled=false;
-   promptEl.value=''; selectedFiles=[]; input.value=''; filesEl.innerHTML=''; filesEl.classList.remove('has');
+   if(sendSucceeded){
+     promptEl.value='';selectedFiles=[];input.value='';filesEl.innerHTML='';filesEl.classList.remove('has');
+   }
    await refreshAccountData();
  }
 };
 
-function resetChat(){currentConversationId=null;chatHistory=[];messages.innerHTML='';messages.classList.remove('has');intro.style.display='block';promptEl.value='';setLevel()}
+const side=document.querySelector('.side'),sideBackdrop=document.getElementById('sideBackdrop');
+function setSideOpen(open){
+ side?.classList.toggle('open',!!open);
+ sideBackdrop?.classList.toggle('show',!!open);
+ document.body.style.overflow=open?'hidden':'';
+}
+document.getElementById('mobileChatsBtn').onclick=()=>setSideOpen(true);
+sideBackdrop.onclick=()=>setSideOpen(false);
+function resetChat(){currentConversationId=null;retryConversationId=null;retryPrompt='';chatHistory=[];messages.innerHTML='';messages.classList.remove('has');intro.style.display='block';promptEl.value='';setLevel();setSideOpen(false)}
 document.getElementById('newChat').onclick=resetChat;
 document.getElementById('topNewChat').onclick=resetChat;
 const jobsModal=document.getElementById('jobsModal');
@@ -444,7 +493,7 @@ async function loadJobs(){
      row.appendChild(reveal);row.appendChild(resultBox);
    }
    if(j.error_code){const e=document.createElement('div');e.className='jobresult';e.textContent='Error: '+j.error_code;row.appendChild(e)}
-   if(['image_edit','video_edit','audio_task'].includes(j.kind)&&j.status==='queued'){const wait=document.createElement('div');wait.className='jobmeta';wait.textContent='Waiting for NEXUS media worker · '+(j.charged_credits>0?j.charged_credits+' credits reserved':'no credits reserved');row.appendChild(wait)}
+   if(['image_edit','video_edit','audio_task'].includes(j.kind)&&j.status==='queued'){const wait=document.createElement('div');wait.className='jobmeta';wait.textContent='Queued for processing · '+(j.charged_credits>0?j.charged_credits+' credits reserved':'no credits reserved');row.appendChild(wait)}
    if(j.completed_at){const done=document.createElement('div');done.className='jobmeta';done.textContent='Completed '+fmtDate(j.completed_at);row.appendChild(done)}
    const actions=document.createElement('div');actions.className='jobactions';
    if(j.conversation_id){
@@ -529,7 +578,7 @@ async function loadConversation(id,conversationLevel='free'){
  if(!currentUser)return;
  const {data,error}=await client.from('nexus_messages').select('role,content,metadata,created_at').eq('conversation_id',id).order('created_at',{ascending:true});
  if(error){alert(error.message);return}
- currentConversationId=id;
+ currentConversationId=id;retryConversationId=null;retryPrompt='';
  setLevel(conversationLevel);
  intro.style.display='none';
  messages.innerHTML='';
@@ -540,27 +589,35 @@ async function loadConversation(id,conversationLevel='free'){
    addMsg(m.content,cls);
    if(m.role==='user'||m.role==='assistant') chatHistory.push({role:m.role,content:m.content});
  });
+ setSideOpen(false);
 }
 function renderHistory(items){
- const box=document.getElementById('historyList');
- if(!currentUser){box.innerHTML='<div class="small">Sign in to load chats.</div>';return}
- if(!items?.length){box.innerHTML='<div class="small">No chats yet.</div>';return}
+ const box=document.getElementById('historyList'),more=document.getElementById('loadMoreChats');
+ allConversations=items||allConversations||[];
+ if(!currentUser){box.innerHTML='<div class="small">Sign in to load chats.</div>';more.hidden=true;return}
+ const term=(document.getElementById('historySearch').value||'').trim().toLowerCase();
+ const filtered=term?allConversations.filter(c=>(c.title||'New chat').toLowerCase().includes(term)):allConversations;
+ if(!filtered.length){
+   box.innerHTML='<div class="small">'+(term?'No matching chats.':'No chats yet.')+'</div>';
+   more.hidden=!!term||lastConversationBatchSize<historyLimit;
+   return;
+ }
  box.innerHTML='';
- items.forEach(c=>{
-   const b=document.createElement('button');
-   b.className='historyitem';
-   const strong=document.createElement('strong'); strong.textContent=c.title||'New chat';
-   const small=document.createElement('small'); small.textContent='Chat';
-   b.append(strong,small);
-   b.onclick=()=>loadConversation(c.id,c.level||'free');
-   box.appendChild(b);
+ filtered.forEach(c=>{
+   const b=document.createElement('button');b.className='historyitem';
+   const strong=document.createElement('strong');strong.textContent=c.title||'New chat';
+   const small=document.createElement('small');small.textContent=c.updated_at?fmtDate(c.updated_at):'Chat';
+   b.append(strong,small);b.onclick=()=>loadConversation(c.id,c.level||'free');box.appendChild(b);
  });
+ more.hidden=!!term||lastConversationBatchSize<historyLimit;
 }
+document.getElementById('historySearch').addEventListener('input',()=>renderHistory(allConversations));
+document.getElementById('loadMoreChats').onclick=async()=>{historyLimit+=50;await refreshAccountData()};
 async function refreshAccountData(){
  if(!currentUser)return;
  const [profile,convos,jobs]=await Promise.all([
    client.from('nexus_profiles').select('plan,credits_balance,daily_credit_allowance,analytics_opt_in,content_training_opt_in').single(),
-   client.from('nexus_conversations').select('id,title,level,updated_at').order('updated_at',{ascending:false}).limit(10),
+   client.from('nexus_conversations').select('id,title,level,updated_at').order('updated_at',{ascending:false}).limit(historyLimit),
    client.from('nexus_jobs').select('id,input_summary').limit(100)
  ]);
  if(profile.data){
@@ -569,9 +626,10 @@ async function refreshAccountData(){
    document.getElementById('creditBalance').textContent=b;
    document.getElementById('creditAllowance').textContent=' / '+a;
    document.getElementById('creditBar').style.width=(a?Math.min(100,(b/a)*100):0)+'%';
-   document.getElementById('creditStatus').textContent='Available for compute-heavy NEXUS jobs';
+   document.getElementById('creditStatus').textContent='Available for NEXUS jobs';
  }
  document.querySelector('#jobsBtn .small').textContent=visibleJobs(jobs.data).length;
+ lastConversationBatchSize=(convos.data||[]).length;
  renderHistory(convos.data||[]);
 }
 function setLoggedOutUI(){currentBalance=0;renderHistory([]);document.getElementById('loginBtn').textContent='Sign in';document.getElementById('creditBalance').textContent='—';document.getElementById('creditAllowance').textContent=' / —';document.getElementById('creditBar').style.width='0%';document.getElementById('creditStatus').textContent='Sign in to load your real NEXUS balance.'}
@@ -580,6 +638,8 @@ function setAuthNotice(t){document.getElementById('authNotice').textContent=t}
 function addMsg(t,c){const d=document.createElement('div');d.className='msg '+c;d.textContent=t;messages.appendChild(d);d.scrollIntoView({behavior:'smooth',block:'end'});return d}
 function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function formatBytes(n){if(n<1024)return n+' B';if(n<1048576)return (n/1024).toFixed(1)+' KB';return (n/1048576).toFixed(1)+' MB'}
+promptEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();document.getElementById('sendBtn').click()}});
+promptEl.addEventListener('input',()=>{promptEl.style.height='auto';promptEl.style.height=Math.min(180,promptEl.scrollHeight)+'px'});
 const qs=new URLSearchParams(location.search);
 async function pollCreditTopup(){
   if(qs.get('credits')!=='success'||!currentUser)return;
