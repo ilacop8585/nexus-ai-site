@@ -366,7 +366,11 @@ document.getElementById('sendBtn').onclick=async()=>{
  addMsg(visibleText,'me');
 
  const retryingSame=!!(q&&currentConversationId&&retryConversationId===currentConversationId&&retryPrompt===q);
- const historyForRouter=chatHistory.slice(-12);
+ let historyForRouter=chatHistory.slice(-12);
+ if(retryingSame&&historyForRouter.length){
+   const last=historyForRouter[historyForRouter.length-1];
+   if(last?.role==='user'&&last.content===q) historyForRouter=historyForRouter.slice(0,-1);
+ }
  if(q&&!retryingSame) chatHistory.push({role:'user',content:q});
 
  const think=addMsg('NEXUS is thinking','ai thinking');
@@ -424,7 +428,7 @@ document.getElementById('sendBtn').onclick=async()=>{
      think.textContent=data.reply;
      chatHistory.push({role:'assistant',content:data.reply});
 
-     const assistantMeta={level,model:data.model||null,provider:data.provider||null};
+     const assistantMeta={level,model:data.model||null,provider:data.provider||null,fallback_used:!!data.fallbackUsed};
      const saved=await client.rpc('nexus_store_assistant_message',{
        p_conversation_id:cid,
        p_content:data.reply,
@@ -448,6 +452,16 @@ document.getElementById('sendBtn').onclick=async()=>{
    think.textContent=safeFailure;
    retryConversationId=currentConversationId;retryPrompt=q;
    if(q)promptEl.value=q;
+   if(q&&currentConversationId&&!retryingSame){
+     try{
+       const savedFailure=await client.rpc('nexus_store_assistant_message',{
+         p_conversation_id:currentConversationId,
+         p_content:safeFailure,
+         p_metadata:{level,kind:'delivery_failure',retryable:true}
+       });
+       if(savedFailure.error) console.warn('Could not persist retry state',savedFailure.error);
+     }catch{}
+   }
  }finally{
    document.getElementById('sendBtn').disabled=false;
    if(sendSucceeded){
@@ -591,11 +605,23 @@ async function loadConversation(id,conversationLevel='free'){
  messages.innerHTML='';
  messages.classList.add('has');
  chatHistory=[];
+ let lastUserMessage='';
  (data||[]).forEach(m=>{
    const cls=m.role==='user'?'me':'ai';
    addMsg(m.content,cls);
-   if(m.role==='user'||m.role==='assistant') chatHistory.push({role:m.role,content:m.content});
+   if(m.role==='user'){
+     lastUserMessage=m.content;
+     chatHistory.push({role:'user',content:m.content});
+   }else if(m.role==='assistant'&&m.metadata?.kind!=='delivery_failure'){
+     chatHistory.push({role:'assistant',content:m.content});
+   }
  });
+ const last=(data||[])[(data||[]).length-1];
+ if(last?.role==='assistant'&&last?.metadata?.kind==='delivery_failure'&&lastUserMessage){
+   retryConversationId=id;
+   retryPrompt=lastUserMessage;
+   promptEl.value=lastUserMessage;
+ }
  setSideOpen(false);
 }
 function renderHistory(items){
