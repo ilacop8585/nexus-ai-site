@@ -271,7 +271,14 @@ function openCredits(){
   document.querySelectorAll('[data-credit-link]').forEach(a=>{
     const base=a.dataset.baseHref||a.href.split('?')[0];
     a.dataset.baseHref=base;
-    a.href=currentUser?base+'?prefilled_email='+encodeURIComponent(currentUser.email||''):base;
+    if(currentUser){
+      const params=new URLSearchParams();
+      if(currentUser.email) params.set('locked_prefilled_email',currentUser.email);
+      if(currentUser.id) params.set('client_reference_id',currentUser.id);
+      a.href=base+(params.toString()?'?'+params.toString():'');
+    }else{
+      a.href=base;
+    }
   });
   creditModal.classList.add('show');
 }
