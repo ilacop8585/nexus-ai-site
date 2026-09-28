@@ -235,6 +235,7 @@ async function refreshComputeStatus(){
     el.querySelector('span').textContent=active?.status==='busy'?'Compute busy':active?'Compute online':'Cloud only';
     el.title='NEXUS service available';
   }catch{
+    computeCapabilities=new Set();
     el.className='compute-pill';el.querySelector('span').textContent='Available';el.title='NEXUS service available';
   }
 }
@@ -363,35 +364,44 @@ document.getElementById('sendBtn').onclick=async()=>{
 
  intro.style.display='none';messages.classList.add('has');
  const visibleText=(q||'[File upload]')+(selectedFiles.length?'\nAttachments selected: '+selectedFiles.map(f=>f.name).join(', '):'');
+ const userTurnText=visibleText;
  addMsg(visibleText,'me');
 
- const retryingSame=!!(q&&currentConversationId&&retryConversationId===currentConversationId&&retryPrompt===q);
+ const retryingSame=!!(userTurnText&&currentConversationId&&retryConversationId===currentConversationId&&retryPrompt===userTurnText);
  let historyForRouter=chatHistory.slice(-12);
  if(retryingSame&&historyForRouter.length){
    const last=historyForRouter[historyForRouter.length-1];
-   if(last?.role==='user'&&last.content===q) historyForRouter=historyForRouter.slice(0,-1);
+   if(last?.role==='user'&&last.content===userTurnText) historyForRouter=historyForRouter.slice(0,-1);
  }
- if(q&&!retryingSame) chatHistory.push({role:'user',content:q});
+ if(userTurnText&&!retryingSame) chatHistory.push({role:'user',content:userTurnText});
 
  const think=addMsg('NEXUS is thinking','ai thinking');
  document.getElementById('sendBtn').disabled=true;
  let sendSucceeded=false;
 
  try{
-   const cid=await ensureConversation(q);
-   if(q&&!retryingSame){
-     const {error}=await client.from('nexus_messages').insert({conversation_id:cid,role:'user',content:q,metadata:{level,attachment_count:selectedFiles.length}});
+   const cid=await ensureConversation(q||userTurnText);
+   if(userTurnText&&!retryingSame){
+     const {error}=await client.from('nexus_messages').insert({conversation_id:cid,role:'user',content:userTurnText,metadata:{level,attachment_count:selectedFiles.length}});
      if(error) throw error;
    }
 
    if(selectedFiles.length){
      const originalFiles=[...selectedFiles];
+     await refreshComputeStatus();
+     const jobKind=detectJobKind(originalFiles[0]);
+     const capMap={image_edit:'image',video_edit:'video',audio_task:'audio',document_task:'document',code_task:'code',archive_task:'archive',general_file:'general-file'};
+     const requiredCap=capMap[jobKind]||'general-file';
+     if(['image_edit','video_edit','audio_task'].includes(jobKind)&&!computeCapabilities.has(requiredCap)){
+       const capacityError=new Error('MEDIA_CAPACITY_UNAVAILABLE');
+       capacityError.code='MEDIA_CAPACITY_UNAVAILABLE';
+       throw capacityError;
+     }
      const uploaded=[];
      for(let i=0;i<originalFiles.length;i++){
        think.textContent='Uploading '+(i+1)+'/'+originalFiles.length+': '+originalFiles[i].name;
        uploaded.push(await uploadOne(originalFiles[i],cid));
      }
-     const jobKind=detectJobKind(originalFiles[0]);
      const job=await client.rpc('nexus_create_job',{
        p_conversation_id:cid,
        p_kind:jobKind,
@@ -403,15 +413,10 @@ document.getElementById('sendBtn').onclick=async()=>{
      const jr=Array.isArray(job.data)?job.data[0]:job.data;
      const shortId=String(jr?.job_id||'').slice(0,8);
      const reserved=Number(jr?.estimated_credits||0);
-     const capMap={image_edit:'image',video_edit:'video',audio_task:'audio',document_task:'document',code_task:'code',archive_task:'archive',general_file:'general-file'};
-     const requiredCap=capMap[jobKind]||'general-file';
-     const waitingMedia=['image_edit','video_edit','audio_task'].includes(jobKind)&&!computeCapabilities.has(requiredCap);
      const creditNote=reserved>0
        ? reserved+' credits reserved now and automatically refunded if the job fails or is cancelled.'
        : 'No credits reserved.';
-     const ack=waitingMedia
-       ? 'Upload verified and stored securely. NEXUS job '+shortId+' is queued and will run as soon as capacity is available. '+creditNote
-       : 'Upload verified. '+uploaded.length+' file'+(uploaded.length===1?'':'s')+' stored securely. NEXUS job '+shortId+' is queued. '+creditNote;
+     const ack='Upload verified. '+uploaded.length+' file'+(uploaded.length===1?'':'s')+' stored securely. NEXUS job '+shortId+' is queued. '+creditNote;
      think.className='msg ai';
      think.textContent=ack;
      chatHistory.push({role:'assistant',content:ack});
@@ -448,16 +453,19 @@ document.getElementById('sendBtn').onclick=async()=>{
    }
  }catch(e){
    think.className='msg ai';
-   const safeFailure='NEXUS is temporarily having trouble answering. Your message is saved in this chat and no extra credit was used. You can retry without retyping it.';
+   const mediaCapacityUnavailable=e?.code==='MEDIA_CAPACITY_UNAVAILABLE'||String(e?.message||'')==='MEDIA_CAPACITY_UNAVAILABLE';
+   const safeFailure=mediaCapacityUnavailable
+     ? 'NEXUS media compute is not available for this file type right now. The file was not uploaded and no credits were reserved. Retry when compatible media compute is online.'
+     : 'NEXUS is temporarily having trouble answering. Your message is saved in this chat and no extra credit was used. You can retry without retyping it.';
    think.textContent=safeFailure;
-   retryConversationId=currentConversationId;retryPrompt=q;
+   retryConversationId=currentConversationId;retryPrompt=userTurnText;
    if(q)promptEl.value=q;
-   if(q&&currentConversationId&&!retryingSame){
+   if(userTurnText&&currentConversationId&&!retryingSame){
      try{
        const savedFailure=await client.rpc('nexus_store_assistant_message',{
          p_conversation_id:currentConversationId,
          p_content:safeFailure,
-         p_metadata:{level,kind:'delivery_failure',retryable:true}
+         p_metadata:{level,kind:mediaCapacityUnavailable?'capacity_unavailable':'delivery_failure',retryable:true,requires_reattach:selectedFiles.length>0}
        });
        if(savedFailure.error) console.warn('Could not persist retry state',savedFailure.error);
      }catch{}
@@ -612,12 +620,12 @@ async function loadConversation(id,conversationLevel='free'){
    if(m.role==='user'){
      lastUserMessage=m.content;
      chatHistory.push({role:'user',content:m.content});
-   }else if(m.role==='assistant'&&m.metadata?.kind!=='delivery_failure'){
+   }else if(m.role==='assistant'&&!m.metadata?.retryable){
      chatHistory.push({role:'assistant',content:m.content});
    }
  });
  const last=(data||[])[(data||[]).length-1];
- if(last?.role==='assistant'&&last?.metadata?.kind==='delivery_failure'&&lastUserMessage){
+ if(last?.role==='assistant'&&last?.metadata?.retryable&&lastUserMessage&&!last.metadata?.requires_reattach){
    retryConversationId=id;
    retryPrompt=lastUserMessage;
    promptEl.value=lastUserMessage;
