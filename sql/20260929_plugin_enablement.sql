@@ -78,7 +78,7 @@ begin
     case when p_enabled then null else now() end,
     now()
   )
-  on conflict (user_id, plugin_id) do update
+  on conflict on constraint nexus_user_plugins_pkey do update
   set enabled = excluded.enabled,
       connection_status = case
         when excluded.enabled = false then public.nexus_user_plugins.connection_status
@@ -164,7 +164,7 @@ begin
     case when v_connected then 'connected' else 'disconnected' end,
     now(), null, now()
   )
-  on conflict (user_id,plugin_id) do update
+  on conflict on constraint nexus_user_plugins_pkey do update
   set enabled=true,
       connection_status=case when v_connected then 'connected' else 'disconnected' end,
       enabled_at=coalesce(public.nexus_user_plugins.enabled_at,now()),
