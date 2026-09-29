@@ -46,8 +46,8 @@ returns table(
   disabled_at timestamptz
 )
 language plpgsql
-security invoker
-set search_path = public
+security definer
+set search_path = public, pg_temp
 as $$
 declare
   v_user uuid;
@@ -99,6 +99,8 @@ begin
     and p.plugin_id = p_plugin_id;
 end;
 $$;
+
+revoke all on function public.nexus_set_plugin_enabled(text,boolean,boolean) from public;
 
 grant execute
 on function public.nexus_set_plugin_enabled(text,boolean,boolean)
