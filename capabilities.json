@@ -43,7 +43,11 @@
     "secure_file_upload": {
       "active": true,
       "private_storage": true,
-      "presigned_uploads": true
+      "presigned_uploads": true,
+      "accepts_any_file_type": true,
+      "client_limit_bytes": 536870912,
+      "max_files_per_job": 20,
+      "server_policy_applies": true
     },
     "jobs": {
       "active": true,
@@ -59,6 +63,18 @@
         "audio_task"
       ],
       "media_status": "intake_available_processing_expanding"
+    },
+    "library": {
+      "active": true,
+      "scope": "private_account",
+      "source": "nexus_attachments",
+      "chat_linking": true
+    },
+    "plugins": {
+      "catalog_active": true,
+      "catalog_url": "https://nexusword.it/plugins.json",
+      "external_oauth_connectors_active": false,
+      "secret_storage_in_browser": false
     }
   },
   "billing": {
@@ -89,7 +105,8 @@
     "capabilities": "https://nexusword.it/capabilities.json",
     "offers": "https://nexusword.it/offers.json",
     "llms": "https://nexusword.it/llms.txt",
-    "agents": "https://nexusword.it/agents.json"
+    "agents": "https://nexusword.it/agents.json",
+    "plugins": "https://nexusword.it/plugins.json"
   },
-  "updated": "2026-09-27"
+  "updated": "2026-09-29"
 }
