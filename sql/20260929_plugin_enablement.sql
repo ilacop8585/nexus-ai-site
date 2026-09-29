@@ -103,3 +103,78 @@ $$;
 grant execute
 on function public.nexus_set_plugin_enabled(text,boolean,boolean)
 to authenticated;
+
+
+-- Sync a Google-backed plugin after Better Auth OAuth returns.
+-- This function never returns OAuth tokens; it only validates granted scopes
+-- from Neon Auth and updates the account-scoped plugin connection state.
+create or replace function public.nexus_sync_plugin_connection(p_plugin_id text)
+returns table(plugin_id text, enabled boolean, connection_status text, granted boolean)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_user uuid;
+  v_required text[];
+  v_granted text[] := array[]::text[];
+  v_has_token boolean := false;
+  v_connected boolean := false;
+begin
+  v_user := nullif(auth.user_id(),'')::uuid;
+  if v_user is null then
+    raise exception 'authentication_required';
+  end if;
+
+  v_required := case p_plugin_id
+    when 'google-drive' then array['https://www.googleapis.com/auth/drive.readonly']
+    when 'gmail' then array['https://www.googleapis.com/auth/gmail.readonly']
+    when 'google-calendar' then array['https://www.googleapis.com/auth/calendar.readonly']
+    when 'google-contacts' then array['https://www.googleapis.com/auth/contacts.readonly']
+    when 'google-sheets' then array['https://www.googleapis.com/auth/spreadsheets.readonly']
+    when 'youtube' then array['https://www.googleapis.com/auth/youtube.readonly']
+    when 'bigquery' then array['https://www.googleapis.com/auth/bigquery.readonly']
+    else null
+  end;
+
+  if v_required is null then
+    raise exception 'connector_not_supported';
+  end if;
+
+  select
+    regexp_split_to_array(coalesce(a.scope,''), '[,[:space:]]+'),
+    (a."accessToken" is not null or a."refreshToken" is not null)
+  into v_granted, v_has_token
+  from neon_auth.account a
+  where a."userId" = v_user
+    and a."providerId" = 'google'
+  order by a."updatedAt" desc
+  limit 1;
+
+  v_connected := coalesce(v_has_token,false)
+    and coalesce(v_granted,array[]::text[]) @> v_required;
+
+  insert into public.nexus_user_plugins(
+    user_id, plugin_id, enabled, connection_status, enabled_at, disabled_at, updated_at
+  )
+  values(
+    v_user, p_plugin_id, true,
+    case when v_connected then 'connected' else 'disconnected' end,
+    now(), null, now()
+  )
+  on conflict (user_id,plugin_id) do update
+  set enabled=true,
+      connection_status=case when v_connected then 'connected' else 'disconnected' end,
+      enabled_at=coalesce(public.nexus_user_plugins.enabled_at,now()),
+      disabled_at=null,
+      updated_at=now();
+
+  return query
+  select p.plugin_id,p.enabled,p.connection_status,v_connected
+  from public.nexus_user_plugins p
+  where p.user_id=v_user and p.plugin_id=p_plugin_id;
+end;
+$$;
+
+revoke all on function public.nexus_sync_plugin_connection(text) from public;
+grant execute on function public.nexus_sync_plugin_connection(text) to authenticated;

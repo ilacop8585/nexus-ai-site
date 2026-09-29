@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "updated_at": "2026-09-29",
   "summary": {
     "total": 60,
@@ -7,7 +7,10 @@
     "categories": 13,
     "policy": "Catalog entries describe intended integrations. Only status=active is available to users.",
     "user_enablement": "account_scoped_neon",
-    "connection_state": "separate_from_enablement"
+    "connection_state": "separate_from_enablement",
+    "live_oauth_connectors": 7,
+    "live_oauth_provider": "google_via_neon_auth",
+    "other_oauth_providers": "require_nexus_provider_registration"
   },
   "plugins": [
     {
@@ -20,7 +23,9 @@
       "priority": "P0",
       "description": "Private account-scoped file library backed by NEXUS attachments and chat history.",
       "core": true,
-      "connection_required": false
+      "connection_required": false,
+      "connectable": false,
+      "connection_mode": "builtin"
     },
     {
       "id": "google-drive",
@@ -33,7 +38,14 @@
       "description": "Search, read and work with Drive, Docs, Sheets and Slides.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": true,
+      "connection_mode": "oauth",
+      "oauth_provider": "google",
+      "oauth_scopes": [
+        "https://www.googleapis.com/auth/drive.readonly"
+      ],
+      "connection_status": "live_oauth_flow"
     },
     {
       "id": "gmail",
@@ -46,7 +58,14 @@
       "description": "Search mail, summarize threads and prepare or send supported messages.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": true,
+      "connection_mode": "oauth",
+      "oauth_provider": "google",
+      "oauth_scopes": [
+        "https://www.googleapis.com/auth/gmail.readonly"
+      ],
+      "connection_status": "live_oauth_flow"
     },
     {
       "id": "google-calendar",
@@ -59,7 +78,14 @@
       "description": "Read schedules, check availability and create or update events.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": true,
+      "connection_mode": "oauth",
+      "oauth_provider": "google",
+      "oauth_scopes": [
+        "https://www.googleapis.com/auth/calendar.readonly"
+      ],
+      "connection_status": "live_oauth_flow"
     },
     {
       "id": "google-contacts",
@@ -72,7 +98,14 @@
       "description": "Find authorized contacts and organization details.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": true,
+      "connection_mode": "oauth",
+      "oauth_provider": "google",
+      "oauth_scopes": [
+        "https://www.googleapis.com/auth/contacts.readonly"
+      ],
+      "connection_status": "live_oauth_flow"
     },
     {
       "id": "google-maps",
@@ -85,7 +118,9 @@
       "description": "Places, geocoding, directions and location-aware workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "youtube",
@@ -98,7 +133,14 @@
       "description": "Search channel content, videos, captions and publishing workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": true,
+      "connection_mode": "oauth",
+      "oauth_provider": "google",
+      "oauth_scopes": [
+        "https://www.googleapis.com/auth/youtube.readonly"
+      ],
+      "connection_status": "live_oauth_flow"
     },
     {
       "id": "dropbox",
@@ -111,7 +153,9 @@
       "description": "Search, read and organize authorized Dropbox files.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "box",
@@ -124,7 +168,9 @@
       "description": "Enterprise document and file workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "onedrive",
@@ -137,7 +183,9 @@
       "description": "Work with authorized OneDrive files and folders.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "sharepoint",
@@ -150,7 +198,9 @@
       "description": "Search and work with SharePoint sites and documents.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "outlook-mail",
@@ -163,7 +213,9 @@
       "description": "Search, read and act on authorized Outlook email.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "outlook-calendar",
@@ -176,7 +228,9 @@
       "description": "Read and manage authorized Outlook calendars.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "microsoft-teams",
@@ -189,7 +243,9 @@
       "description": "Search conversations and collaborate in Teams.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "microsoft-onenote",
@@ -202,7 +258,9 @@
       "description": "Search and work with notes and notebooks.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "slack",
@@ -215,7 +273,9 @@
       "description": "Search channels and messages and post supported updates.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "discord",
@@ -228,7 +288,9 @@
       "description": "Server, channel and bot workflows for authorized communities.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "telegram",
@@ -241,7 +303,9 @@
       "description": "Bot and channel workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "whatsapp-business",
@@ -254,7 +318,9 @@
       "description": "Business messaging workflows through the official platform API.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "zoom",
@@ -267,7 +333,9 @@
       "description": "Meetings, recordings, transcripts and scheduling.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "notion",
@@ -280,7 +348,9 @@
       "description": "Search, create and update pages, databases and knowledge.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "confluence",
@@ -293,7 +363,9 @@
       "description": "Search and update team knowledge and documentation.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "jira",
@@ -306,7 +378,9 @@
       "description": "Search, create and update issues and project work.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "linear",
@@ -319,7 +393,9 @@
       "description": "Issues, projects, cycles and product planning.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "asana",
@@ -332,7 +408,9 @@
       "description": "Tasks, projects, due dates and team workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "monday",
@@ -345,7 +423,9 @@
       "description": "Boards, items, assignments and operational workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "clickup",
@@ -358,7 +438,9 @@
       "description": "Tasks, docs, goals and project workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "trello",
@@ -371,7 +453,9 @@
       "description": "Boards, cards and lightweight project automation.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "airtable",
@@ -384,7 +468,9 @@
       "description": "Read and update operational bases and structured records.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "google-sheets",
@@ -397,7 +483,14 @@
       "description": "Analyze and update spreadsheets through Drive authorization.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": true,
+      "connection_mode": "oauth",
+      "oauth_provider": "google",
+      "oauth_scopes": [
+        "https://www.googleapis.com/auth/spreadsheets.readonly"
+      ],
+      "connection_status": "live_oauth_flow"
     },
     {
       "id": "snowflake",
@@ -410,7 +503,9 @@
       "description": "Query governed cloud data warehouses.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "bigquery",
@@ -423,7 +518,14 @@
       "description": "Query authorized analytics datasets.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": true,
+      "connection_mode": "oauth",
+      "oauth_provider": "google",
+      "oauth_scopes": [
+        "https://www.googleapis.com/auth/bigquery.readonly"
+      ],
+      "connection_status": "live_oauth_flow"
     },
     {
       "id": "postgres",
@@ -436,7 +538,9 @@
       "description": "Query approved databases through a controlled server connection.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "neon",
@@ -449,7 +553,9 @@
       "description": "Inspect and operate Neon Postgres projects.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "supabase",
@@ -462,7 +568,9 @@
       "description": "Database, auth, storage and edge-function workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "github",
@@ -475,7 +583,9 @@
       "description": "Repositories, issues, pull requests and code workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "gitlab",
@@ -488,7 +598,9 @@
       "description": "Repositories, merge requests, issues and CI/CD workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "vercel",
@@ -501,7 +613,9 @@
       "description": "Projects, deployments, domains, logs and environment workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "cloudflare",
@@ -514,7 +628,9 @@
       "description": "Workers, DNS, security and edge platform workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "sentry",
@@ -527,7 +643,9 @@
       "description": "Errors, traces and production debugging context.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "posthog",
@@ -540,7 +658,9 @@
       "description": "Product analytics, feature flags, experiments and logs.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "docker-hub",
@@ -553,7 +673,9 @@
       "description": "Container repositories, images and release workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "stripe",
@@ -566,7 +688,9 @@
       "description": "Products, prices, payments and subscription workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "shopify",
@@ -579,7 +703,9 @@
       "description": "Products, orders, customers and ecommerce operations.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "hubspot",
@@ -592,7 +718,9 @@
       "description": "CRM, contacts, companies, deals and marketing workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "salesforce",
@@ -605,7 +733,9 @@
       "description": "CRM records, opportunities and enterprise workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "pipedrive",
@@ -618,7 +748,9 @@
       "description": "Sales pipeline, deals and contact workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "zendesk",
@@ -631,7 +763,9 @@
       "description": "Tickets, users and support operations.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "intercom",
@@ -644,7 +778,9 @@
       "description": "Customer conversations and support workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "freshdesk",
@@ -657,7 +793,9 @@
       "description": "Tickets and support automation.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "figma",
@@ -670,7 +808,9 @@
       "description": "Design files, components and design-to-development workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "canva",
@@ -683,7 +823,9 @@
       "description": "Create and edit designs, documents and visual assets.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "spotify",
@@ -696,7 +838,9 @@
       "description": "Music discovery and playlist workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "cloudinary",
@@ -709,7 +853,9 @@
       "description": "Image and video asset management and transformations.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "zapier",
@@ -722,7 +868,9 @@
       "description": "Bridge NEXUS to thousands of third-party apps and workflow actions.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "make",
@@ -735,7 +883,9 @@
       "description": "Run visual automation scenarios across external services.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "n8n",
@@ -748,7 +898,9 @@
       "description": "Self-hosted automation and tool workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "webhooks",
@@ -761,7 +913,9 @@
       "description": "Trigger and receive signed event-driven workflows.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "mcp",
@@ -774,7 +928,9 @@
       "description": "Connect approved Model Context Protocol servers through one governed registry.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     },
     {
       "id": "openapi",
@@ -787,7 +943,9 @@
       "description": "Turn approved OpenAPI services into governed NEXUS tools.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
-      "connection_required": true
+      "connection_required": true,
+      "connectable": false,
+      "connection_status": "provider_registration_required"
     }
   ]
 }
