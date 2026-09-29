@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "updated_at": "2026-09-29",
+  "plugins": [
+    {
+      "id": "nexus-library",
+      "name": "NEXUS Library",
+      "status": "active",
+      "type": "builtin",
+      "description": "Private account-scoped file library backed by NEXUS attachments and chat history."
+    },
+    {
+      "id": "google-drive",
+      "name": "Google Drive",
+      "status": "backend_required",
+      "type": "oauth",
+      "description": "Import files and context from Google Drive.",
+      "reason": "Requires a server-side OAuth callback, encrypted token storage and account-scoped permission checks before activation."
+    },
+    {
+      "id": "dropbox",
+      "name": "Dropbox",
+      "status": "backend_required",
+      "type": "oauth",
+      "description": "Import files and context from Dropbox.",
+      "reason": "Requires a server-side OAuth callback, encrypted token storage and account-scoped permission checks before activation."
+    },
+    {
+      "id": "github",
+      "name": "GitHub",
+      "status": "backend_required",
+      "type": "oauth",
+      "description": "Read repositories and let NEXUS work with authorized project content.",
+      "reason": "Requires a server-side GitHub App/OAuth bridge with scoped repository permissions before activation."
+    },
+    {
+      "id": "mcp-openapi",
+      "name": "MCP / OpenAPI connectors",
+      "status": "backend_required",
+      "type": "bridge",
+      "description": "Generic connector layer for future tools without putting credentials in browser JavaScript.",
+      "reason": "Requires a NEXUS server-side connector registry, secret vault and execution policy."
+    }
+  ]
+}
