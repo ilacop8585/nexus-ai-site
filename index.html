@@ -884,6 +884,19 @@ async function setPluginEnabled(p,enabled){
    pluginBusy.delete(p.id);renderPlugins();
  }
 }
+async function disconnectPlugin(p){
+ if(!currentUser||!p?.id)return;
+ if(pluginBusy.has(p.id))return;
+ pluginBusy.add(p.id);pluginActionMessage='Disconnecting '+(p.name||p.id)+'…';renderPlugins();
+ try{
+   const {error}=await client.rpc('nexus_disconnect_plugin',{p_plugin_id:p.id});
+   if(error)throw error;
+   await loadPluginState();
+   pluginActionMessage=(p.name||p.id)+' disconnected.';
+ }catch(e){
+   pluginActionMessage='Could not disconnect '+(p.name||p.id)+': '+(e?.message||String(e));
+ }finally{pluginBusy.delete(p.id);renderPlugins()}
+}
 function renderPlugins(){
  const box=document.getElementById('pluginsList'),search=(document.getElementById('pluginSearch').value||'').trim().toLowerCase(),category=document.getElementById('pluginCategory').value;
  const items=pluginCatalog.filter(p=>{
@@ -909,23 +922,35 @@ function renderPlugins(){
    row.appendChild(meta);
    const stateLine=document.createElement('div');stateLine.className='plugin-state '+(connected?'connected':'');
    if(p.core)stateLine.textContent='Always available in NEXUS.';
-   else if(enabled&&needsConnection&&!connected)stateLine.textContent=p.public_connect_blocked?'Enabled for your account · NEXUS OAuth verification is required before public connection.':'Enabled for your account · external connection still required before NEXUS can use this service.';
+   else if(connected)stateLine.textContent='Connected and enabled for your account.';
+   else if(p.connectable&&needsConnection)stateLine.textContent='Connect your '+(p.name||'provider')+' account to enable this plugin.';
+   else if(enabled&&needsConnection)stateLine.textContent=p.public_connect_blocked?'Enabled for your account · provider setup is still required before connection.':'Enabled for your account · external connection still required before NEXUS can use this service.';
    else if(enabled)stateLine.textContent='Enabled for your account.';
    else stateLine.textContent='Not enabled for your account.';
    row.appendChild(stateLine);
    const actions=document.createElement('div');actions.className='plugin-actions';
    if(p.core){
      const core=document.createElement('button');core.type='button';core.disabled=true;core.textContent='Always on';actions.appendChild(core);
+   }else if(needsConnection&&p.connectable){
+     if(connected){
+       const disable=document.createElement('button');disable.type='button';disable.disabled=busy;disable.textContent=busy?'Saving…':enabled?'Disable':'Enable';
+       disable.onclick=()=>setPluginEnabled(p,!enabled);actions.appendChild(disable);
+       const disconnect=document.createElement('button');disconnect.type='button';disconnect.disabled=busy;disconnect.textContent='Disconnect';
+       disconnect.onclick=()=>disconnectPlugin(p);actions.appendChild(disconnect);
+     }else{
+       const connect=document.createElement('button');connect.type='button';connect.className='enable';connect.disabled=busy;
+       connect.textContent=busy?'Opening…':'Connect';
+       connect.title='Sign in or register with '+(p.name||'the provider')+', authorize NEXUS, then return connected.';
+       connect.onclick=()=>connectPlugin(p);actions.appendChild(connect);
+     }
    }else{
      const toggle=document.createElement('button');toggle.type='button';toggle.className=enabled?'':'enable';toggle.disabled=busy;toggle.textContent=busy?'Saving…':enabled?'Disable':'Enable';
      toggle.onclick=()=>setPluginEnabled(p,!enabled);actions.appendChild(toggle);
      if(enabled&&needsConnection){
-       const connect=document.createElement('button');connect.type='button';
-       connect.disabled=busy||connected;
-       connect.textContent=connected?'Connected':p.connectable?'Connect account':p.public_connect_blocked?'Verification needed':'Setup needed';
-       connect.title=connected?'Connection active':p.connectable?'Open secure provider authorization':p.public_connect_blocked?(p.public_connect_reason||'NEXUS OAuth verification is required before public connection.'):'NEXUS still needs this provider OAuth/MCP registration.';
-       connect.onclick=()=>connectPlugin(p);
-       actions.appendChild(connect);
+       const setup=document.createElement('button');setup.type='button';setup.disabled=true;
+       setup.textContent=p.public_connect_blocked?'Provider setup needed':'Setup needed';
+       setup.title=p.public_connect_reason||'NEXUS still needs this provider OAuth/MCP registration.';
+       actions.appendChild(setup);
      }
    }
    row.appendChild(actions);box.appendChild(row);
