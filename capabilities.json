@@ -85,7 +85,11 @@
         "Webhooks",
         "automation bridges"
       ],
-      "secret_storage_in_browser": false
+      "secret_storage_in_browser": false,
+      "user_enable_disable": true,
+      "enablement_scope": "account",
+      "enablement_storage": "Neon RLS",
+      "connection_state_separate": true
     }
   },
   "billing": {
