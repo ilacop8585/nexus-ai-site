@@ -87,6 +87,8 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
   <button class="newchat" id="newChat">＋ New chat</button>
   <div class="snav">
     <button class="navbtn" id="jobsBtn"><span>My jobs</span><span class="small">0</span></button>
+    <button class="navbtn" id="libraryBtn"><span>Library</span><span class="small" id="libraryCount">Files</span></button>
+    <button class="navbtn" id="pluginsBtn"><span>Plugins</span><span class="small">Connect</span></button>
   </div>
   <div class="historybox">
     <div class="historytitle">Your chats</div>
@@ -139,8 +141,8 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <div class="compose-actions">
       <div class="left-actions">
         <button class="iconbtn" id="attachBtn" type="button" aria-label="Attach files">＋ Attach</button>
-        <input id="fileInput" type="file" multiple hidden accept="image/*,video/*,audio/*,.pdf,.txt,.md,.csv,.json,.xml,.zip,.tar,.gz,.docx,.xlsx,.pptx,.py,.js,.ts,.tsx,.jsx,.html,.css,.java,.c,.cpp,.h,.hpp,.rs,.go,.php,.sql">
-        <span class="beta" id="levelHint">Chat included · credits reserved for compute-heavy work</span>
+        <input id="fileInput" type="file" multiple hidden>
+        <span class="beta" id="levelHint">Any file type · up to 512 MB each · 20 files · server policy still applies</span>
       </div>
       <button class="send" id="sendBtn" type="button" aria-label="Send message">Send</button>
     </div>
@@ -192,6 +194,31 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
   </div>
 </div>
 
+<div class="modal" id="libraryModal">
+  <div class="modal-card jobs-card">
+    <h2>Library</h2>
+    <p>Your private NEXUS files. Files stay tied to your account and can reopen the chat they belong to.</p>
+    <div class="joblist" id="libraryList"><div class="small">Loading…</div></div>
+    <div class="modal-actions">
+      <button class="iconbtn" id="refreshLibrary" type="button">Refresh</button>
+      <button class="iconbtn" id="closeLibrary" type="button">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="pluginsModal">
+  <div class="modal-card jobs-card">
+    <h2>Plugins & connectors</h2>
+    <p>NEXUS now has a plugin catalog surface. Built-in capabilities are shown as active; external OAuth connectors are not presented as working until their backend connection route exists.</p>
+    <div class="joblist" id="pluginsList"><div class="small">Loading…</div></div>
+    <div class="notice" style="margin-top:12px">External services must be connected through a server-side OAuth/MCP bridge. NEXUS will not store third-party secrets in the browser.</div>
+    <div class="modal-actions">
+      <button class="iconbtn" id="refreshPlugins" type="button">Refresh</button>
+      <button class="iconbtn" id="closePlugins" type="button">Close</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { createClient } from 'https://esm.sh/@neondatabase/neon-js@0.7.0-beta';
 
@@ -199,6 +226,7 @@ const client = createClient('https://ep-sparkling-forest-b2v7x4ux.c-6.eu-central
 
 const promptEl=document.getElementById('prompt'), filesEl=document.getElementById('files'), input=document.getElementById('fileInput'), messages=document.getElementById('messages'), intro=document.getElementById('intro');
 let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null, computeCapabilities=new Set(), allConversations=[], historyLimit=50, lastConversationBatchSize=0, retryConversationId=null, retryPrompt='';
+const MAX_FILE_BYTES=512*1024*1024, MAX_FILES_PER_JOB=20, LAST_CHAT_KEY='nexus_last_conversation_id';
 const ROUTER_URL='https://nexus-ai-router.ilario-coppola.workers.dev/chat';
 const FILES_URL='https://br-jolly-scene-b2wyu6gt-nexusfiles.compute.c-6.eu-central-1.aws.neon.tech/';
 const STATUS_URL='https://br-jolly-scene-b2wyu6gt-nexusstatus.compute.c-6.eu-central-1.aws.neon.tech/';
@@ -254,13 +282,12 @@ document.getElementById('attachBtn').onclick=()=>{
 };
 input.onchange=()=>{
   const candidate=[...input.files];
-  const maxBytes=25*1024*1024;
-  if(candidate.length>5){
-    selectedFiles=[];input.value='';filesEl.innerHTML='<span class="filechip">Maximum 5 files per job.</span>';filesEl.classList.add('has');return;
+  if(candidate.length>MAX_FILES_PER_JOB){
+    selectedFiles=[];input.value='';filesEl.innerHTML='<span class="filechip">Maximum '+MAX_FILES_PER_JOB+' files per job.</span>';filesEl.classList.add('has');return;
   }
-  const tooBig=candidate.find(f=>f.size>maxBytes);
+  const tooBig=candidate.find(f=>f.size>MAX_FILE_BYTES);
   if(tooBig){
-    selectedFiles=[];input.value='';filesEl.innerHTML='<span class="filechip">'+escapeHtml(tooBig.name)+' exceeds the 25 MB beta limit.</span>';filesEl.classList.add('has');return;
+    selectedFiles=[];input.value='';filesEl.innerHTML='<span class="filechip">'+escapeHtml(tooBig.name)+' exceeds the 512 MB client limit. The server also validates storage policy.</span>';filesEl.classList.add('has');return;
   }
   selectedFiles=candidate;
   filesEl.innerHTML=selectedFiles.map(f=>'<span class="filechip">'+escapeHtml(f.name)+' · '+formatBytes(f.size)+'</span>').join('');
@@ -347,6 +374,9 @@ async function ensureConversation(firstText){
   const {data,error}=await client.from('nexus_conversations').insert({title,level}).select('id').single();
   if(error) throw error;
   currentConversationId=data.id;
+  try{localStorage.setItem(LAST_CHAT_KEY,String(currentConversationId))}catch{}
+  allConversations=[{id:data.id,title,level,updated_at:new Date().toISOString()},...allConversations.filter(x=>x.id!==data.id)];
+  renderHistory(allConversations);
   return currentConversationId;
 }
 
@@ -472,6 +502,7 @@ document.getElementById('sendBtn').onclick=async()=>{
    }
  }finally{
    document.getElementById('sendBtn').disabled=false;
+   if(currentConversationId) await touchConversation(currentConversationId);
    if(sendSucceeded){
      promptEl.value='';selectedFiles=[];input.value='';filesEl.innerHTML='';filesEl.classList.remove('has');
    }
@@ -487,7 +518,11 @@ function setSideOpen(open){
 }
 document.getElementById('mobileChatsBtn').onclick=()=>setSideOpen(true);
 sideBackdrop.onclick=()=>setSideOpen(false);
-function resetChat(){currentConversationId=null;retryConversationId=null;retryPrompt='';chatHistory=[];messages.innerHTML='';messages.classList.remove('has');intro.style.display='block';promptEl.value='';setLevel();setSideOpen(false)}
+function resetChat(){currentConversationId=null;retryConversationId=null;retryPrompt='';chatHistory=[];messages.innerHTML='';messages.classList.remove('has');intro.style.display='block';promptEl.value='';try{localStorage.removeItem(LAST_CHAT_KEY)}catch{}setLevel();setSideOpen(false)}
+async function touchConversation(id){
+  if(!id||!currentUser)return;
+  try{await client.from('nexus_conversations').update({updated_at:new Date().toISOString()}).eq('id',id)}catch{}
+}
 document.getElementById('newChat').onclick=resetChat;
 document.getElementById('topNewChat').onclick=resetChat;
 const jobsModal=document.getElementById('jobsModal');
@@ -596,10 +631,15 @@ async function signOut(){await client.auth.signOut();currentUser=null;currentCon
 async function loadSession(){
  try{
    const r=await client.auth.getSession();
-   currentUser=r?.data?.user||null;
+   currentUser=r?.data?.user||r?.data?.session?.user||null;
    if(currentUser){
      document.getElementById('loginBtn').textContent=(currentUser.name||currentUser.email||'Account').slice(0,22);
      await refreshAccountData();
+     if(!currentConversationId&&allConversations.length){
+       let remembered=null;try{remembered=localStorage.getItem(LAST_CHAT_KEY)}catch{}
+       const target=allConversations.find(x=>String(x.id)===String(remembered))||allConversations[0];
+       if(target)await loadConversation(target.id,target.level||'free');
+     }
    }else setLoggedOutUI();
  }catch(e){setAuthNotice('Auth unavailable: '+(e?.message||String(e)));setLoggedOutUI()}
 }
@@ -608,6 +648,7 @@ async function loadConversation(id,conversationLevel='free'){
  const {data,error}=await client.from('nexus_messages').select('role,content,metadata,created_at').eq('conversation_id',id).order('created_at',{ascending:true});
  if(error){alert(error.message);return}
  currentConversationId=id;retryConversationId=null;retryPrompt='';
+ try{localStorage.setItem(LAST_CHAT_KEY,String(id))}catch{}
  setLevel(conversationLevel);
  intro.style.display='none';
  messages.innerHTML='';
@@ -669,11 +710,82 @@ async function refreshAccountData(){
    document.getElementById('creditBar').style.width=(a?Math.min(100,(b/a)*100):0)+'%';
    document.getElementById('creditStatus').textContent='Available for NEXUS jobs';
  }
- document.querySelector('#jobsBtn .small').textContent=visibleJobs(jobs.data).length;
- lastConversationBatchSize=(convos.data||[]).length;
- renderHistory(convos.data||[]);
+ document.querySelector('#jobsBtn .small').textContent=jobs.error?'!':visibleJobs(jobs.data).length;
+ if(convos.error){
+   const box=document.getElementById('historyList');
+   box.innerHTML='<div class="notice">Chat history could not be loaded: '+escapeHtml(convos.error.message||String(convos.error))+'</div>';
+   document.getElementById('loadMoreChats').hidden=true;
+ }else{
+   lastConversationBatchSize=(convos.data||[]).length;
+   renderHistory(convos.data||[]);
+ }
 }
 function setLoggedOutUI(){currentBalance=0;renderHistory([]);document.getElementById('loginBtn').textContent='Sign in';document.getElementById('creditBalance').textContent='—';document.getElementById('creditAllowance').textContent=' / —';document.getElementById('creditBar').style.width='0%';document.getElementById('creditStatus').textContent='Sign in to load your real NEXUS balance.'}
+function pickField(row,names){for(const n of names){if(row&&row[n]!==undefined&&row[n]!==null&&row[n]!=='')return row[n]}return null}
+const libraryModal=document.getElementById('libraryModal'),pluginsModal=document.getElementById('pluginsModal');
+async function loadLibrary(){
+ const box=document.getElementById('libraryList');
+ if(!currentUser){box.innerHTML='<div class="notice">Sign in to load your private Library.</div>';return}
+ box.innerHTML='<div class="small">Loading…</div>';
+ const {data,error}=await client.from('nexus_attachments').select('*').limit(200);
+ if(error){box.innerHTML='<div class="notice">Library could not be loaded: '+escapeHtml(error.message||String(error))+'</div>';document.getElementById('libraryCount').textContent='!';return}
+ const rows=[...(data||[])].sort((a,b)=>new Date(pickField(b,['created_at','createdAt'])||0)-new Date(pickField(a,['created_at','createdAt'])||0));
+ document.getElementById('libraryCount').textContent=String(rows.length);
+ if(!rows.length){box.innerHTML='<div class="notice">No files in your Library yet. Attach a file in chat and it will appear here after upload verification.</div>';return}
+ box.innerHTML='';
+ rows.forEach(a=>{
+   const row=document.createElement('div');row.className='jobrow';
+   const head=document.createElement('div');head.className='jobhead';
+   const name=String(pickField(a,['filename','file_name','name','original_filename'])||'File');
+   const title=document.createElement('strong');title.textContent=name;
+   const status=document.createElement('span');status.className='jobstatus';status.textContent=String(pickField(a,['status','state'])||'stored');
+   head.append(title,status);row.appendChild(head);
+   const meta=document.createElement('div');meta.className='jobmeta';
+   const mime=pickField(a,['mime','mime_type','content_type'])||'file';
+   const bytes=Number(pickField(a,['size','size_bytes','bytes'])||0);
+   const created=pickField(a,['created_at','createdAt']);
+   meta.textContent=String(mime)+(bytes?' · '+formatBytes(bytes):'')+(created?' · '+fmtDate(created):'');
+   row.appendChild(meta);
+   const cid=pickField(a,['conversation_id','conversationId']);
+   if(cid){
+     const actions=document.createElement('div');actions.className='jobactions';
+     const open=document.createElement('button');open.type='button';open.textContent='Open chat';open.onclick=async()=>{libraryModal.classList.remove('show');await loadConversation(cid)};
+     actions.appendChild(open);row.appendChild(actions);
+   }
+   box.appendChild(row);
+ });
+}
+async function loadPlugins(){
+ const box=document.getElementById('pluginsList');box.innerHTML='<div class="small">Loading…</div>';
+ try{
+   const r=await fetch('./plugins.json?ts='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
+   const payload=await r.json(),items=Array.isArray(payload)?payload:(payload.plugins||[]);
+   if(!items.length){box.innerHTML='<div class="notice">No plugins are registered yet.</div>';return}
+   box.innerHTML='';
+   items.forEach(p=>{
+     const row=document.createElement('div');row.className='jobrow';
+     const head=document.createElement('div');head.className='jobhead';
+     const title=document.createElement('strong');title.textContent=p.name||p.id||'Plugin';
+     const status=document.createElement('span');status.className='jobstatus '+(p.status==='active'?'completed':'');status.textContent=p.status||'unknown';
+     head.append(title,status);row.appendChild(head);
+     const meta=document.createElement('div');meta.className='jobsummary';meta.textContent=p.description||'';
+     row.appendChild(meta);
+     if(p.status!=='active'){
+       const note=document.createElement('div');note.className='jobmeta';note.textContent=p.reason||'Backend connection route required before this connector can be enabled.';
+       row.appendChild(note);
+     }
+     box.appendChild(row);
+   });
+ }catch(e){box.innerHTML='<div class="notice">Plugin catalog could not be loaded: '+escapeHtml(e?.message||String(e))+'</div>'}
+}
+function openLibrary(){libraryModal.classList.add('show');loadLibrary()}
+function openPlugins(){pluginsModal.classList.add('show');loadPlugins()}
+document.getElementById('libraryBtn').onclick=openLibrary;
+document.getElementById('pluginsBtn').onclick=openPlugins;
+document.getElementById('refreshLibrary').onclick=loadLibrary;
+document.getElementById('closeLibrary').onclick=()=>libraryModal.classList.remove('show');
+document.getElementById('refreshPlugins').onclick=loadPlugins;
+document.getElementById('closePlugins').onclick=()=>pluginsModal.classList.remove('show');
 function openAuth(){modal.classList.add('show');document.getElementById('authEmail').focus()}
 function setAuthNotice(t){document.getElementById('authNotice').textContent=t}
 function addMsg(t,c){const d=document.createElement('div');d.className='msg '+c;d.textContent=t;messages.appendChild(d);d.scrollIntoView({behavior:'smooth',block:'end'});return d}
