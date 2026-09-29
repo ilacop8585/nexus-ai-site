@@ -768,6 +768,56 @@ async function loadPluginState(){
  if(error)throw error;
  (data||[]).forEach(x=>pluginState.set(x.plugin_id,x));
 }
+async function connectPlugin(p){
+ if(!p?.id)return;
+ if(!currentUser){
+   sessionStorage.setItem('nexus_pending_plugin_connect',p.id);
+   setAuthNotice('Sign in before connecting '+(p.name||p.id)+'.');
+   openAuth();return;
+ }
+ if(!p.connectable||!p.oauth_provider||!Array.isArray(p.oauth_scopes)||!p.oauth_scopes.length){
+   pluginActionMessage=(p.name||p.id)+' cannot connect yet because NEXUS still needs its provider OAuth registration.';
+   renderPlugins();return;
+ }
+ if(pluginBusy.has(p.id))return;
+ pluginBusy.add(p.id);pluginActionMessage='Opening '+(p.name||p.id)+' authorization…';renderPlugins();
+ try{
+   const state=pluginState.get(p.id);
+   if(!state?.enabled){
+     const {data,error}=await client.rpc('nexus_set_plugin_enabled',{
+       p_plugin_id:p.id,p_enabled:true,p_connection_required:true
+     });
+     if(error)throw error;
+     const row=Array.isArray(data)?data[0]:data;
+     if(row)pluginState.set(p.id,row);
+   }
+   sessionStorage.setItem('nexus_connecting_plugin',p.id);
+   const ok=new URL(location.origin+location.pathname);
+   ok.searchParams.set('plugin_connected',p.id);
+   const bad=new URL(location.origin+location.pathname);
+   bad.searchParams.set('plugin_connect_error',p.id);
+   const result=await client.auth.linkSocial({
+     provider:p.oauth_provider,
+     callbackURL:ok.toString(),
+     errorCallbackURL:bad.toString(),
+     scopes:p.oauth_scopes
+   });
+   if(result?.error)throw new Error(result.error.message||String(result.error));
+   if(result?.data?.url)location.assign(result.data.url);
+   else pluginActionMessage='Authorization started. Complete the provider consent screen to return to NEXUS.';
+ }catch(e){
+   sessionStorage.removeItem('nexus_connecting_plugin');
+   pluginActionMessage='Could not start '+(p.name||p.id)+' connection: '+(e?.message||String(e));
+   pluginBusy.delete(p.id);renderPlugins();
+ }
+}
+async function syncPluginConnection(id){
+ const {data,error}=await client.rpc('nexus_sync_plugin_connection',{p_plugin_id:id});
+ if(error)throw error;
+ const row=Array.isArray(data)?data[0]:data;
+ if(row)pluginState.set(id,row);
+ return row;
+}
 async function setPluginEnabled(p,enabled){
  if(!p?.id)return;
  if(!currentUser){
@@ -830,8 +880,11 @@ function renderPlugins(){
      const toggle=document.createElement('button');toggle.type='button';toggle.className=enabled?'':'enable';toggle.disabled=busy;toggle.textContent=busy?'Saving…':enabled?'Disable':'Enable';
      toggle.onclick=()=>setPluginEnabled(p,!enabled);actions.appendChild(toggle);
      if(enabled&&needsConnection){
-       const connect=document.createElement('button');connect.type='button';connect.disabled=true;connect.textContent=connected?'Connected':'Connect account';
-       connect.title=connected?'Connection active':'OAuth/MCP connector backend is not live yet for this service.';
+       const connect=document.createElement('button');connect.type='button';
+       connect.disabled=busy||connected;
+       connect.textContent=connected?'Connected':p.connectable?'Connect account':'Setup needed';
+       connect.title=connected?'Connection active':p.connectable?'Open secure provider authorization':'NEXUS still needs this provider OAuth/MCP registration.';
+       connect.onclick=()=>connectPlugin(p);
        actions.appendChild(connect);
      }
    }
@@ -903,6 +956,31 @@ async function resumePendingIntents(){
     sessionStorage.removeItem('nexus_pending_attach');
     addMsg('Sign-in complete. Use Attach now to choose your file; NEXUS will keep it private and create a tracked job.','ai');
   }
+  const callbackPlugin=qs.get('plugin_connected');
+  const callbackError=qs.get('plugin_connect_error');
+  if(callbackPlugin){
+    try{
+      await syncPluginConnection(callbackPlugin);
+      pluginsModal.classList.add('show');
+      await loadPlugins();
+      const row=pluginState.get(callbackPlugin);
+      const p=pluginCatalog.find(x=>x.id===callbackPlugin);
+      pluginActionMessage=(p?.name||callbackPlugin)+(row?.connection_status==='connected'?' connected successfully.':' returned from authorization, but the required permission was not granted.');
+      renderPlugins();
+    }catch(e){
+      pluginsModal.classList.add('show');await loadPlugins();
+      pluginActionMessage='Connection verification failed: '+(e?.message||String(e));renderPlugins();
+    }
+    sessionStorage.removeItem('nexus_connecting_plugin');
+    const clean=new URL(location.href);clean.searchParams.delete('plugin_connected');clean.searchParams.delete('plugin_connect_error');history.replaceState({},'',clean.pathname+clean.search+clean.hash);
+  }else if(callbackError){
+    pluginsModal.classList.add('show');await loadPlugins();
+    const p=pluginCatalog.find(x=>x.id===callbackError);
+    pluginActionMessage=(p?.name||callbackError)+' authorization was cancelled or failed.';
+    renderPlugins();
+    sessionStorage.removeItem('nexus_connecting_plugin');
+    const clean=new URL(location.href);clean.searchParams.delete('plugin_connected');clean.searchParams.delete('plugin_connect_error');history.replaceState({},'',clean.pathname+clean.search+clean.hash);
+  }
   const pendingPlugin=sessionStorage.getItem('nexus_pending_plugin');
   if(pendingPlugin){
     const enable=sessionStorage.getItem('nexus_pending_plugin_enable')!=='0';
@@ -912,6 +990,13 @@ async function resumePendingIntents(){
     await loadPlugins();
     const p=pluginCatalog.find(x=>x.id===pendingPlugin);
     if(p)await setPluginEnabled(p,enable);
+  }
+  const pendingConnect=sessionStorage.getItem('nexus_pending_plugin_connect');
+  if(pendingConnect){
+    sessionStorage.removeItem('nexus_pending_plugin_connect');
+    pluginsModal.classList.add('show');await loadPlugins();
+    const p=pluginCatalog.find(x=>x.id===pendingConnect);
+    if(p)await connectPlugin(p);
   }
 }
 loadSession().then(async()=>{await resumePendingIntents();await pollCreditTopup()});
