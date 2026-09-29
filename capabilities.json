@@ -77,7 +77,7 @@
       "category_count": 13,
       "searchable": true,
       "category_filter": true,
-      "external_oauth_connectors_active": true,
+      "external_oauth_connectors_active": false,
       "scalable_paths": [
         "MCP",
         "OAuth/API",
@@ -92,20 +92,14 @@
       "connection_state_separate": true,
       "live_connection_button": true,
       "oauth_provider_status": {
-        "google": "live_via_neon_auth",
+        "google": "shared_neon_login_only_for_now",
         "other_providers": "registration_required"
       },
-      "live_oauth_plugin_ids": [
-        "google-drive",
-        "gmail",
-        "google-calendar",
-        "google-contacts",
-        "google-sheets",
-        "youtube",
-        "bigquery"
-      ],
+      "live_oauth_plugin_ids": [],
       "connection_state_verified_server_side": true,
-      "connection_verifier": "nexus_sync_plugin_connection"
+      "connection_verifier": "nexus_sync_plugin_connection",
+      "google_plugin_oauth_status": "custom_nexus_oauth_verification_required",
+      "public_unverified_google_oauth_blocked": true
     }
   },
   "billing": {

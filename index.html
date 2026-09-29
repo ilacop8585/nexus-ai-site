@@ -869,7 +869,7 @@ function renderPlugins(){
    row.appendChild(meta);
    const stateLine=document.createElement('div');stateLine.className='plugin-state '+(connected?'connected':'');
    if(p.core)stateLine.textContent='Always available in NEXUS.';
-   else if(enabled&&needsConnection&&!connected)stateLine.textContent='Enabled for your account · external connection still required before NEXUS can use this service.';
+   else if(enabled&&needsConnection&&!connected)stateLine.textContent=p.public_connect_blocked?'Enabled for your account · NEXUS OAuth verification is required before public connection.':'Enabled for your account · external connection still required before NEXUS can use this service.';
    else if(enabled)stateLine.textContent='Enabled for your account.';
    else stateLine.textContent='Not enabled for your account.';
    row.appendChild(stateLine);
@@ -882,8 +882,8 @@ function renderPlugins(){
      if(enabled&&needsConnection){
        const connect=document.createElement('button');connect.type='button';
        connect.disabled=busy||connected;
-       connect.textContent=connected?'Connected':p.connectable?'Connect account':'Setup needed';
-       connect.title=connected?'Connection active':p.connectable?'Open secure provider authorization':'NEXUS still needs this provider OAuth/MCP registration.';
+       connect.textContent=connected?'Connected':p.connectable?'Connect account':p.public_connect_blocked?'Verification needed':'Setup needed';
+       connect.title=connected?'Connection active':p.connectable?'Open secure provider authorization':p.public_connect_blocked?(p.public_connect_reason||'NEXUS OAuth verification is required before public connection.'):'NEXUS still needs this provider OAuth/MCP registration.';
        connect.onclick=()=>connectPlugin(p);
        actions.appendChild(connect);
      }
