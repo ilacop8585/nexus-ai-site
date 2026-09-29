@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "updated_at": "2026-09-29",
   "summary": {
     "total": 60,
@@ -8,9 +8,10 @@
     "policy": "Catalog entries describe intended integrations. Only status=active is available to users.",
     "user_enablement": "account_scoped_neon",
     "connection_state": "separate_from_enablement",
-    "live_oauth_connectors": 7,
-    "live_oauth_provider": "google_via_neon_auth",
-    "other_oauth_providers": "require_nexus_provider_registration"
+    "live_oauth_connectors": 0,
+    "live_oauth_provider": null,
+    "other_oauth_providers": "require_nexus_provider_registration",
+    "google_oauth_status": "custom_nexus_oauth_verification_required"
   },
   "plugins": [
     {
@@ -39,13 +40,15 @@
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
       "connection_required": true,
-      "connectable": true,
+      "connectable": false,
       "connection_mode": "oauth",
       "oauth_provider": "google",
       "oauth_scopes": [
         "https://www.googleapis.com/auth/drive.readonly"
       ],
-      "connection_status": "live_oauth_flow"
+      "connection_status": "custom_nexus_oauth_required",
+      "public_connect_blocked": true,
+      "public_connect_reason": "NEXUS must use its own verified Google OAuth client for sensitive Google API scopes before public users connect."
     },
     {
       "id": "gmail",
@@ -59,13 +62,15 @@
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
       "connection_required": true,
-      "connectable": true,
+      "connectable": false,
       "connection_mode": "oauth",
       "oauth_provider": "google",
       "oauth_scopes": [
         "https://www.googleapis.com/auth/gmail.readonly"
       ],
-      "connection_status": "live_oauth_flow"
+      "connection_status": "custom_nexus_oauth_required",
+      "public_connect_blocked": true,
+      "public_connect_reason": "NEXUS must use its own verified Google OAuth client for sensitive Google API scopes before public users connect."
     },
     {
       "id": "google-calendar",
@@ -79,13 +84,15 @@
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
       "connection_required": true,
-      "connectable": true,
+      "connectable": false,
       "connection_mode": "oauth",
       "oauth_provider": "google",
       "oauth_scopes": [
         "https://www.googleapis.com/auth/calendar.readonly"
       ],
-      "connection_status": "live_oauth_flow"
+      "connection_status": "custom_nexus_oauth_required",
+      "public_connect_blocked": true,
+      "public_connect_reason": "NEXUS must use its own verified Google OAuth client for sensitive Google API scopes before public users connect."
     },
     {
       "id": "google-contacts",
@@ -99,13 +106,15 @@
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
       "connection_required": true,
-      "connectable": true,
+      "connectable": false,
       "connection_mode": "oauth",
       "oauth_provider": "google",
       "oauth_scopes": [
         "https://www.googleapis.com/auth/contacts.readonly"
       ],
-      "connection_status": "live_oauth_flow"
+      "connection_status": "custom_nexus_oauth_required",
+      "public_connect_blocked": true,
+      "public_connect_reason": "NEXUS must use its own verified Google OAuth client for sensitive Google API scopes before public users connect."
     },
     {
       "id": "google-maps",
@@ -134,13 +143,15 @@
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
       "connection_required": true,
-      "connectable": true,
+      "connectable": false,
       "connection_mode": "oauth",
       "oauth_provider": "google",
       "oauth_scopes": [
         "https://www.googleapis.com/auth/youtube.readonly"
       ],
-      "connection_status": "live_oauth_flow"
+      "connection_status": "custom_nexus_oauth_required",
+      "public_connect_blocked": true,
+      "public_connect_reason": "NEXUS must use its own verified Google OAuth client for sensitive Google API scopes before public users connect."
     },
     {
       "id": "dropbox",
@@ -484,13 +495,15 @@
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
       "connection_required": true,
-      "connectable": true,
+      "connectable": false,
       "connection_mode": "oauth",
       "oauth_provider": "google",
       "oauth_scopes": [
         "https://www.googleapis.com/auth/spreadsheets.readonly"
       ],
-      "connection_status": "live_oauth_flow"
+      "connection_status": "custom_nexus_oauth_required",
+      "public_connect_blocked": true,
+      "public_connect_reason": "NEXUS must use its own verified Google OAuth client for sensitive Google API scopes before public users connect."
     },
     {
       "id": "snowflake",
@@ -519,13 +532,15 @@
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
       "connection_required": true,
-      "connectable": true,
+      "connectable": false,
       "connection_mode": "oauth",
       "oauth_provider": "google",
       "oauth_scopes": [
         "https://www.googleapis.com/auth/bigquery.readonly"
       ],
-      "connection_status": "live_oauth_flow"
+      "connection_status": "custom_nexus_oauth_required",
+      "public_connect_blocked": true,
+      "public_connect_reason": "NEXUS must use its own verified Google OAuth client for sensitive Google API scopes before public users connect."
     },
     {
       "id": "postgres",
