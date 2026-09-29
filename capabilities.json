@@ -99,7 +99,24 @@
       "connection_state_verified_server_side": true,
       "connection_verifier": "nexus_sync_plugin_connection",
       "google_plugin_oauth_status": "custom_nexus_oauth_verification_required",
-      "public_unverified_google_oauth_blocked": true
+      "public_unverified_google_oauth_blocked": true,
+      "connection_flow": "connect -> provider login/signup -> authorize -> callback -> connected+enabled",
+      "encrypted_token_vault": true,
+      "token_storage_schema": "private",
+      "browser_token_persistence": false,
+      "live_mcp_oauth_plugin_ids": [
+        "neon"
+      ],
+      "neon_connection": {
+        "mode": "hosted_mcp_oauth_pkce",
+        "resource": "https://mcp.neon.tech/sse",
+        "status": "live"
+      },
+      "github_connection": {
+        "mode": "remote_mcp_oauth",
+        "resource": "https://api.githubcopilot.com/mcp/",
+        "status": "nexus_client_registration_required"
+      }
     }
   },
   "billing": {

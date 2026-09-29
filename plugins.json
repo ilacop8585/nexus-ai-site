@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "updated_at": "2026-09-29",
   "summary": {
     "total": 60,
@@ -11,7 +11,9 @@
     "live_oauth_connectors": 0,
     "live_oauth_provider": null,
     "other_oauth_providers": "require_nexus_provider_registration",
-    "google_oauth_status": "custom_nexus_oauth_verification_required"
+    "google_oauth_status": "custom_nexus_oauth_verification_required",
+    "connection_model": "connect_redirect_authorize_callback_enable",
+    "live_mcp_oauth_connectors": 1
   },
   "plugins": [
     {
@@ -565,12 +567,21 @@
       "type": "oauth",
       "integration_path": "mcp",
       "priority": "P0",
-      "description": "Inspect and operate Neon Postgres projects.",
+      "description": "Connect a Neon account through Neon's hosted MCP OAuth flow; after authorization, NEXUS stores the connection securely for the signed-in user.",
       "reason": "Requires the NEXUS server-side connector bridge, account-scoped authorization and encrypted credential handling before activation.",
       "core": false,
       "connection_required": true,
-      "connectable": false,
-      "connection_status": "provider_registration_required"
+      "connectable": true,
+      "connection_status": "live_mcp_oauth",
+      "connection_mode": "mcp_oauth_pkce",
+      "mcp_resource": "https://mcp.neon.tech/sse",
+      "oauth_authorization_endpoint": "https://mcp.neon.tech/api/authorize",
+      "oauth_token_endpoint": "https://mcp.neon.tech/api/token",
+      "oauth_client_id": "Z0jLoyHK",
+      "oauth_redirect_uri": "https://nexusword.it/?plugin_oauth=neon",
+      "oauth_scope": "read write",
+      "public_connect_blocked": false,
+      "public_connect_reason": null
     },
     {
       "id": "supabase",
@@ -600,7 +611,11 @@
       "core": false,
       "connection_required": true,
       "connectable": false,
-      "connection_status": "provider_registration_required"
+      "connection_status": "nexus_client_registration_required",
+      "connection_mode": "remote_mcp_oauth",
+      "mcp_resource": "https://api.githubcopilot.com/mcp/",
+      "public_connect_blocked": true,
+      "public_connect_reason": "GitHub's remote MCP supports one-click OAuth, but NEXUS must first have its own registered OAuth/GitHub App identity."
     },
     {
       "id": "gitlab",
