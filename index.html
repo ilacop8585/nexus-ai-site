@@ -63,7 +63,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
  textarea{min-width:0;max-width:100%}.msg{max-width:94%}
 }
 
-.mobile-only{display:none}.internal-status{display:none!important}.historysearch{width:100%;border:1px solid var(--line);background:#090e15;color:var(--text);border-radius:9px;padding:9px 10px;outline:none}.historysearch:focus{border-color:#3c536d}.historymore{font-size:12px;text-align:center;justify-content:center!important}.side-backdrop{display:none}.plugin-tools{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:8px;margin:12px 0}.plugin-tools select{width:100%;border:1px solid var(--line);background:#090e15;color:var(--text);border-radius:9px;padding:9px 10px;outline:none}.plugin-category{color:var(--accent);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-top:5px}
+.mobile-only{display:none}.internal-status{display:none!important}.historysearch{width:100%;border:1px solid var(--line);background:#090e15;color:var(--text);border-radius:9px;padding:9px 10px;outline:none}.historysearch:focus{border-color:#3c536d}.historymore{font-size:12px;text-align:center;justify-content:center!important}.side-backdrop{display:none}.plugin-tools{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:8px;margin:12px 0}.plugin-tools select{width:100%;border:1px solid var(--line);background:#090e15;color:var(--text);border-radius:9px;padding:9px 10px;outline:none}.plugin-category{color:var(--accent);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-top:5px}.plugin-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.plugin-actions button{border:1px solid var(--line);background:#0b1119;color:#d8e5f1;border-radius:8px;padding:7px 10px;cursor:pointer;font-size:11px;font-weight:800}.plugin-actions button.enable{background:var(--accent);color:#04100b;border-color:var(--accent)}.plugin-actions button[disabled]{opacity:.48;cursor:not-allowed}.plugin-enabled{border-color:#24543a!important}.plugin-state{font-size:11px;margin-top:7px;color:#aebed0}.plugin-state.connected{color:var(--accent)}
 @media(max-width:820px){
  .mobile-only{display:inline-flex}
  .side{display:flex;position:fixed;left:0;top:0;bottom:0;width:min(86vw,340px);height:100dvh;z-index:60;transform:translateX(-105%);transition:transform .2s ease;box-shadow:24px 0 60px rgba(0,0,0,.45)}
@@ -230,7 +230,7 @@ import { createClient } from 'https://esm.sh/@neondatabase/neon-js@0.7.0-beta';
 const client = createClient('https://ep-sparkling-forest-b2v7x4ux.c-6.eu-central-1.aws.neon.tech/neondb');
 
 const promptEl=document.getElementById('prompt'), filesEl=document.getElementById('files'), input=document.getElementById('fileInput'), messages=document.getElementById('messages'), intro=document.getElementById('intro');
-let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null, computeCapabilities=new Set(), allConversations=[], historyLimit=50, lastConversationBatchSize=0, retryConversationId=null, retryPrompt='', pluginCatalog=[];
+let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null, computeCapabilities=new Set(), allConversations=[], historyLimit=50, lastConversationBatchSize=0, retryConversationId=null, retryPrompt='', pluginCatalog=[], pluginState=new Map(), pluginBusy=new Set(), pluginActionMessage='';
 const MAX_FILE_BYTES=512*1024*1024, MAX_FILES_PER_JOB=20, LAST_CHAT_KEY='nexus_last_conversation_id';
 const ROUTER_URL='https://nexus-ai-router.ilario-coppola.workers.dev/chat';
 const FILES_URL='https://br-jolly-scene-b2wyu6gt-nexusfiles.compute.c-6.eu-central-1.aws.neon.tech/';
@@ -632,7 +632,7 @@ document.getElementById('googleLogin').onclick=async()=>{
  if(r?.error) setAuthNotice(r.error.message);
 };
 
-async function signOut(){await client.auth.signOut();currentUser=null;currentConversationId=null;setLoggedOutUI();}
+async function signOut(){await client.auth.signOut();currentUser=null;currentConversationId=null;pluginState.clear();setLoggedOutUI();}
 async function loadSession(){
  try{
    const r=await client.auth.getSession();
@@ -760,34 +760,86 @@ async function loadLibrary(){
    box.appendChild(row);
  });
 }
+function pluginConnectionRequired(p){return p.connection_required!==false&&p.integration_path!=='builtin'}
+async function loadPluginState(){
+ pluginState.clear();
+ if(!currentUser)return;
+ const {data,error}=await client.from('nexus_user_plugins').select('plugin_id,enabled,connection_status,enabled_at,disabled_at,updated_at').limit(500);
+ if(error)throw error;
+ (data||[]).forEach(x=>pluginState.set(x.plugin_id,x));
+}
+async function setPluginEnabled(p,enabled){
+ if(!p?.id)return;
+ if(!currentUser){
+   sessionStorage.setItem('nexus_pending_plugin',p.id);
+   sessionStorage.setItem('nexus_pending_plugin_enable',enabled?'1':'0');
+   setAuthNotice('Sign in to '+(enabled?'enable ':'disable ')+(p.name||p.id)+'. The change will be saved to your NEXUS account.');
+   openAuth();return;
+ }
+ if(pluginBusy.has(p.id)||p.core)return;
+ pluginBusy.add(p.id);pluginActionMessage='Saving '+(p.name||p.id)+'…';renderPlugins();
+ try{
+   const {data,error}=await client.rpc('nexus_set_plugin_enabled',{
+     p_plugin_id:p.id,
+     p_enabled:!!enabled,
+     p_connection_required:pluginConnectionRequired(p)
+   });
+   if(error)throw error;
+   const row=Array.isArray(data)?data[0]:data;
+   if(row)pluginState.set(p.id,row);else await loadPluginState();
+   pluginActionMessage=(p.name||p.id)+(enabled?' enabled for your account.':' disabled for your account.');
+ }catch(e){
+   pluginActionMessage='Could not change '+(p.name||p.id)+': '+(e?.message||String(e));
+ }finally{
+   pluginBusy.delete(p.id);renderPlugins();
+ }
+}
 function renderPlugins(){
  const box=document.getElementById('pluginsList'),search=(document.getElementById('pluginSearch').value||'').trim().toLowerCase(),category=document.getElementById('pluginCategory').value;
  const items=pluginCatalog.filter(p=>{
    const hay=[p.name,p.id,p.category,p.description,p.type,p.integration_path].filter(Boolean).join(' ').toLowerCase();
    return (!search||hay.includes(search))&&(!category||p.category===category);
  });
- document.getElementById('pluginSummary').textContent=items.length+' shown · '+pluginCatalog.length+' catalogued · '+pluginCatalog.filter(p=>p.status==='active').length+' active now';
+ const enabledCount=pluginCatalog.filter(p=>p.core||pluginState.get(p.id)?.enabled).length;
+ document.getElementById('pluginSummary').textContent=items.length+' shown · '+pluginCatalog.length+' catalogued · '+enabledCount+' enabled'+(pluginActionMessage?' · '+pluginActionMessage:'');
  box.innerHTML='';
  if(!items.length){box.innerHTML='<div class="notice">No plugins match this search.</div>';return}
  items.forEach(p=>{
-   const row=document.createElement('div');row.className='jobrow';
+   const state=pluginState.get(p.id),enabled=!!p.core||!!state?.enabled,busy=pluginBusy.has(p.id),needsConnection=pluginConnectionRequired(p),connected=state?.connection_status==='connected';
+   const row=document.createElement('div');row.className='jobrow'+(enabled?' plugin-enabled':'');
    const head=document.createElement('div');head.className='jobhead';
    const title=document.createElement('strong');title.textContent=p.name||p.id||'Plugin';
-   const status=document.createElement('span');status.className='jobstatus '+(p.status==='active'?'completed':'');status.textContent=p.status==='active'?'active':'coming';
+   const status=document.createElement('span');
+   status.className='jobstatus '+((enabled&&(!needsConnection||connected))?'completed':'');
+   status.textContent=p.core?'built-in':enabled?(connected?'connected':'enabled'):'available';
    head.append(title,status);row.appendChild(head);
    const cat=document.createElement('div');cat.className='plugin-category';cat.textContent=(p.category||'Other')+' · '+(p.integration_path||p.type||'connector');
    row.appendChild(cat);
    const meta=document.createElement('div');meta.className='jobsummary';meta.textContent=p.description||'';
    row.appendChild(meta);
-   if(p.status!=='active'){
-     const note=document.createElement('div');note.className='jobmeta';note.textContent='Server connector required before activation.';
-     row.appendChild(note);
+   const stateLine=document.createElement('div');stateLine.className='plugin-state '+(connected?'connected':'');
+   if(p.core)stateLine.textContent='Always available in NEXUS.';
+   else if(enabled&&needsConnection&&!connected)stateLine.textContent='Enabled for your account · external connection still required before NEXUS can use this service.';
+   else if(enabled)stateLine.textContent='Enabled for your account.';
+   else stateLine.textContent='Not enabled for your account.';
+   row.appendChild(stateLine);
+   const actions=document.createElement('div');actions.className='plugin-actions';
+   if(p.core){
+     const core=document.createElement('button');core.type='button';core.disabled=true;core.textContent='Always on';actions.appendChild(core);
+   }else{
+     const toggle=document.createElement('button');toggle.type='button';toggle.className=enabled?'':'enable';toggle.disabled=busy;toggle.textContent=busy?'Saving…':enabled?'Disable':'Enable';
+     toggle.onclick=()=>setPluginEnabled(p,!enabled);actions.appendChild(toggle);
+     if(enabled&&needsConnection){
+       const connect=document.createElement('button');connect.type='button';connect.disabled=true;connect.textContent=connected?'Connected':'Connect account';
+       connect.title=connected?'Connection active':'OAuth/MCP connector backend is not live yet for this service.';
+       actions.appendChild(connect);
+     }
    }
-   box.appendChild(row);
+   row.appendChild(actions);box.appendChild(row);
  });
 }
 async function loadPlugins(){
- const box=document.getElementById('pluginsList');box.innerHTML='<div class="small">Loading…</div>';
+ const box=document.getElementById('pluginsList');box.innerHTML='<div class="small">Loading…</div>';pluginActionMessage='';
  try{
    const r=await fetch('./plugins.json?ts='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
    const payload=await r.json();pluginCatalog=Array.isArray(payload)?payload:(payload.plugins||[]);
@@ -797,6 +849,7 @@ async function loadPlugins(){
    const categories=[...new Set(pluginCatalog.map(p=>p.category).filter(Boolean))].sort();
    select.innerHTML='<option value="">All categories</option>'+categories.map(v=>'<option value="'+escapeHtml(v)+'">'+escapeHtml(v)+'</option>').join('');
    if(categories.includes(current))select.value=current;
+   try{await loadPluginState()}catch(e){pluginActionMessage='Account plugin state unavailable: '+(e?.message||String(e))}
    renderPlugins();
  }catch(e){box.innerHTML='<div class="notice">Plugin catalog could not be loaded: '+escapeHtml(e?.message||String(e))+'</div>'}
 }
@@ -849,6 +902,16 @@ async function resumePendingIntents(){
   if(sessionStorage.getItem('nexus_pending_attach')==='1'){
     sessionStorage.removeItem('nexus_pending_attach');
     addMsg('Sign-in complete. Use Attach now to choose your file; NEXUS will keep it private and create a tracked job.','ai');
+  }
+  const pendingPlugin=sessionStorage.getItem('nexus_pending_plugin');
+  if(pendingPlugin){
+    const enable=sessionStorage.getItem('nexus_pending_plugin_enable')!=='0';
+    sessionStorage.removeItem('nexus_pending_plugin');
+    sessionStorage.removeItem('nexus_pending_plugin_enable');
+    openPlugins();
+    await loadPlugins();
+    const p=pluginCatalog.find(x=>x.id===pendingPlugin);
+    if(p)await setPluginEnabled(p,enable);
   }
 }
 loadSession().then(async()=>{await resumePendingIntents();await pollCreditTopup()});
