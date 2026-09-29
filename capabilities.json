@@ -73,7 +73,18 @@
     "plugins": {
       "catalog_active": true,
       "catalog_url": "https://nexusword.it/plugins.json",
+      "catalog_count": 60,
+      "category_count": 13,
+      "searchable": true,
+      "category_filter": true,
       "external_oauth_connectors_active": false,
+      "scalable_paths": [
+        "MCP",
+        "OAuth/API",
+        "OpenAPI",
+        "Webhooks",
+        "automation bridges"
+      ],
       "secret_storage_in_browser": false
     }
   },
