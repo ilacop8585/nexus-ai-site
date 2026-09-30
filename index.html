@@ -494,6 +494,7 @@ document.getElementById('sendBtn').onclick=async()=>{
 
    }
  }catch(e){
+   console.error('NEXUS delivery failure:',e?.message||String(e));
    think.className='msg ai';
    const mediaCapacityUnavailable=e?.code==='MEDIA_CAPACITY_UNAVAILABLE'||String(e?.message||'')==='MEDIA_CAPACITY_UNAVAILABLE';
    const safeFailure=mediaCapacityUnavailable
