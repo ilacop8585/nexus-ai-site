@@ -242,15 +242,22 @@ async function callNexus(payload){
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),30000);
     try{
+      const session=await client.auth.getSession();
+      const token=session?.data?.session?.token||null;
+      if(!token)throw new Error('not_authenticated');
       const response=await fetch(ROUTER_URL,{
         method:'POST',
-        headers:{'Content-Type':'application/json'},
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization':'Bearer '+token
+        },
         body:JSON.stringify(payload),
         signal:controller.signal
       });
       const data=await response.json().catch(()=>({}));
       if(response.ok&&data?.ok&&data?.reply)return data;
-      lastError=new Error('temporarily_unavailable');
+      if(response.status===401)throw new Error('not_authenticated');
+      lastError=new Error(data?.error||'temporarily_unavailable');
     }catch(e){lastError=e}
     finally{clearTimeout(timer)}
     if(attempt===0)await new Promise(r=>setTimeout(r,650));
