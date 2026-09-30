@@ -242,8 +242,8 @@ async function callNexus(payload){
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),30000);
     try{
-      const session=await client.auth.getSession();
-      const token=session?.data?.session?.token||null;
+      const tokenResult=await client.auth.token();
+      const token=tokenResult?.data?.token||null;
       if(!token)throw new Error('not_authenticated');
       const response=await fetch(ROUTER_URL,{
         method:'POST',
