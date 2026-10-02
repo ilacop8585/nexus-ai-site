@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="it">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NEXUS ID → Foundry</title></head>
+<body style="margin:0;background:#07090f;color:#eef3ff;font-family:system-ui;display:grid;place-items:center;min-height:100vh">
+<div style="text-align:center"><h2>NEXUS ID</h2><p id="s">Verifica sessione e ritorno a Foundry…</p></div>
+<script type="module">
+import { createClient } from 'https://esm.sh/@neondatabase/neon-js@0.7.0-beta';
+const client=createClient('https://ep-sparkling-forest-b2v7x4ux.c-6.eu-central-1.aws.neon.tech/neondb');
+const target='https://nexus-foundry-chi.vercel.app/?auth=google';
+const requested=new URLSearchParams(location.search).get('to')||target;
+const safe=requested===target?requested:target;
+try{
+ const r=await client.auth.getSession();
+ const user=r?.data?.user||r?.data?.session?.user||null;
+ if(user) location.replace(safe);
+ else {document.getElementById('s').textContent='Sessione non disponibile. Torno a NEXUS.';setTimeout(()=>location.replace('https://nexusword.it/'),1200);}
+}catch(e){document.getElementById('s').textContent='Errore sessione. Torno a NEXUS.';setTimeout(()=>location.replace('https://nexusword.it/'),1200);}
+</script></body></html>
