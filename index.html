@@ -610,7 +610,7 @@ document.getElementById('closeJobs').onclick=()=>{jobsModal.classList.remove('sh
 jobsModal.onclick=e=>{if(e.target.id==='jobsModal'){jobsModal.classList.remove('show');clearInterval(jobsPoll);jobsPoll=null}};
 
 const modal=document.getElementById('loginModal');
-document.getElementById('loginBtn').onclick=()=> currentUser ? signOut() : openAuth();
+document.getElementById('loginBtn').onclick=()=>{if(!currentUser){openAuth();return}if(confirm('Sign out of NEXUS?'))signOut()};
 document.getElementById('closeLogin').onclick=()=>modal.classList.remove('show');
 modal.onclick=e=>{if(e.target.id==='loginModal')modal.classList.remove('show')};
 document.getElementById('toggleAuth').onclick=()=>{
