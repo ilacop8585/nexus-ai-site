@@ -211,7 +211,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 <div class="modal" id="pluginsModal">
   <div class="modal-card jobs-card">
     <h2>Plugins & connectors</h2>
-    <p>Enable plugins on your NEXUS account and keep the same selection across devices. External services may also require a separate OAuth/MCP connection before NEXUS can use them.</p>
+    <p>Connect integrations that are actually available for your NEXUS account. Catalogued integrations marked as setup required are not usable yet and cannot be enabled until NEXUS completes the provider registration.</p>
     <div class="plugin-tools">
       <input class="historysearch" id="pluginSearch" type="search" placeholder="Search 60 plugins…" autocomplete="off" aria-label="Search plugins">
       <select id="pluginCategory" aria-label="Plugin category"><option value="">All categories</option></select>
@@ -245,7 +245,7 @@ async function callNexus(payload){
     const timer=setTimeout(()=>controller.abort(),30000);
     try{
       const tokenResult=await client.auth.token();
-      const token=tokenResult?.data?.token||null;
+      const token=tokenResult?.data?.token||tokenResult?.data?.session?.token||tokenResult?.token||tokenResult?.session?.token||null;
       if(!token)throw new Error('not_authenticated');
       const response=await fetch(ROUTER_URL,{
         method:'POST',
@@ -870,6 +870,10 @@ async function syncPluginConnection(id){
 }
 async function setPluginEnabled(p,enabled){
  if(!p?.id)return;
+ if(enabled&&pluginConnectionRequired(p)&&!p.connectable){
+   pluginActionMessage=(p.name||p.id)+' is not available yet because NEXUS still needs the provider registration.';
+   renderPlugins();return;
+ }
  if(!currentUser){
    sessionStorage.setItem('nexus_pending_plugin',p.id);
    sessionStorage.setItem('nexus_pending_plugin_enable',enabled?'1':'0');
@@ -913,18 +917,26 @@ function renderPlugins(){
    const hay=[p.name,p.id,p.category,p.description,p.type,p.integration_path].filter(Boolean).join(' ').toLowerCase();
    return (!search||hay.includes(search))&&(!category||p.category===category);
  });
- const enabledCount=pluginCatalog.filter(p=>p.core||pluginState.get(p.id)?.enabled).length;
- document.getElementById('pluginSummary').textContent=items.length+' shown · '+pluginCatalog.length+' catalogued · '+enabledCount+' enabled'+(pluginActionMessage?' · '+pluginActionMessage:'');
+ const readyCount=pluginCatalog.filter(p=>{
+   const state=pluginState.get(p.id),enabled=!!p.core||!!state?.enabled,needsConnection=pluginConnectionRequired(p),connected=state?.connection_status==='connected';
+   return !!p.core||!!(enabled&&(!needsConnection||connected));
+ }).length;
+ const pendingCount=pluginCatalog.filter(p=>{
+   const state=pluginState.get(p.id);
+   return !p.core&&!!state?.enabled&&pluginConnectionRequired(p)&&state?.connection_status!=='connected';
+ }).length;
+ document.getElementById('pluginSummary').textContent=items.length+' shown · '+pluginCatalog.length+' catalogued · '+readyCount+' ready'+(pendingCount?' · '+pendingCount+' selected but not connected':'')+(pluginActionMessage?' · '+pluginActionMessage:'');
  box.innerHTML='';
  if(!items.length){box.innerHTML='<div class="notice">No plugins match this search.</div>';return}
  items.forEach(p=>{
    const state=pluginState.get(p.id),enabled=!!p.core||!!state?.enabled,busy=pluginBusy.has(p.id),needsConnection=pluginConnectionRequired(p),connected=state?.connection_status==='connected';
-   const row=document.createElement('div');row.className='jobrow'+(enabled?' plugin-enabled':'');
+   const ready=!!p.core||!!(enabled&&(!needsConnection||connected));
+   const row=document.createElement('div');row.className='jobrow'+(ready?' plugin-enabled':'');
    const head=document.createElement('div');head.className='jobhead';
    const title=document.createElement('strong');title.textContent=p.name||p.id||'Plugin';
    const status=document.createElement('span');
-   status.className='jobstatus '+((enabled&&(!needsConnection||connected))?'completed':'');
-   status.textContent=p.core?'built-in':enabled?(connected?'connected':'enabled'):'available';
+   status.className='jobstatus '+(ready?'completed':'');
+   status.textContent=p.core?'built-in':connected?(enabled?'connected':'connected · off'):needsConnection&&!p.connectable?'setup required':enabled?'selected':'available';
    head.append(title,status);row.appendChild(head);
    const cat=document.createElement('div');cat.className='plugin-category';cat.textContent=(p.category||'Other')+' · '+(p.integration_path||p.type||'connector');
    row.appendChild(cat);
@@ -932,9 +944,9 @@ function renderPlugins(){
    row.appendChild(meta);
    const stateLine=document.createElement('div');stateLine.className='plugin-state '+(connected?'connected':'');
    if(p.core)stateLine.textContent='Always available in NEXUS.';
-   else if(connected)stateLine.textContent='Connected and enabled for your account.';
+   else if(connected)stateLine.textContent=enabled?'Connected and enabled for your account.':'Connected, but currently disabled for your account.';
    else if(p.connectable&&needsConnection)stateLine.textContent='Connect your '+(p.name||'provider')+' account to enable this plugin.';
-   else if(enabled&&needsConnection)stateLine.textContent=p.public_connect_blocked?'Enabled for your account · provider setup is still required before connection.':'Enabled for your account · external connection still required before NEXUS can use this service.';
+   else if(needsConnection&&!p.connectable)stateLine.textContent=enabled?'Selected previously, but not usable until NEXUS completes provider setup.':'Not available yet: NEXUS provider setup is still required.';
    else if(enabled)stateLine.textContent='Enabled for your account.';
    else stateLine.textContent='Not enabled for your account.';
    row.appendChild(stateLine);
@@ -953,15 +965,18 @@ function renderPlugins(){
        connect.title='Sign in or register with '+(p.name||'the provider')+', authorize NEXUS, then return connected.';
        connect.onclick=()=>connectPlugin(p);actions.appendChild(connect);
      }
+   }else if(needsConnection&&!p.connectable){
+     if(enabled){
+       const disable=document.createElement('button');disable.type='button';disable.disabled=busy;disable.textContent=busy?'Saving…':'Disable';
+       disable.onclick=()=>setPluginEnabled(p,false);actions.appendChild(disable);
+     }
+     const setup=document.createElement('button');setup.type='button';setup.disabled=true;
+     setup.textContent=p.public_connect_blocked?'Provider setup needed':'Setup needed';
+     setup.title=p.public_connect_reason||'NEXUS still needs this provider OAuth/MCP registration.';
+     actions.appendChild(setup);
    }else{
      const toggle=document.createElement('button');toggle.type='button';toggle.className=enabled?'':'enable';toggle.disabled=busy;toggle.textContent=busy?'Saving…':enabled?'Disable':'Enable';
      toggle.onclick=()=>setPluginEnabled(p,!enabled);actions.appendChild(toggle);
-     if(enabled&&needsConnection){
-       const setup=document.createElement('button');setup.type='button';setup.disabled=true;
-       setup.textContent=p.public_connect_blocked?'Provider setup needed':'Setup needed';
-       setup.title=p.public_connect_reason||'NEXUS still needs this provider OAuth/MCP registration.';
-       actions.appendChild(setup);
-     }
    }
    row.appendChild(actions);box.appendChild(row);
  });
