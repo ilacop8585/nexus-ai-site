@@ -260,15 +260,19 @@ const FILES_URL='https://br-jolly-scene-b2wyu6gt-nexusfiles.compute.c-6.eu-centr
 const STATUS_URL='https://br-jolly-scene-b2wyu6gt-nexusstatus.compute.c-6.eu-central-1.aws.neon.tech/';
 const CONNECTOR_BRIDGE_URL='https://nexus-connectors.ilario-coppola.workers.dev';
 
+async function getNexusAccessToken(){
+ const tokenResult=await client.auth.token();
+ const token=tokenResult?.data?.token||tokenResult?.data?.session?.token||tokenResult?.token||tokenResult?.session?.token||null;
+ if(!token)throw new Error('not_authenticated');
+ return token;
+}
 async function callNexus(payload){
   let lastError=null;
   for(let attempt=0;attempt<2;attempt++){
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),30000);
     try{
-      const tokenResult=await client.auth.token();
-      const token=tokenResult?.data?.token||tokenResult?.data?.session?.token||tokenResult?.token||tokenResult?.session?.token||null;
-      if(!token)throw new Error('not_authenticated');
+      const token=await getNexusAccessToken();
       const response=await fetch(ROUTER_URL,{
         method:'POST',
         headers:{
@@ -800,6 +804,25 @@ async function loadPluginState(){
  const {data,error}=await client.from('nexus_user_plugins').select('plugin_id,enabled,connection_status,enabled_at,disabled_at,updated_at').limit(500);
  if(error)throw error;
  (data||[]).forEach(x=>pluginState.set(x.plugin_id,x));
+ try{
+   const token=await getNexusAccessToken();
+   const r=await fetch(CONNECTOR_BRIDGE_URL+'/connections',{headers:{'Authorization':'Bearer '+token}});
+   const payload=await r.json().catch(()=>({}));
+   if(!r.ok||!payload?.ok)throw new Error(payload?.error||('connector_state_http_'+r.status));
+   (payload.connections||[]).forEach(c=>{
+     if(!c?.plugin_id)return;
+     const previous=pluginState.get(c.plugin_id)||{};
+     pluginState.set(c.plugin_id,{
+       ...previous,
+       plugin_id:c.plugin_id,
+       enabled:previous.enabled!==false,
+       connection_status:c.connection_status||'connected',
+       connector_metadata:c
+     });
+   });
+ }catch(e){
+   pluginActionMessage='Connector service state unavailable: '+(e?.message||String(e));
+ }
 }
 function base64Url(bytes){
  return btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -882,44 +905,27 @@ async function verifyAndStoreKeyConnector(){
  const apiKey=(keyEl.value||'').trim(),requestedProject=(projectEl.value||'').trim();
  if(!apiKey){notice.textContent='Paste the provider API key first.';keyEl.focus();return}
  if(p.id!=='neon'){notice.textContent='This connector does not support API-key verification yet.';return}
- btn.disabled=true;btn.textContent='Verifying…';notice.textContent='Verifying the credential with Neon…';
+ btn.disabled=true;btn.textContent='Verifying…';notice.textContent='Authenticating NEXUS and verifying the credential with Neon…';
  try{
-   const vr=await fetch(CONNECTOR_BRIDGE_URL+'/verify/neon',{
+   const token=await getNexusAccessToken();
+   const vr=await fetch(CONNECTOR_BRIDGE_URL+'/connect/neon',{
      method:'POST',
-     headers:{'Content-Type':'application/json'},
+     headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
      body:JSON.stringify({apiKey,projectId:requestedProject})
    });
    const vd=await vr.json().catch(()=>({}));
-   if(!vr.ok||!vd.ok)throw new Error(vd.error||('verification_http_'+vr.status));
-   let project=vd.project||null;
-   if(!project){
-     const projects=Array.isArray(vd.projects)?vd.projects:[];
-     if(projects.length!==1){
-       if(projects.length>1)throw new Error('key_has_multiple_projects_enter_project_id');
-       throw new Error('no_accessible_project');
-     }
-     project=projects[0];
-   }
-   if(!project?.id)throw new Error('verified_project_missing');
-   notice.textContent='Verified. Securing the connection…';
-   const resource='https://mcp.neon.tech/mcp?projectId='+encodeURIComponent(project.id)+'&readonly=true';
-   const {data,error}=await client.rpc('nexus_store_plugin_oauth_token',{
-     p_plugin_id:p.id,
-     p_provider:'neon_api_key',
-     p_access_token:apiKey,
-     p_refresh_token:null,
-     p_token_type:'Bearer',
-     p_scope:'project:'+project.id+':readonly',
-     p_expires_in:null,
-     p_metadata:{project_id:project.id,project_name:project.name||null,resource,connection_mode:'api_key_project_scoped',verified_by:'nexus-connectors'}
-   });
-   if(error)throw error;
+   if(!vr.ok||!vd.ok)throw new Error(vd.error||('connection_http_'+vr.status));
+   const connection=vd.connection||null;
+   if(!connection?.project_id)throw new Error('verified_project_missing');
    keyEl.value='';
-   const row=Array.isArray(data)?data[0]:data;
-   if(row)pluginState.set(p.id,row);else await loadPluginState();
+   try{
+     await client.rpc('nexus_set_plugin_enabled',{p_plugin_id:p.id,p_enabled:true,p_connection_required:true});
+   }catch{}
+   await loadPluginState();
+   if(pluginState.get(p.id)?.connection_status!=='connected')throw new Error('connector_state_not_confirmed');
    document.getElementById('connectorKeyModal').classList.remove('show');
    pendingKeyPlugin=null;
-   pluginActionMessage=(p.name||p.id)+' connected to '+(project.name||project.id)+' with project-scoped read-only access.';
+   pluginActionMessage=(p.name||p.id)+' connected to '+(connection.project_name||connection.project_id)+' with project-scoped read-only access.';
    renderPlugins();
  }catch(e){
    keyEl.value='';
@@ -1000,8 +1006,13 @@ async function disconnectPlugin(p){
  if(pluginBusy.has(p.id))return;
  pluginBusy.add(p.id);pluginActionMessage='Disconnecting '+(p.name||p.id)+'…';renderPlugins();
  try{
-   const {error}=await client.rpc('nexus_disconnect_plugin',{p_plugin_id:p.id});
-   if(error)throw error;
+   if(p.connection_mode==='api_key_project_scoped'){
+     const token=await getNexusAccessToken();
+     const r=await fetch(CONNECTOR_BRIDGE_URL+'/connections/neon',{method:'DELETE',headers:{'Authorization':'Bearer '+token}});
+     const payload=await r.json().catch(()=>({}));
+     if(!r.ok||!payload?.ok)throw new Error(payload?.error||('disconnect_http_'+r.status));
+   }
+   try{await client.rpc('nexus_disconnect_plugin',{p_plugin_id:p.id})}catch{}
    await loadPluginState();
    pluginActionMessage=(p.name||p.id)+' disconnected.';
  }catch(e){
@@ -1086,7 +1097,7 @@ function renderPlugins(){
    const stateLine=document.createElement('div');stateLine.className='plugin-state '+(connected?'connected':'');
    if(p.core)stateLine.textContent='Always available in NEXUS.';
    else if(connected)stateLine.textContent=enabled?'Connected and enabled for your account.':'Connected, but currently disabled for your account.';
-   else if(p.connectable&&needsConnection)stateLine.textContent='Connect your '+(p.name||'provider')+' account to enable this plugin.';
+   else if(p.connectable&&needsConnection)stateLine.textContent=p.connection_mode==='api_key_project_scoped'?'Connect one project with a scoped credential to enable this connector.':'Connect your '+(p.name||'provider')+' account to enable this connector.';
    else if(needsConnection&&!p.connectable)stateLine.textContent=enabled?'Selected previously, but not usable until NEXUS completes provider setup.':'Not available yet: NEXUS provider setup is still required.';
    else if(enabled)stateLine.textContent='Enabled for your account.';
    else stateLine.textContent='Not enabled for your account.';
@@ -1103,7 +1114,7 @@ function renderPlugins(){
      }else{
        const connect=document.createElement('button');connect.type='button';connect.className='enable';connect.disabled=busy;
        connect.textContent=busy?'Opening…':'Connect';
-       connect.title='Sign in or register with '+(p.name||'the provider')+', authorize NEXUS, then return connected.';
+       connect.title=p.connection_mode==='api_key_project_scoped'?'Connect with a narrowly scoped provider credential.':'Sign in or register with '+(p.name||'the provider')+', authorize NEXUS, then return connected.';
        connect.onclick=()=>connectPlugin(p);actions.appendChild(connect);
      }
    }else if(needsConnection&&!p.connectable){
