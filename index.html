@@ -320,6 +320,7 @@ const ROUTER_URL='https://nexus-ai-router.ilario-coppola.workers.dev/chat';
 const FILES_URL='https://br-jolly-scene-b2wyu6gt-nexusfiles.compute.c-6.eu-central-1.aws.neon.tech/';
 const STATUS_URL='https://br-jolly-scene-b2wyu6gt-nexusstatus.compute.c-6.eu-central-1.aws.neon.tech/';
 const CONNECTOR_BRIDGE_URL='https://nexus-connectors.ilario-coppola.workers.dev';
+const UI_IT=(navigator.language||'').toLowerCase().startsWith('it');
 
 async function getNexusAccessToken(){
  const tokenResult=await client.auth.token();
@@ -332,30 +333,63 @@ async function getNexusAccessToken(){
  return token;
 }
 async function callNexus(payload){
-  let lastError=null;
-  for(let attempt=0;attempt<2;attempt++){
-    const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),30000);
-    try{
-      const token=await getNexusAccessToken();
-      const response=await fetch(ROUTER_URL,{
-        method:'POST',
-        headers:{
-          'Content-Type':'application/json',
-          'Authorization':'Bearer '+token
-        },
-        body:JSON.stringify(payload),
-        signal:controller.signal
-      });
-      const data=await response.json().catch(()=>({}));
-      if(response.ok&&data?.ok&&data?.reply)return data;
-      if(response.status===401)throw new Error('not_authenticated');
-      lastError=new Error(data?.error||'temporarily_unavailable');
-    }catch(e){lastError=e}
-    finally{clearTimeout(timer)}
-    if(attempt===0)await new Promise(r=>setTimeout(r,650));
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),18000);
+  try{
+    const token=await getNexusAccessToken();
+    const response=await fetch(ROUTER_URL,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+token
+      },
+      body:JSON.stringify(payload),
+      signal:controller.signal
+    });
+    const data=await response.json().catch(()=>({}));
+    if(response.ok&&data?.ok&&data?.reply)return data;
+    if(response.status===401)throw new Error('not_authenticated');
+    const err=new Error(data?.error||'temporarily_unavailable');
+    err.status=response.status;
+    throw err;
+  }finally{clearTimeout(timer)}
+}
+async function callPcChatFallback(conversationId,message,history=[]){
+  const context=(history||[]).slice(-8).map(m=>(m.role==='assistant'?'ASSISTENTE':'UTENTE')+': '+String(m.content||'').slice(0,1200)).join('\n');
+  const prompt=[
+    'Sei NEXUS AI. Rispondi nella stessa lingua dell utente; se scrive in italiano, usa italiano naturale.',
+    'Dai una risposta completa e concreta. Non inventare azioni non eseguite.',
+    context?'CONTESTO RECENTE:\n'+context:'',
+    'RICHIESTA UTENTE:\n'+String(message||'')
+  ].filter(Boolean).join('\n\n').slice(0,11900);
+  const created=await client.rpc('nexus_create_chat_local_job',{
+    p_conversation_id:conversationId,
+    p_prompt:prompt
+  });
+  if(created.error)throw created.error;
+  const row=Array.isArray(created.data)?created.data[0]:created.data;
+  const jobId=row?.job_id;
+  if(!jobId)throw new Error('pc_fallback_job_missing');
+  for(let i=0;i<60;i++){
+    await new Promise(r=>setTimeout(r,1000));
+    const q=await client.from('nexus_jobs')
+      .select('status,output_summary,error_code,worker_id,completed_at')
+      .eq('id',jobId).single();
+    if(q.error)throw q.error;
+    if(q.data?.status==='completed'){
+      const reply=String(q.data.output_summary||'').trim();
+      if(!reply)throw new Error('pc_fallback_empty');
+      return {
+        ok:true,reply,
+        model:row?.resolved_level==='deep'?'NEXUS PC deep route':'NEXUS PC local route',
+        provider:'nexus-pc-worker',
+        fallbackUsed:true,
+        localJobId:jobId
+      };
+    }
+    if(['failed','cancelled'].includes(q.data?.status))throw new Error(q.data?.error_code||'pc_fallback_failed');
   }
-  throw lastError||new Error('temporarily_unavailable');
+  throw new Error('pc_fallback_timeout');
 }
 
 async function refreshComputeStatus(){
@@ -517,7 +551,7 @@ document.getElementById('sendBtn').onclick=async()=>{
  }
  if(userTurnText&&!retryingSame) chatHistory.push({role:'user',content:userTurnText});
 
- const think=addMsg('NEXUS is thinking','ai thinking');
+ const think=addMsg(UI_IT?'NEXUS sta pensando…':'NEXUS is thinking','ai thinking');
  document.getElementById('sendBtn').disabled=true;
  let sendSucceeded=false;
 
@@ -573,14 +607,34 @@ document.getElementById('sendBtn').onclick=async()=>{
      }
      sendSucceeded=true;retryConversationId=null;retryPrompt='';
    } else {
-     const data=await callNexus({message:q,level,history:historyForRouter});
+     const pcOnline=computeCapabilities.has('local-chat');
+     const preferPc=!!currentAccess?.unlimited&&pcOnline;
+     let data;
+     if(preferPc){
+       if(sendGeneration===chatGeneration&&currentConversationId===cid)think.textContent=UI_IT?'NEXUS sta usando la flotta IA del PC…':'NEXUS is using the PC AI fleet…';
+       try{
+         data=await callPcChatFallback(cid,q,historyForRouter);
+       }catch(pcError){
+         console.warn('NEXUS PC route unavailable, falling back to cloud',pcError?.message||String(pcError));
+         if(sendGeneration===chatGeneration&&currentConversationId===cid)think.textContent=UI_IT?'NEXUS sta provando il cloud…':'NEXUS is trying cloud…';
+         data=await callNexus({message:q,level,history:historyForRouter});
+       }
+     }else{
+       try{
+         data=await callNexus({message:q,level,history:historyForRouter});
+       }catch(cloudError){
+         if(!pcOnline)throw cloudError;
+         if(sendGeneration===chatGeneration&&currentConversationId===cid)think.textContent=UI_IT?'Cloud occupato: passo alla flotta IA del PC…':'Cloud busy: switching to the PC AI fleet…';
+         data=await callPcChatFallback(cid,q,historyForRouter);
+       }
+     }
      if(sendGeneration===chatGeneration&&currentConversationId===cid){
        think.className='msg ai';
        think.textContent=data.reply;
        chatHistory.push({role:'assistant',content:data.reply});
      }
 
-     const assistantMeta={level,model:data.model||null,provider:data.provider||null,fallback_used:!!data.fallbackUsed};
+     const assistantMeta={level,model:data.model||null,provider:data.provider||null,fallback_used:!!data.fallbackUsed,local_job_id:data.localJobId||null};
      const saved=await client.rpc('nexus_store_assistant_message',{
        p_conversation_id:cid,
        p_content:data.reply,
@@ -604,8 +658,8 @@ document.getElementById('sendBtn').onclick=async()=>{
    if(sameChat)think.className='msg ai';
    const mediaCapacityUnavailable=e?.code==='MEDIA_CAPACITY_UNAVAILABLE'||String(e?.message||'')==='MEDIA_CAPACITY_UNAVAILABLE';
    const safeFailure=mediaCapacityUnavailable
-     ? 'NEXUS media compute is not available for this file type right now. The file was not uploaded and no credits were reserved. Retry when compatible media compute is online.'
-     : 'NEXUS is temporarily having trouble answering. Your message is saved in this chat and no extra credit was used. You can retry without retyping it.';
+     ? (UI_IT?'La capacità multimediale NEXUS non è disponibile per questo tipo di file. Il file non è stato caricato e non sono stati riservati crediti. Riprova quando il compute compatibile è online.':'NEXUS media compute is not available for this file type right now. The file was not uploaded and no credits were reserved. Retry when compatible media compute is online.')
+     : (UI_IT?'NEXUS non riesce temporaneamente a completare la risposta. Il messaggio è salvato in questa chat e non è stato usato alcun credito extra. Puoi riprovare senza riscriverlo.':'NEXUS is temporarily having trouble answering. Your message is saved in this chat and no extra credit was used. You can retry without retyping it.');
    if(sameChat){
      think.textContent=safeFailure;
      retryConversationId=requestConversationId||currentConversationId;retryPrompt=userTurnText;
@@ -654,7 +708,7 @@ async function touchConversation(id){
 document.getElementById('newChat').onclick=resetChat;
 document.getElementById('topNewChat').onclick=resetChat;
 const jobsModal=document.getElementById('jobsModal');
-function visibleJobs(items){return (items||[]).filter(j=>!String(j.input_summary||'').trim().toUpperCase().startsWith('INTERNAL'))}
+function visibleJobs(items){return (items||[]).filter(j=>{const s=String(j.input_summary||'').trim().toUpperCase();return !s.startsWith('INTERNAL')&&!s.startsWith('[CHAT_LOCAL]')})}
 function fmtDate(v){try{return new Date(v).toLocaleString()}catch{return ''}}
 async function loadJobs(){
  if(!currentUser)return;
