@@ -635,19 +635,21 @@ document.getElementById('sendBtn').onclick=async()=>{
      }
 
      const assistantMeta={level,model:data.model||null,provider:data.provider||null,fallback_used:!!data.fallbackUsed,local_job_id:data.localJobId||null};
-     const saved=await client.rpc('nexus_store_assistant_message',{
-       p_conversation_id:cid,
-       p_content:data.reply,
-       p_metadata:assistantMeta
-     });
-     if(saved.error){
-       const fallback=await client.from('nexus_messages').insert({
-         conversation_id:cid,
-         role:'assistant',
-         content:data.reply,
-         metadata:assistantMeta
+     if(data.provider!=='nexus-pc-worker'){
+       const saved=await client.rpc('nexus_store_assistant_message',{
+         p_conversation_id:cid,
+         p_content:data.reply,
+         p_metadata:assistantMeta
        });
-       if(fallback.error) console.warn('Could not persist assistant message',fallback.error);
+       if(saved.error){
+         const fallback=await client.from('nexus_messages').insert({
+           conversation_id:cid,
+           role:'assistant',
+           content:data.reply,
+           metadata:assistantMeta
+         });
+         if(fallback.error) console.warn('Could not persist assistant message',fallback.error);
+       }
      }
      sendSucceeded=true;retryConversationId=null;retryPrompt='';
 
