@@ -370,7 +370,7 @@ async function callPcChatFallback(conversationId,message,history=[]){
   const row=Array.isArray(created.data)?created.data[0]:created.data;
   const jobId=row?.job_id;
   if(!jobId)throw new Error('pc_fallback_job_missing');
-  for(let i=0;i<60;i++){
+  for(let i=0;i<110;i++){
     await new Promise(r=>setTimeout(r,1000));
     const q=await client.from('nexus_jobs')
       .select('status,output_summary,error_code,worker_id,completed_at')
