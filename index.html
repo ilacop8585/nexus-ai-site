@@ -213,7 +213,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <h2>Plugins & connectors</h2>
     <p>Connect integrations that are actually available for your NEXUS account. Catalogued integrations marked as setup required are not usable yet and cannot be enabled until NEXUS completes the provider registration.</p>
     <div class="plugin-tools">
-      <input class="historysearch" id="pluginSearch" type="search" placeholder="Search 60 plugins…" autocomplete="off" aria-label="Search plugins">
+      <input class="historysearch" id="pluginSearch" type="search" placeholder="Search integrations…" autocomplete="off" aria-label="Search plugins">
       <select id="pluginCategory" aria-label="Plugin category"><option value="">All categories</option></select>
     </div>
     <div class="small" id="pluginSummary">Loading plugin catalog…</div>
@@ -912,7 +912,15 @@ async function disconnectPlugin(p){
    pluginActionMessage='Could not disconnect '+(p.name||p.id)+': '+(e?.message||String(e));
  }finally{pluginBusy.delete(p.id);renderPlugins()}
 }
+function updatePluginCategories(){
+ const select=document.getElementById('pluginCategory'),current=select.value;
+ const source=pluginCatalog.filter(p=>showAllPlugins||p.core||p.connectable||pluginState.get(p.id)?.connection_status==='connected');
+ const categories=[...new Set(source.map(p=>p.category).filter(Boolean))].sort();
+ select.innerHTML='<option value="">All categories</option>'+categories.map(v=>'<option value="'+escapeHtml(v)+'">'+escapeHtml(v)+'</option>').join('');
+ select.value=categories.includes(current)?current:'';
+}
 function renderPlugins(){
+ updatePluginCategories();
  const box=document.getElementById('pluginsList'),search=(document.getElementById('pluginSearch').value||'').trim().toLowerCase(),category=document.getElementById('pluginCategory').value;
  const items=pluginCatalog.filter(p=>{
    const hay=[p.name,p.id,p.category,p.description,p.type,p.integration_path].filter(Boolean).join(' ').toLowerCase();
@@ -992,10 +1000,6 @@ async function loadPlugins(){
    const payload=await r.json();pluginCatalog=Array.isArray(payload)?payload:(payload.plugins||[]);
    if(!pluginCatalog.length){box.innerHTML='<div class="notice">No plugins are registered yet.</div>';return}
    document.getElementById('pluginCount').textContent=String(pluginCatalog.filter(p=>p.core||p.connectable).length);
-   const select=document.getElementById('pluginCategory'),current=select.value;
-   const categories=[...new Set(pluginCatalog.map(p=>p.category).filter(Boolean))].sort();
-   select.innerHTML='<option value="">All categories</option>'+categories.map(v=>'<option value="'+escapeHtml(v)+'">'+escapeHtml(v)+'</option>').join('');
-   if(categories.includes(current))select.value=current;
    try{await loadPluginState()}catch(e){pluginActionMessage='Account plugin state unavailable: '+(e?.message||String(e))}
    renderPlugins();
  }catch(e){box.innerHTML='<div class="notice">Plugin catalog could not be loaded: '+escapeHtml(e?.message||String(e))+'</div>'}
