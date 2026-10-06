@@ -231,17 +231,34 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
   </div>
 </div>
 
+<div class="modal" id="connectorKeyModal">
+  <div class="modal-card">
+    <h2 id="connectorKeyTitle">Connect service</h2>
+    <p id="connectorKeyHelp">Use a provider credential scoped as narrowly as possible. NEXUS verifies it before storing it encrypted.</p>
+    <label class="small" for="connectorProjectId">Project ID</label>
+    <input class="historysearch" id="connectorProjectId" type="text" autocomplete="off" placeholder="Optional for a project-scoped key">
+    <label class="small" for="connectorApiKey" style="display:block;margin-top:12px">API key</label>
+    <input class="historysearch" id="connectorApiKey" type="password" autocomplete="new-password" placeholder="Paste the project-scoped key">
+    <div class="notice" id="connectorKeyNotice" style="margin-top:12px">The key is verified through the NEXUS connector bridge and stored encrypted only after verification.</div>
+    <div class="modal-actions">
+      <button class="iconbtn" id="cancelConnectorKey" type="button">Cancel</button>
+      <button class="iconbtn enable" id="verifyConnectorKey" type="button">Verify & connect</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { createClient } from 'https://esm.sh/@neondatabase/neon-js@0.7.0-beta';
 
 const client = createClient('https://ep-sparkling-forest-b2v7x4ux.c-6.eu-central-1.aws.neon.tech/neondb');
 
 const promptEl=document.getElementById('prompt'), filesEl=document.getElementById('files'), input=document.getElementById('fileInput'), messages=document.getElementById('messages'), intro=document.getElementById('intro');
-let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null, computeCapabilities=new Set(), allConversations=[], historyLimit=50, lastConversationBatchSize=0, retryConversationId=null, retryPrompt='', coreTools=[], pluginCatalog=[], pluginState=new Map(), pluginBusy=new Set(), pluginActionMessage='', showAllPlugins=false;
+let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null, computeCapabilities=new Set(), allConversations=[], historyLimit=50, lastConversationBatchSize=0, retryConversationId=null, retryPrompt='', coreTools=[], pluginCatalog=[], pluginState=new Map(), pluginBusy=new Set(), pluginActionMessage='', showAllPlugins=false, pendingKeyPlugin=null;
 const MAX_FILE_BYTES=512*1024*1024, MAX_FILES_PER_JOB=20, LAST_CHAT_KEY='nexus_last_conversation_id';
 const ROUTER_URL='https://nexus-ai-router.ilario-coppola.workers.dev/chat';
 const FILES_URL='https://br-jolly-scene-b2wyu6gt-nexusfiles.compute.c-6.eu-central-1.aws.neon.tech/';
 const STATUS_URL='https://br-jolly-scene-b2wyu6gt-nexusstatus.compute.c-6.eu-central-1.aws.neon.tech/';
+const CONNECTOR_BRIDGE_URL='https://nexus-connectors.ilario-coppola.workers.dev';
 
 async function callNexus(payload){
   let lastError=null;
@@ -841,10 +858,84 @@ async function finishMcpOAuthCallback(){
  }
  return true;
 }
+function openKeyConnector(p){
+ pendingKeyPlugin=p;
+ document.getElementById('connectorKeyTitle').textContent='Connect '+(p?.name||'service');
+ document.getElementById('connectorKeyHelp').textContent=p?.id==='neon'
+   ? 'Use a Neon project-scoped API key. NEXUS verifies access to one project before storing the key encrypted.'
+   : 'Use a provider credential scoped as narrowly as possible. NEXUS verifies it before storing it encrypted.';
+ document.getElementById('connectorProjectId').value='';
+ document.getElementById('connectorApiKey').value='';
+ document.getElementById('connectorKeyNotice').textContent='The key is sent only to the NEXUS connector bridge for verification, then stored encrypted in your NEXUS vault.';
+ document.getElementById('connectorKeyModal').classList.add('show');
+ setTimeout(()=>document.getElementById('connectorApiKey').focus(),0);
+}
+function closeKeyConnector(){
+ document.getElementById('connectorApiKey').value='';
+ document.getElementById('connectorProjectId').value='';
+ document.getElementById('connectorKeyModal').classList.remove('show');
+ pendingKeyPlugin=null;
+}
+async function verifyAndStoreKeyConnector(){
+ const p=pendingKeyPlugin;if(!p||!currentUser)return;
+ const keyEl=document.getElementById('connectorApiKey'),projectEl=document.getElementById('connectorProjectId'),notice=document.getElementById('connectorKeyNotice'),btn=document.getElementById('verifyConnectorKey');
+ const apiKey=(keyEl.value||'').trim(),requestedProject=(projectEl.value||'').trim();
+ if(!apiKey){notice.textContent='Paste the provider API key first.';keyEl.focus();return}
+ if(p.id!=='neon'){notice.textContent='This connector does not support API-key verification yet.';return}
+ btn.disabled=true;btn.textContent='Verifying…';notice.textContent='Verifying the credential with Neon…';
+ try{
+   const vr=await fetch(CONNECTOR_BRIDGE_URL+'/verify/neon',{
+     method:'POST',
+     headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({apiKey,projectId:requestedProject})
+   });
+   const vd=await vr.json().catch(()=>({}));
+   if(!vr.ok||!vd.ok)throw new Error(vd.error||('verification_http_'+vr.status));
+   let project=vd.project||null;
+   if(!project){
+     const projects=Array.isArray(vd.projects)?vd.projects:[];
+     if(projects.length!==1){
+       if(projects.length>1)throw new Error('key_has_multiple_projects_enter_project_id');
+       throw new Error('no_accessible_project');
+     }
+     project=projects[0];
+   }
+   if(!project?.id)throw new Error('verified_project_missing');
+   notice.textContent='Verified. Securing the connection…';
+   const resource='https://mcp.neon.tech/mcp?projectId='+encodeURIComponent(project.id)+'&readonly=true';
+   const {data,error}=await client.rpc('nexus_store_plugin_oauth_token',{
+     p_plugin_id:p.id,
+     p_provider:'neon_api_key',
+     p_access_token:apiKey,
+     p_refresh_token:null,
+     p_token_type:'Bearer',
+     p_scope:'project:'+project.id+':readonly',
+     p_expires_in:null,
+     p_metadata:{project_id:project.id,project_name:project.name||null,resource,connection_mode:'api_key_project_scoped',verified_by:'nexus-connectors'}
+   });
+   if(error)throw error;
+   keyEl.value='';
+   const row=Array.isArray(data)?data[0]:data;
+   if(row)pluginState.set(p.id,row);else await loadPluginState();
+   document.getElementById('connectorKeyModal').classList.remove('show');
+   pendingKeyPlugin=null;
+   pluginActionMessage=(p.name||p.id)+' connected to '+(project.name||project.id)+' with project-scoped read-only access.';
+   renderPlugins();
+ }catch(e){
+   keyEl.value='';
+   const msg=e?.message||String(e);
+   notice.textContent=msg==='key_has_multiple_projects_enter_project_id'
+     ? 'This key can access multiple projects. For safety, enter the exact Neon Project ID or use a project-scoped key.'
+     : 'Connection failed: '+msg;
+ }finally{
+   btn.disabled=false;btn.textContent='Verify & connect';
+ }
+}
 async function connectPlugin(p){
  if(!p?.id)return;
  if(!currentUser){sessionStorage.setItem('nexus_pending_plugin_connect',p.id);setAuthNotice('Sign in before connecting '+(p.name||p.id)+'.');openAuth();return}
  if(!p.connectable){pluginActionMessage=(p.name||p.id)+' cannot connect yet because NEXUS still needs its provider registration.';renderPlugins();return}
+ if(p.connection_mode==='api_key_project_scoped'){openKeyConnector(p);return}
  if(pluginBusy.has(p.id))return;
  pluginBusy.add(p.id);pluginActionMessage='Opening '+(p.name||p.id)+' authorization…';renderPlugins();
  try{
@@ -1050,6 +1141,8 @@ async function loadPlugins(){
 document.getElementById('pluginSearch').addEventListener('input',renderPlugins);
 document.getElementById('pluginCategory').addEventListener('change',renderPlugins);
 document.getElementById('pluginCatalogToggle').addEventListener('click',()=>{showAllPlugins=!showAllPlugins;renderPlugins()});
+document.getElementById('cancelConnectorKey').addEventListener('click',closeKeyConnector);
+document.getElementById('verifyConnectorKey').addEventListener('click',verifyAndStoreKeyConnector);
 function openLibrary(){libraryModal.classList.add('show');loadLibrary()}
 function openPlugins(){pluginsModal.classList.add('show');loadPlugins()}
 document.getElementById('libraryBtn').onclick=openLibrary;
