@@ -473,17 +473,21 @@ async function uploadOne(file,cid){
   return {attachmentId:dd.attachmentId,objectKey:dd.objectKey,name:file.name};
 }
 
-async function ensureConversation(firstText){
-  if(currentConversationId) return currentConversationId;
+async function ensureConversation(firstText,requestGeneration=chatGeneration){
+  const existing=currentConversationId;
+  if(existing) return existing;
   if(!currentUser) return null;
   const title=(firstText||'New chat').replace(/\s+/g,' ').slice(0,72) || 'New chat';
   const {data,error}=await client.from('nexus_conversations').insert({title,level}).select('id').single();
   if(error) throw error;
-  currentConversationId=data.id;
-  try{localStorage.setItem(LAST_CHAT_KEY,String(currentConversationId))}catch{}
-  allConversations=[{id:data.id,title,level,updated_at:new Date().toISOString()},...allConversations.filter(x=>x.id!==data.id)];
+  const createdId=data.id;
+  allConversations=[{id:createdId,title,level,updated_at:new Date().toISOString()},...allConversations.filter(x=>x.id!==createdId)];
   renderHistory(allConversations);
-  return currentConversationId;
+  if(requestGeneration===chatGeneration){
+    currentConversationId=createdId;
+    try{localStorage.setItem(LAST_CHAT_KEY,String(createdId))}catch{}
+  }
+  return createdId;
 }
 
 document.getElementById('sendBtn').onclick=async()=>{
@@ -518,7 +522,7 @@ document.getElementById('sendBtn').onclick=async()=>{
  let sendSucceeded=false;
 
  try{
-   const cid=await ensureConversation(q||userTurnText);
+   const cid=await ensureConversation(q||userTurnText,sendGeneration);
    requestConversationId=cid;
    if(userTurnText&&!retryingSame){
      const {error}=await client.from('nexus_messages').insert({conversation_id:cid,role:'user',content:userTurnText,metadata:{level,attachment_count:selectedFiles.length}});
