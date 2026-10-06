@@ -1021,6 +1021,41 @@ async function setPluginEnabled(p,enabled){
    pluginBusy.delete(p.id);renderPlugins();
  }
 }
+async function decodeMcpResponse(r){
+ const text=await r.text();
+ if(!r.ok)throw new Error('mcp_proxy_http_'+r.status+(text?': '+text.slice(0,220):''));
+ if(!text.trim())return {};
+ try{return JSON.parse(text)}catch{}
+ for(const line of text.split(/\r?\n/)){
+   if(!line.startsWith('data:'))continue;
+   const raw=line.slice(5).trim();if(!raw||raw==='[DONE]')continue;
+   try{return JSON.parse(raw)}catch{}
+ }
+ throw new Error('mcp_proxy_response_unreadable');
+}
+async function testPluginConnection(p){
+ if(!currentUser||!p?.id||pluginBusy.has(p.id))return;
+ const path=p.id==='mcp'?'/mcp/custom':p.id==='neon'?'/mcp/neon':null;
+ if(!path){pluginActionMessage='No live connection test is available for '+(p.name||p.id)+' yet.';renderPlugins();return}
+ pluginBusy.add(p.id);pluginActionMessage='Testing '+(p.name||p.id)+' through NEXUS…';renderPlugins();
+ try{
+   const token=await getNexusAccessToken();
+   const call=async(payload,session='')=>{
+     const headers={'Content-Type':'application/json','Accept':'application/json, text/event-stream','Authorization':'Bearer '+token};
+     if(session)headers['Mcp-Session-Id']=session;
+     const r=await fetch(CONNECTOR_BRIDGE_URL+path,{method:'POST',headers,body:JSON.stringify(payload)});
+     return {data:await decodeMcpResponse(r),session:r.headers.get('Mcp-Session-Id')||session};
+   };
+   const init=await call({jsonrpc:'2.0',id:101,method:'initialize',params:{protocolVersion:'2025-06-18',capabilities:{},clientInfo:{name:'NEXUS AI Web',version:'1.0'}}});
+   if(!init.data?.result)throw new Error('mcp_initialize_invalid');
+   try{await call({jsonrpc:'2.0',method:'notifications/initialized',params:{}},init.session)}catch{}
+   const listed=await call({jsonrpc:'2.0',id:102,method:'tools/list',params:{}},init.session);
+   const tools=Array.isArray(listed.data?.result?.tools)?listed.data.result.tools:[];
+   pluginActionMessage=(p.name||p.id)+' test passed · '+tools.length+' tools available through NEXUS.';
+ }catch(e){
+   pluginActionMessage=(p.name||p.id)+' test failed: '+(e?.message||String(e));
+ }finally{pluginBusy.delete(p.id);renderPlugins()}
+}
 async function disconnectPlugin(p){
  if(!currentUser||!p?.id)return;
  if(pluginBusy.has(p.id))return;
@@ -1128,6 +1163,10 @@ function renderPlugins(){
      const core=document.createElement('button');core.type='button';core.disabled=true;core.textContent='Always on';actions.appendChild(core);
    }else if(needsConnection&&p.connectable){
      if(connected){
+       if(p.id==='mcp'||p.id==='neon'){
+         const test=document.createElement('button');test.type='button';test.disabled=busy;test.textContent=busy?'Testing…':'Test';
+         test.onclick=()=>testPluginConnection(p);actions.appendChild(test);
+       }
        const disable=document.createElement('button');disable.type='button';disable.disabled=busy;disable.textContent=busy?'Saving…':enabled?'Disable':'Enable';
        disable.onclick=()=>setPluginEnabled(p,!enabled);actions.appendChild(disable);
        const disconnect=document.createElement('button');disconnect.type='button';disconnect.disabled=busy;disconnect.textContent='Disconnect';
