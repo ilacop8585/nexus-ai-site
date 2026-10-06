@@ -877,16 +877,24 @@ function renderHistory(items){
 }
 document.getElementById('historySearch').addEventListener('input',()=>renderHistory(allConversations));
 document.getElementById('loadMoreChats').onclick=async()=>{historyLimit+=50;await refreshAccountData()};
+async function loadMyAccess(){
+ let access=await client.rpc('nexus_get_my_access');
+ if(access.error){
+   await new Promise(r=>setTimeout(r,450));
+   access=await client.rpc('nexus_get_my_access');
+ }
+ return access;
+}
 async function refreshAccountData(){
  if(!currentUser)return;
- const [profile,convos,jobs,access]=await Promise.all([
+ const [profile,convos,jobs]=await Promise.all([
    client.from('nexus_profiles').select('plan,credits_balance,daily_credit_allowance,analytics_opt_in,content_training_opt_in').single(),
    client.from('nexus_conversations').select('id,title,level,updated_at').order('updated_at',{ascending:false}).limit(historyLimit),
-   client.from('nexus_jobs').select('id,input_summary').limit(100),
-   client.rpc('nexus_get_my_access')
+   client.from('nexus_jobs').select('id,input_summary').limit(100)
  ]);
+ const access=await loadMyAccess();
  const accessRow=Array.isArray(access.data)?access.data[0]:access.data;
- currentAccess=access.error?null:(accessRow||null);
+ if(!access.error&&accessRow)currentAccess=accessRow;
  applyAccessUI();
  if(profile.data){
    const b=profile.data.credits_balance||0,a=profile.data.daily_credit_allowance||0;
