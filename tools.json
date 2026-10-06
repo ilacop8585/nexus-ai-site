@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "updated_at": "2026-10-06",
+  "policy": "Core tools are native NEXUS capabilities. A tool is shown as online only when its builtin path or the live compute worker reports the required capability.",
+  "tools": [
+    {
+      "id": "chat-memory",
+      "name": "Chat & Memory",
+      "status": "active",
+      "kind": "builtin",
+      "description": "Persistent authenticated NEXUS chat with conversation history across sessions.",
+      "required_capabilities": []
+    },
+    {
+      "id": "files-library",
+      "name": "Files & Library",
+      "status": "active",
+      "kind": "builtin_compute",
+      "description": "Private file library, attachments and general file jobs tied to the NEXUS account.",
+      "required_capabilities": ["general-file"]
+    },
+    {
+      "id": "document-analysis",
+      "name": "Document Analysis",
+      "status": "active",
+      "kind": "compute",
+      "description": "Analyze documents and route document jobs through the NEXUS worker.",
+      "required_capabilities": ["document"]
+    },
+    {
+      "id": "code-runner",
+      "name": "Code Runner",
+      "status": "active",
+      "kind": "compute",
+      "description": "Execute and process coding jobs through the governed NEXUS worker.",
+      "required_capabilities": ["code"]
+    },
+    {
+      "id": "media-inspector",
+      "name": "Media Inspector",
+      "status": "active",
+      "kind": "compute",
+      "description": "Inspect image, video and audio metadata before heavier media workflows.",
+      "required_capabilities_any": ["image-metadata", "video-metadata", "audio-metadata"]
+    },
+    {
+      "id": "foundry-builder",
+      "name": "Foundry Builder",
+      "status": "active",
+      "kind": "compute",
+      "description": "Build and publish generated web projects through the NEXUS Foundry worker.",
+      "required_capabilities": ["foundry-build"],
+      "verification_note": "Worker capability is live; next real Foundry job remains the final end-to-end verification."
+    },
+    {
+      "id": "browser-operator",
+      "name": "Browser Operator",
+      "status": "planned",
+      "kind": "agent",
+      "description": "Navigate authorized websites, click, type, fill forms and complete browser workflows.",
+      "priority": "P0"
+    },
+    {
+      "id": "web-research",
+      "name": "Web Research",
+      "status": "planned",
+      "kind": "agent",
+      "description": "Search the public web, open sources and synthesize multi-source research.",
+      "priority": "P0"
+    },
+    {
+      "id": "automation-runtime",
+      "name": "Automation Runtime",
+      "status": "planned",
+      "kind": "agent",
+      "description": "Run governed MCP, webhook and workflow automations across connected services.",
+      "priority": "P0"
+    }
+  ]
+}

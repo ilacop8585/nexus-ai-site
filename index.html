@@ -90,7 +90,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
   <div class="snav">
     <button class="navbtn" id="jobsBtn"><span>My jobs</span><span class="small">0</span></button>
     <button class="navbtn" id="libraryBtn"><span>Library</span><span class="small" id="libraryCount">Files</span></button>
-    <button class="navbtn" id="pluginsBtn"><span>Plugins</span><span class="small" id="pluginCount">2</span></button>
+    <button class="navbtn" id="pluginsBtn"><span>Tools</span><span class="small" id="pluginCount">—</span></button>
   </div>
   <div class="historybox">
     <div class="historytitle">Your chats</div>
@@ -210,14 +210,18 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 
 <div class="modal" id="pluginsModal">
   <div class="modal-card jobs-card">
-    <h2>Plugins & connectors</h2>
-    <p>Connect integrations that are actually available for your NEXUS account. Catalogued integrations marked as setup required are not usable yet and cannot be enabled until NEXUS completes the provider registration.</p>
+    <h2>Tools & connectors</h2>
+    <p>NEXUS Core Tools are native agent capabilities. Connectors link external accounts and stay unavailable until their OAuth/MCP path is actually ready.</p>
+    <h3>Core tools</h3>
+    <div class="small" id="coreToolsSummary">Loading NEXUS capabilities…</div>
+    <div class="joblist" id="coreToolsList"><div class="small">Loading…</div></div>
+    <h3 style="margin-top:18px">Connectors</h3>
     <div class="plugin-tools">
-      <input class="historysearch" id="pluginSearch" type="search" placeholder="Search integrations…" autocomplete="off" aria-label="Search plugins">
-      <select id="pluginCategory" aria-label="Plugin category"><option value="">All categories</option></select>
+      <input class="historysearch" id="pluginSearch" type="search" placeholder="Search connectors…" autocomplete="off" aria-label="Search connectors">
+      <select id="pluginCategory" aria-label="Connector category"><option value="">All categories</option></select>
     </div>
-    <div class="small" id="pluginSummary">Loading plugin catalog…</div>
-    <div class="plugin-actions"><button id="pluginCatalogToggle" type="button">Show planned integrations</button></div>
+    <div class="small" id="pluginSummary">Loading connector catalog…</div>
+    <div class="plugin-actions"><button id="pluginCatalogToggle" type="button">Show planned connectors</button></div>
     <div class="joblist" id="pluginsList"><div class="small">Loading…</div></div>
     <div class="notice" style="margin-top:12px">External services must be connected through a server-side OAuth/MCP bridge. NEXUS will not store third-party secrets in the browser.</div>
     <div class="modal-actions">
@@ -233,7 +237,7 @@ import { createClient } from 'https://esm.sh/@neondatabase/neon-js@0.7.0-beta';
 const client = createClient('https://ep-sparkling-forest-b2v7x4ux.c-6.eu-central-1.aws.neon.tech/neondb');
 
 const promptEl=document.getElementById('prompt'), filesEl=document.getElementById('files'), input=document.getElementById('fileInput'), messages=document.getElementById('messages'), intro=document.getElementById('intro');
-let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null, computeCapabilities=new Set(), allConversations=[], historyLimit=50, lastConversationBatchSize=0, retryConversationId=null, retryPrompt='', pluginCatalog=[], pluginState=new Map(), pluginBusy=new Set(), pluginActionMessage='', showAllPlugins=false;
+let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null, computeCapabilities=new Set(), allConversations=[], historyLimit=50, lastConversationBatchSize=0, retryConversationId=null, retryPrompt='', coreTools=[], pluginCatalog=[], pluginState=new Map(), pluginBusy=new Set(), pluginActionMessage='', showAllPlugins=false;
 const MAX_FILE_BYTES=512*1024*1024, MAX_FILES_PER_JOB=20, LAST_CHAT_KEY='nexus_last_conversation_id';
 const ROUTER_URL='https://nexus-ai-router.ilario-coppola.workers.dev/chat';
 const FILES_URL='https://br-jolly-scene-b2wyu6gt-nexusfiles.compute.c-6.eu-central-1.aws.neon.tech/';
@@ -281,6 +285,7 @@ async function refreshComputeStatus(){
     computeCapabilities=new Set();
     el.className='compute-pill';el.querySelector('span').textContent='Available';el.title='NEXUS service available';
   }
+  if(coreTools.length)renderCoreTools();
 }
 setInterval(refreshComputeStatus,60000);
 refreshComputeStatus();
@@ -912,9 +917,40 @@ async function disconnectPlugin(p){
    pluginActionMessage='Could not disconnect '+(p.name||p.id)+': '+(e?.message||String(e));
  }finally{pluginBusy.delete(p.id);renderPlugins()}
 }
+function coreToolReady(t){
+ if(t?.status!=='active')return false;
+ const all=Array.isArray(t.required_capabilities)?t.required_capabilities:[];
+ const any=Array.isArray(t.required_capabilities_any)?t.required_capabilities_any:[];
+ return all.every(c=>computeCapabilities.has(c))&&(!any.length||any.some(c=>computeCapabilities.has(c)));
+}
+function updateToolsBadge(){
+ const onlineCore=coreTools.filter(coreToolReady).length;
+ const availableConnectors=pluginCatalog.filter(p=>!p.core&&(p.connectable||pluginState.get(p.id)?.connection_status==='connected')).length;
+ const el=document.getElementById('pluginCount');if(el)el.textContent=String(onlineCore+availableConnectors);
+}
+function renderCoreTools(){
+ const box=document.getElementById('coreToolsList'),summary=document.getElementById('coreToolsSummary');if(!box||!summary)return;
+ const online=coreTools.filter(coreToolReady).length,planned=coreTools.filter(t=>t.status==='planned').length;
+ summary.textContent=online+' online · '+planned+' next';box.innerHTML='';
+ coreTools.forEach(t=>{
+   const ready=coreToolReady(t),row=document.createElement('div');row.className='jobrow'+(ready?' plugin-enabled':'');
+   const head=document.createElement('div');head.className='jobhead';
+   const title=document.createElement('strong');title.textContent=t.name||t.id;
+   const status=document.createElement('span');status.className='jobstatus '+(ready?'completed':'');status.textContent=ready?'online':t.status==='planned'?'coming soon':'offline';
+   head.append(title,status);row.appendChild(head);
+   const cat=document.createElement('div');cat.className='plugin-category';cat.textContent='NEXUS CORE · '+String(t.kind||'tool').replaceAll('_',' ');
+   const meta=document.createElement('div');meta.className='jobsummary';meta.textContent=t.description||'';
+   const state=document.createElement('div');state.className='plugin-state '+(ready?'connected':'');
+   state.textContent=ready?'Available to the NEXUS agent now.':t.status==='planned'?'Planned core capability — not exposed as operational yet.':'Compute capability is currently unavailable.';
+   row.append(cat,meta,state);
+   if(t.verification_note){const note=document.createElement('div');note.className='small';note.textContent=t.verification_note;row.appendChild(note)}
+   box.appendChild(row);
+ });
+ updateToolsBadge();
+}
 function updatePluginCategories(){
  const select=document.getElementById('pluginCategory'),current=select.value;
- const source=pluginCatalog.filter(p=>showAllPlugins||p.core||p.connectable||pluginState.get(p.id)?.connection_status==='connected');
+ const source=pluginCatalog.filter(p=>!p.core&&(showAllPlugins||p.connectable||pluginState.get(p.id)?.connection_status==='connected'));
  const categories=[...new Set(source.map(p=>p.category).filter(Boolean))].sort();
  select.innerHTML='<option value="">All categories</option>'+categories.map(v=>'<option value="'+escapeHtml(v)+'">'+escapeHtml(v)+'</option>').join('');
  select.value=categories.includes(current)?current:'';
@@ -923,23 +959,25 @@ function renderPlugins(){
  updatePluginCategories();
  const box=document.getElementById('pluginsList'),search=(document.getElementById('pluginSearch').value||'').trim().toLowerCase(),category=document.getElementById('pluginCategory').value;
  const items=pluginCatalog.filter(p=>{
+   if(p.core)return false;
    const hay=[p.name,p.id,p.category,p.description,p.type,p.integration_path].filter(Boolean).join(' ').toLowerCase();
-   const visibleNow=!!p.core||!!p.connectable||pluginState.get(p.id)?.connection_status==='connected';
+   const visibleNow=!!p.connectable||pluginState.get(p.id)?.connection_status==='connected';
    return (showAllPlugins||visibleNow)&&(!search||hay.includes(search))&&(!category||p.category===category);
  });
- const readyCount=pluginCatalog.filter(p=>{
-   const state=pluginState.get(p.id),enabled=!!p.core||!!state?.enabled,needsConnection=pluginConnectionRequired(p),connected=state?.connection_status==='connected';
-   return !!p.core||!!(enabled&&(!needsConnection||connected));
+ const connectors=pluginCatalog.filter(p=>!p.core);
+ const readyCount=connectors.filter(p=>{
+   const state=pluginState.get(p.id),enabled=!!state?.enabled,needsConnection=pluginConnectionRequired(p),connected=state?.connection_status==='connected';
+   return !!(enabled&&(!needsConnection||connected));
  }).length;
- const pendingCount=pluginCatalog.filter(p=>{
+ const pendingCount=connectors.filter(p=>{
    const state=pluginState.get(p.id);
-   return !p.core&&!!state?.enabled&&pluginConnectionRequired(p)&&state?.connection_status!=='connected';
+   return !!state?.enabled&&pluginConnectionRequired(p)&&state?.connection_status!=='connected';
  }).length;
- const availableNow=pluginCatalog.filter(p=>p.core||p.connectable||pluginState.get(p.id)?.connection_status==='connected').length;
- document.getElementById('pluginSummary').textContent=items.length+' shown · '+availableNow+' available now · '+pluginCatalog.length+' catalogued · '+readyCount+' ready'+(showAllPlugins&&pendingCount?' · '+pendingCount+' legacy selections not connected':'')+(pluginActionMessage?' · '+pluginActionMessage:'');
- const toggle=document.getElementById('pluginCatalogToggle');if(toggle)toggle.textContent=showAllPlugins?'Show available now':'Show planned integrations';
+ const availableNow=connectors.filter(p=>p.connectable||pluginState.get(p.id)?.connection_status==='connected').length;
+ document.getElementById('pluginSummary').textContent=items.length+' shown · '+availableNow+' available now · '+connectors.length+' catalogued · '+readyCount+' connected'+(showAllPlugins&&pendingCount?' · '+pendingCount+' legacy selections not connected':'')+(pluginActionMessage?' · '+pluginActionMessage:'');
+ const toggle=document.getElementById('pluginCatalogToggle');if(toggle)toggle.textContent=showAllPlugins?'Show available connectors':'Show planned connectors';
  box.innerHTML='';
- if(!items.length){box.innerHTML='<div class="notice">No plugins match this search.</div>';return}
+ if(!items.length){box.innerHTML='<div class="notice">No connectors match this search.</div>';return}
  items.forEach(p=>{
    const state=pluginState.get(p.id),enabled=!!p.core||!!state?.enabled,busy=pluginBusy.has(p.id),needsConnection=pluginConnectionRequired(p),connected=state?.connection_status==='connected';
    const ready=!!p.core||!!(enabled&&(!needsConnection||connected));
@@ -994,15 +1032,20 @@ function renderPlugins(){
  });
 }
 async function loadPlugins(){
- const box=document.getElementById('pluginsList');box.innerHTML='<div class="small">Loading…</div>';pluginActionMessage='';
+ const box=document.getElementById('pluginsList'),coreBox=document.getElementById('coreToolsList');
+ box.innerHTML='<div class="small">Loading…</div>';coreBox.innerHTML='<div class="small">Loading…</div>';pluginActionMessage='';
  try{
-   const r=await fetch('./plugins.json?ts='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
-   const payload=await r.json();pluginCatalog=Array.isArray(payload)?payload:(payload.plugins||[]);
-   if(!pluginCatalog.length){box.innerHTML='<div class="notice">No plugins are registered yet.</div>';return}
-   document.getElementById('pluginCount').textContent=String(pluginCatalog.filter(p=>p.core||p.connectable).length);
-   try{await loadPluginState()}catch(e){pluginActionMessage='Account plugin state unavailable: '+(e?.message||String(e))}
-   renderPlugins();
- }catch(e){box.innerHTML='<div class="notice">Plugin catalog could not be loaded: '+escapeHtml(e?.message||String(e))+'</div>'}
+   const stamp=Date.now();
+   const [pr,tr]=await Promise.all([fetch('./plugins.json?ts='+stamp,{cache:'no-store'}),fetch('./tools.json?ts='+stamp,{cache:'no-store'})]);
+   if(!pr.ok)throw new Error('plugins HTTP '+pr.status);if(!tr.ok)throw new Error('tools HTTP '+tr.status);
+   const payload=await pr.json(),toolPayload=await tr.json();
+   pluginCatalog=Array.isArray(payload)?payload:(payload.plugins||[]);coreTools=Array.isArray(toolPayload)?toolPayload:(toolPayload.tools||[]);
+   if(!pluginCatalog.length){box.innerHTML='<div class="notice">No connectors are registered yet.</div>'}
+   if(!coreTools.length){coreBox.innerHTML='<div class="notice">No core tools are registered yet.</div>'}
+   try{await loadPluginState()}catch(e){pluginActionMessage='Account connector state unavailable: '+(e?.message||String(e))}
+   await refreshComputeStatus();
+   renderCoreTools();renderPlugins();updateToolsBadge();
+ }catch(e){box.innerHTML='<div class="notice">Connector catalog could not be loaded: '+escapeHtml(e?.message||String(e))+'</div>';coreBox.innerHTML='<div class="notice">Core tools could not be loaded.</div>'}
 }
 document.getElementById('pluginSearch').addEventListener('input',renderPlugins);
 document.getElementById('pluginCategory').addEventListener('change',renderPlugins);
@@ -1099,6 +1142,6 @@ async function resumePendingIntents(){
     if(p)await connectPlugin(p);
   }
 }
-loadSession().then(async()=>{await resumePendingIntents();await pollCreditTopup()});
+loadSession().then(async()=>{await loadPlugins();await resumePendingIntents();await pollCreditTopup()});
 </script>
 </body></html>
