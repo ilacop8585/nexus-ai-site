@@ -217,6 +217,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
       <select id="pluginCategory" aria-label="Plugin category"><option value="">All categories</option></select>
     </div>
     <div class="small" id="pluginSummary">Loading plugin catalog…</div>
+    <div class="plugin-actions"><button id="pluginCatalogToggle" type="button">Show planned integrations</button></div>
     <div class="joblist" id="pluginsList"><div class="small">Loading…</div></div>
     <div class="notice" style="margin-top:12px">External services must be connected through a server-side OAuth/MCP bridge. NEXUS will not store third-party secrets in the browser.</div>
     <div class="modal-actions">
@@ -232,7 +233,7 @@ import { createClient } from 'https://esm.sh/@neondatabase/neon-js@0.7.0-beta';
 const client = createClient('https://ep-sparkling-forest-b2v7x4ux.c-6.eu-central-1.aws.neon.tech/neondb');
 
 const promptEl=document.getElementById('prompt'), filesEl=document.getElementById('files'), input=document.getElementById('fileInput'), messages=document.getElementById('messages'), intro=document.getElementById('intro');
-let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null, computeCapabilities=new Set(), allConversations=[], historyLimit=50, lastConversationBatchSize=0, retryConversationId=null, retryPrompt='', pluginCatalog=[], pluginState=new Map(), pluginBusy=new Set(), pluginActionMessage='';
+let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null, computeCapabilities=new Set(), allConversations=[], historyLimit=50, lastConversationBatchSize=0, retryConversationId=null, retryPrompt='', pluginCatalog=[], pluginState=new Map(), pluginBusy=new Set(), pluginActionMessage='', showAllPlugins=false;
 const MAX_FILE_BYTES=512*1024*1024, MAX_FILES_PER_JOB=20, LAST_CHAT_KEY='nexus_last_conversation_id';
 const ROUTER_URL='https://nexus-ai-router.ilario-coppola.workers.dev/chat';
 const FILES_URL='https://br-jolly-scene-b2wyu6gt-nexusfiles.compute.c-6.eu-central-1.aws.neon.tech/';
@@ -915,7 +916,8 @@ function renderPlugins(){
  const box=document.getElementById('pluginsList'),search=(document.getElementById('pluginSearch').value||'').trim().toLowerCase(),category=document.getElementById('pluginCategory').value;
  const items=pluginCatalog.filter(p=>{
    const hay=[p.name,p.id,p.category,p.description,p.type,p.integration_path].filter(Boolean).join(' ').toLowerCase();
-   return (!search||hay.includes(search))&&(!category||p.category===category);
+   const visibleNow=!!p.core||!!p.connectable||pluginState.get(p.id)?.connection_status==='connected';
+   return (showAllPlugins||visibleNow)&&(!search||hay.includes(search))&&(!category||p.category===category);
  });
  const readyCount=pluginCatalog.filter(p=>{
    const state=pluginState.get(p.id),enabled=!!p.core||!!state?.enabled,needsConnection=pluginConnectionRequired(p),connected=state?.connection_status==='connected';
@@ -925,7 +927,9 @@ function renderPlugins(){
    const state=pluginState.get(p.id);
    return !p.core&&!!state?.enabled&&pluginConnectionRequired(p)&&state?.connection_status!=='connected';
  }).length;
- document.getElementById('pluginSummary').textContent=items.length+' shown · '+pluginCatalog.length+' catalogued · '+readyCount+' ready'+(pendingCount?' · '+pendingCount+' selected but not connected':'')+(pluginActionMessage?' · '+pluginActionMessage:'');
+ const availableNow=pluginCatalog.filter(p=>p.core||p.connectable||pluginState.get(p.id)?.connection_status==='connected').length;
+ document.getElementById('pluginSummary').textContent=items.length+' shown · '+availableNow+' available now · '+pluginCatalog.length+' catalogued · '+readyCount+' ready'+(showAllPlugins&&pendingCount?' · '+pendingCount+' legacy selections not connected':'')+(pluginActionMessage?' · '+pluginActionMessage:'');
+ const toggle=document.getElementById('pluginCatalogToggle');if(toggle)toggle.textContent=showAllPlugins?'Show available now':'Show planned integrations';
  box.innerHTML='';
  if(!items.length){box.innerHTML='<div class="notice">No plugins match this search.</div>';return}
  items.forEach(p=>{
@@ -987,7 +991,7 @@ async function loadPlugins(){
    const r=await fetch('./plugins.json?ts='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
    const payload=await r.json();pluginCatalog=Array.isArray(payload)?payload:(payload.plugins||[]);
    if(!pluginCatalog.length){box.innerHTML='<div class="notice">No plugins are registered yet.</div>';return}
-   document.getElementById('pluginCount').textContent=String(pluginCatalog.length);
+   document.getElementById('pluginCount').textContent=String(pluginCatalog.filter(p=>p.core||p.connectable).length);
    const select=document.getElementById('pluginCategory'),current=select.value;
    const categories=[...new Set(pluginCatalog.map(p=>p.category).filter(Boolean))].sort();
    select.innerHTML='<option value="">All categories</option>'+categories.map(v=>'<option value="'+escapeHtml(v)+'">'+escapeHtml(v)+'</option>').join('');
@@ -998,6 +1002,7 @@ async function loadPlugins(){
 }
 document.getElementById('pluginSearch').addEventListener('input',renderPlugins);
 document.getElementById('pluginCategory').addEventListener('change',renderPlugins);
+document.getElementById('pluginCatalogToggle').addEventListener('click',()=>{showAllPlugins=!showAllPlugins;renderPlugins()});
 function openLibrary(){libraryModal.classList.add('show');loadLibrary()}
 function openPlugins(){pluginsModal.classList.add('show');loadPlugins()}
 document.getElementById('libraryBtn').onclick=openLibrary;
