@@ -80,6 +80,23 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
  .account{width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
  .account button{width:100%;min-width:0}
 }
+
+.role-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid rgba(255,255,255,.16);border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:rgba(255,255,255,.06)}
+.role-badge[hidden],.navbtn[hidden]{display:none!important}
+.beta-grid,.admin-grid{display:grid;gap:10px}
+.beta-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.beta-grid .wide{grid-column:1/-1}
+.beta-grid input,.beta-grid textarea,.beta-grid select,.admin-credit-input,.admin-name-input{width:100%;box-sizing:border-box;background:#0d111b;color:#eef3ff;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px}
+.beta-grid textarea{min-height:88px;resize:vertical}
+.admin-user{display:grid;gap:8px}
+.admin-user .admin-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.admin-user .admin-actions{display:grid;grid-template-columns:minmax(90px,130px) auto auto auto;gap:8px;align-items:center}
+.admin-user button{appearance:none;border:1px solid rgba(255,255,255,.14);background:#121824;color:#eef3ff;border-radius:9px;padding:9px 12px;font-weight:700;cursor:pointer}
+.admin-user button:hover:not(:disabled){background:#192235;border-color:rgba(255,255,255,.24)}
+.admin-user button:disabled{opacity:.42;cursor:not-allowed}
+.admin-user>button{justify-self:start}
+.beta-help{padding:10px 12px;border-radius:10px;background:rgba(120,140,255,.08);font-size:12px;line-height:1.45}
+@media(max-width:700px){.beta-grid{grid-template-columns:1fr}.beta-grid .wide{grid-column:auto}.admin-user .admin-actions{grid-template-columns:1fr 1fr}.admin-credit-input{grid-column:1/-1}}
 </style>
 </head>
 <body>
@@ -91,6 +108,8 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <button class="navbtn" id="jobsBtn"><span>My jobs</span><span class="small">0</span></button>
     <button class="navbtn" id="libraryBtn"><span>Library</span><span class="small" id="libraryCount">Files</span></button>
     <button class="navbtn" id="pluginsBtn"><span>Tools</span><span class="small" id="pluginCount">—</span></button>
+    <button class="navbtn" id="betaBtn" hidden><span>Beta Center</span><span class="small">TEST</span></button>
+    <button class="navbtn" id="adminBtn" hidden><span>Admin Center</span><span class="small">OWNER</span></button>
   </div>
   <div class="historybox">
     <div class="historytitle">Your chats</div>
@@ -116,6 +135,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
       <button id="topNewChat" type="button">New chat</button>
       <button id="topJobsBtn" type="button">Jobs</button>
       <button id="topBuyCredits" type="button">Buy credits</button>
+      <span class="role-badge" id="roleBadge" hidden></span>
       <button id="loginBtn">Sign in</button>
     </div>
   </header>
@@ -144,7 +164,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
       <div class="left-actions">
         <button class="iconbtn" id="attachBtn" type="button" aria-label="Attach files">＋ Attach</button>
         <input id="fileInput" type="file" multiple hidden>
-        <span class="beta" id="levelHint">Any file type · up to 512 MB each · 20 files · server policy still applies</span>
+        <span class="beta" id="levelHint">Any file type · up to 250 MB each · 5 files per job</span>
       </div>
       <button class="send" id="sendBtn" type="button" aria-label="Send message">Send</button>
     </div>
@@ -231,6 +251,47 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
   </div>
 </div>
 
+<div class="modal" id="betaModal">
+  <div class="modal-card jobs-card">
+    <h2>NEXUS Beta Center</h2>
+    <p id="betaIdentity">Beta testing workspace</p>
+    <div class="beta-help"><strong>What to test:</strong> chat separation, Italian responses, coding quality, speed, uploads, jobs and connectors. One issue per report. Include reproduction steps and expected vs actual result.</div>
+    <form id="betaFeedbackForm" class="beta-grid" style="margin-top:12px">
+      <select id="betaKind" aria-label="Feedback type">
+        <option value="bug">Bug</option><option value="model">AI / model</option><option value="performance">Performance</option><option value="ux">UX</option><option value="suggestion">Suggestion</option><option value="other">Other</option>
+      </select>
+      <select id="betaSeverity" aria-label="Severity">
+        <option value="critical">Critical</option><option value="high">High</option><option value="medium" selected>Medium</option><option value="low">Low</option>
+      </select>
+      <input class="wide" id="betaTitle" maxlength="240" placeholder="Short issue title" required>
+      <textarea class="wide" id="betaDescription" maxlength="12000" placeholder="What happened?" required></textarea>
+      <textarea id="betaRepro" maxlength="12000" placeholder="Steps to reproduce"></textarea>
+      <textarea id="betaExpected" maxlength="8000" placeholder="Expected result"></textarea>
+      <textarea class="wide" id="betaActual" maxlength="8000" placeholder="Actual result / exact error"></textarea>
+      <div class="wide notice" id="betaFeedbackStatus">The current NEXUS chat and page are attached to the report automatically when available.</div>
+      <div class="wide modal-actions">
+        <button class="iconbtn enable" id="submitBetaFeedback" type="submit">Submit beta report</button>
+        <button class="iconbtn" id="closeBeta" type="button">Close</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="adminModal">
+  <div class="modal-card jobs-card">
+    <h2>NEXUS Admin Center</h2>
+    <p>Owner controls for access, credits and beta feedback. Every change is audited server-side.</p>
+    <div class="small" id="adminSummary">Loading users…</div>
+    <div class="joblist admin-grid" id="adminUsers"><div class="small">Loading…</div></div>
+    <h3 style="margin-top:18px">Beta feedback</h3>
+    <div class="joblist" id="adminFeedback"><div class="small">Loading…</div></div>
+    <div class="modal-actions">
+      <button class="iconbtn" id="refreshAdmin" type="button">Refresh</button>
+      <button class="iconbtn" id="closeAdmin" type="button">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="connectorKeyModal">
   <div class="modal-card">
     <h2 id="connectorKeyTitle">Connect service</h2>
@@ -253,8 +314,8 @@ import { createClient } from 'https://esm.sh/@neondatabase/neon-js@0.7.0-beta';
 const client = createClient('https://ep-sparkling-forest-b2v7x4ux.c-6.eu-central-1.aws.neon.tech/neondb');
 
 const promptEl=document.getElementById('prompt'), filesEl=document.getElementById('files'), input=document.getElementById('fileInput'), messages=document.getElementById('messages'), intro=document.getElementById('intro');
-let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null, computeCapabilities=new Set(), allConversations=[], historyLimit=50, lastConversationBatchSize=0, retryConversationId=null, retryPrompt='', coreTools=[], pluginCatalog=[], pluginState=new Map(), pluginBusy=new Set(), pluginActionMessage='', showAllPlugins=false, pendingKeyPlugin=null;
-const MAX_FILE_BYTES=512*1024*1024, MAX_FILES_PER_JOB=20, LAST_CHAT_KEY='nexus_last_conversation_id';
+let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null, computeCapabilities=new Set(), allConversations=[], historyLimit=50, lastConversationBatchSize=0, retryConversationId=null, retryPrompt='', coreTools=[], pluginCatalog=[], pluginState=new Map(), pluginBusy=new Set(), pluginActionMessage='', showAllPlugins=false, pendingKeyPlugin=null, currentAccess=null, chatGeneration=0;
+const MAX_FILE_BYTES=250*1024*1024, MAX_FILES_PER_JOB=5, LAST_CHAT_KEY='nexus_last_conversation_id';
 const ROUTER_URL='https://nexus-ai-router.ilario-coppola.workers.dev/chat';
 const FILES_URL='https://br-jolly-scene-b2wyu6gt-nexusfiles.compute.c-6.eu-central-1.aws.neon.tech/';
 const STATUS_URL='https://br-jolly-scene-b2wyu6gt-nexusstatus.compute.c-6.eu-central-1.aws.neon.tech/';
@@ -437,6 +498,8 @@ document.getElementById('sendBtn').onclick=async()=>{
    return;
  }
 
+ const sendGeneration=chatGeneration;
+ let requestConversationId=null;
  intro.style.display='none';messages.classList.add('has');
  const visibleText=(q||'[File upload]')+(selectedFiles.length?'\nAttachments selected: '+selectedFiles.map(f=>f.name).join(', '):'');
  const userTurnText=visibleText;
@@ -456,6 +519,7 @@ document.getElementById('sendBtn').onclick=async()=>{
 
  try{
    const cid=await ensureConversation(q||userTurnText);
+   requestConversationId=cid;
    if(userTurnText&&!retryingSame){
      const {error}=await client.from('nexus_messages').insert({conversation_id:cid,role:'user',content:userTurnText,metadata:{level,attachment_count:selectedFiles.length}});
      if(error) throw error;
@@ -492,9 +556,11 @@ document.getElementById('sendBtn').onclick=async()=>{
        ? reserved+' credits reserved now and automatically refunded if the job fails or is cancelled.'
        : 'No credits reserved.';
      const ack='Upload verified. '+uploaded.length+' file'+(uploaded.length===1?'':'s')+' stored securely. NEXUS job '+shortId+' is queued. '+creditNote;
-     think.className='msg ai';
-     think.textContent=ack;
-     chatHistory.push({role:'assistant',content:ack});
+     if(sendGeneration===chatGeneration&&currentConversationId===cid){
+       think.className='msg ai';
+       think.textContent=ack;
+       chatHistory.push({role:'assistant',content:ack});
+     }
      const savedAck=await client.rpc('nexus_store_assistant_message',{
        p_conversation_id:cid,p_content:ack,p_metadata:{level,kind:jobKind,job_id:jr?.job_id||null}
      });
@@ -504,9 +570,11 @@ document.getElementById('sendBtn').onclick=async()=>{
      sendSucceeded=true;retryConversationId=null;retryPrompt='';
    } else {
      const data=await callNexus({message:q,level,history:historyForRouter});
-     think.className='msg ai';
-     think.textContent=data.reply;
-     chatHistory.push({role:'assistant',content:data.reply});
+     if(sendGeneration===chatGeneration&&currentConversationId===cid){
+       think.className='msg ai';
+       think.textContent=data.reply;
+       chatHistory.push({role:'assistant',content:data.reply});
+     }
 
      const assistantMeta={level,model:data.model||null,provider:data.provider||null,fallback_used:!!data.fallbackUsed};
      const saved=await client.rpc('nexus_store_assistant_message',{
@@ -528,18 +596,21 @@ document.getElementById('sendBtn').onclick=async()=>{
    }
  }catch(e){
    console.error('NEXUS delivery failure:',e?.message||String(e));
-   think.className='msg ai';
+   const sameChat=sendGeneration===chatGeneration&&(!requestConversationId||currentConversationId===requestConversationId);
+   if(sameChat)think.className='msg ai';
    const mediaCapacityUnavailable=e?.code==='MEDIA_CAPACITY_UNAVAILABLE'||String(e?.message||'')==='MEDIA_CAPACITY_UNAVAILABLE';
    const safeFailure=mediaCapacityUnavailable
      ? 'NEXUS media compute is not available for this file type right now. The file was not uploaded and no credits were reserved. Retry when compatible media compute is online.'
      : 'NEXUS is temporarily having trouble answering. Your message is saved in this chat and no extra credit was used. You can retry without retyping it.';
-   think.textContent=safeFailure;
-   retryConversationId=currentConversationId;retryPrompt=userTurnText;
-   if(q)promptEl.value=q;
-   if(userTurnText&&currentConversationId&&!retryingSame){
+   if(sameChat){
+     think.textContent=safeFailure;
+     retryConversationId=requestConversationId||currentConversationId;retryPrompt=userTurnText;
+     if(q)promptEl.value=q;
+   }
+   if(userTurnText&&requestConversationId&&!retryingSame){
      try{
        const savedFailure=await client.rpc('nexus_store_assistant_message',{
-         p_conversation_id:currentConversationId,
+         p_conversation_id:requestConversationId,
          p_content:safeFailure,
          p_metadata:{level,kind:mediaCapacityUnavailable?'capacity_unavailable':'delivery_failure',retryable:true,requires_reattach:selectedFiles.length>0}
        });
@@ -548,8 +619,8 @@ document.getElementById('sendBtn').onclick=async()=>{
    }
  }finally{
    document.getElementById('sendBtn').disabled=false;
-   if(currentConversationId) await touchConversation(currentConversationId);
-   if(sendSucceeded){
+   if(requestConversationId) await touchConversation(requestConversationId);
+   if(sendSucceeded&&sendGeneration===chatGeneration){
      promptEl.value='';selectedFiles=[];input.value='';filesEl.innerHTML='';filesEl.classList.remove('has');
    }
    await refreshAccountData();
@@ -564,7 +635,14 @@ function setSideOpen(open){
 }
 document.getElementById('mobileChatsBtn').onclick=()=>setSideOpen(true);
 sideBackdrop.onclick=()=>setSideOpen(false);
-function resetChat(){currentConversationId=null;retryConversationId=null;retryPrompt='';chatHistory=[];messages.innerHTML='';messages.classList.remove('has');intro.style.display='block';promptEl.value='';try{localStorage.removeItem(LAST_CHAT_KEY)}catch{}setLevel();setSideOpen(false)}
+function resetChat(){
+ chatGeneration++;
+ currentConversationId=null;retryConversationId=null;retryPrompt='';chatHistory=[];
+ messages.innerHTML='';messages.classList.remove('has');intro.style.display='block';
+ promptEl.value='';selectedFiles=[];input.value='';filesEl.innerHTML='';filesEl.classList.remove('has');
+ try{localStorage.removeItem(LAST_CHAT_KEY)}catch{}
+ setLevel();setSideOpen(false);
+}
 async function touchConversation(id){
   if(!id||!currentUser)return;
   try{await client.from('nexus_conversations').update({updated_at:new Date().toISOString()}).eq('id',id)}catch{}
@@ -743,18 +821,23 @@ document.getElementById('historySearch').addEventListener('input',()=>renderHist
 document.getElementById('loadMoreChats').onclick=async()=>{historyLimit+=50;await refreshAccountData()};
 async function refreshAccountData(){
  if(!currentUser)return;
- const [profile,convos,jobs]=await Promise.all([
+ const [profile,convos,jobs,access]=await Promise.all([
    client.from('nexus_profiles').select('plan,credits_balance,daily_credit_allowance,analytics_opt_in,content_training_opt_in').single(),
    client.from('nexus_conversations').select('id,title,level,updated_at').order('updated_at',{ascending:false}).limit(historyLimit),
-   client.from('nexus_jobs').select('id,input_summary').limit(100)
+   client.from('nexus_jobs').select('id,input_summary').limit(100),
+   client.rpc('nexus_get_my_access')
  ]);
+ const accessRow=Array.isArray(access.data)?access.data[0]:access.data;
+ currentAccess=access.error?null:(accessRow||null);
+ applyAccessUI();
  if(profile.data){
    const b=profile.data.credits_balance||0,a=profile.data.daily_credit_allowance||0;
    currentBalance=b;
-   document.getElementById('creditBalance').textContent=b;
-   document.getElementById('creditAllowance').textContent=' / '+a;
-   document.getElementById('creditBar').style.width=(a?Math.min(100,(b/a)*100):0)+'%';
-   document.getElementById('creditStatus').textContent='Available for NEXUS jobs';
+   const unlimited=!!currentAccess?.unlimited;
+   document.getElementById('creditBalance').textContent=unlimited?'∞':b;
+   document.getElementById('creditAllowance').textContent=unlimited?' unlimited':' / '+a;
+   document.getElementById('creditBar').style.width=unlimited?'100%':(a?Math.min(100,(b/a)*100):0)+'%';
+   document.getElementById('creditStatus').textContent=unlimited?'Unlimited QA / beta access · job credits are not charged':'Available for NEXUS jobs';
  }
  document.querySelector('#jobsBtn .small').textContent=jobs.error?'!':visibleJobs(jobs.data).length;
  if(convos.error){
@@ -766,9 +849,88 @@ async function refreshAccountData(){
    renderHistory(convos.data||[]);
  }
 }
-function setLoggedOutUI(){currentBalance=0;renderHistory([]);document.getElementById('loginBtn').textContent='Sign in';document.getElementById('creditBalance').textContent='—';document.getElementById('creditAllowance').textContent=' / —';document.getElementById('creditBar').style.width='0%';document.getElementById('creditStatus').textContent='Sign in to load your real NEXUS balance.'}
+function setLoggedOutUI(){
+ currentBalance=0;currentAccess=null;renderHistory([]);
+ document.getElementById('loginBtn').textContent='Sign in';
+ document.getElementById('creditBalance').textContent='—';document.getElementById('creditAllowance').textContent=' / —';document.getElementById('creditBar').style.width='0%';
+ document.getElementById('creditStatus').textContent='Sign in to load your real NEXUS balance.';
+ const badge=document.getElementById('roleBadge');badge.hidden=true;badge.textContent='';
+ document.getElementById('betaBtn').hidden=true;document.getElementById('adminBtn').hidden=true;
+}
+function applyAccessUI(){
+ const a=currentAccess||{},badge=document.getElementById('roleBadge');
+ document.getElementById('betaBtn').hidden=!(a.is_beta||a.is_admin);
+ document.getElementById('adminBtn').hidden=!a.is_admin;
+ const parts=[];
+ if(a.staff_role==='owner')parts.push('OWNER');
+ else if(a.staff_role==='admin')parts.push('ADMIN');
+ else if(a.staff_role==='beta_tester')parts.push('BETA TESTER');
+ if(a.unlimited)parts.push('UNLIMITED');
+ badge.textContent=parts.join(' · ');badge.hidden=!parts.length;
+ if(currentUser)document.getElementById('loginBtn').textContent=(a.display_name||currentUser.name||currentUser.email||'Account').slice(0,28);
+ const identity=document.getElementById('betaIdentity');
+ if(identity)identity.textContent=(a.display_name||currentUser?.name||'Tester')+(a.is_beta?' · BETA TESTER':'')+(a.unlimited?' · Unlimited access':'');
+}
+async function submitBetaFeedback(e){
+ e.preventDefault();
+ const status=document.getElementById('betaFeedbackStatus');
+ status.textContent='Submitting report…';
+ const {data,error}=await client.rpc('nexus_submit_beta_feedback',{
+   p_kind:document.getElementById('betaKind').value,
+   p_severity:document.getElementById('betaSeverity').value,
+   p_title:document.getElementById('betaTitle').value.trim(),
+   p_description:document.getElementById('betaDescription').value.trim(),
+   p_repro_steps:document.getElementById('betaRepro').value.trim()||null,
+   p_expected_result:document.getElementById('betaExpected').value.trim()||null,
+   p_actual_result:document.getElementById('betaActual').value.trim()||null,
+   p_page_url:location.href,
+   p_conversation_id:currentConversationId||null,
+   p_client_info:{userAgent:navigator.userAgent,language:navigator.language,viewport:[innerWidth,innerHeight]}
+ });
+ if(error){status.textContent='Could not submit report: '+(error.message||String(error));return}
+ document.getElementById('betaFeedbackForm').reset();
+ document.getElementById('betaSeverity').value='medium';
+ status.textContent='Beta report submitted · '+String(data||'').slice(0,8)+'. It is now visible in the Admin Center.';
+}
+function adminUserRow(u){
+ const row=document.createElement('div');row.className='jobrow admin-user';
+ const head=document.createElement('div');head.className='jobhead';
+ const title=document.createElement('strong');title.textContent=u.display_name||u.name||u.email;
+ const status=document.createElement('span');status.className='jobstatus '+(u.unlimited?'completed':'');status.textContent=String(u.staff_role||'user').replaceAll('_',' ').toUpperCase();head.append(title,status);row.appendChild(head);
+ const meta=document.createElement('div');meta.className='jobmeta';meta.textContent=u.email+' · '+u.credits+' credits'+(u.unlimited?' · unlimited':'')+(u.email_verified?' · verified email':' · email not verified');row.appendChild(meta);
+ const name=document.createElement('input');name.className='admin-name-input';name.value=u.display_name||u.name||'';name.placeholder='Display name';
+ const saveName=document.createElement('button');saveName.type='button';saveName.textContent='Save name';saveName.onclick=async()=>{const x=await client.rpc('nexus_admin_set_display_name',{p_target:u.user_id,p_display_name:name.value});if(x.error)alert(x.error.message);else await loadAdmin()};
+ const actions=document.createElement('div');actions.className='admin-actions';
+ const amount=document.createElement('input');amount.className='admin-credit-input';amount.type='number';amount.min='1';amount.max='1000000';amount.value='100';
+ const grant=document.createElement('button');grant.type='button';grant.textContent='Add credits';grant.onclick=async()=>{const x=await client.rpc('nexus_admin_grant_credits',{p_target:u.user_id,p_amount:Number(amount.value),p_reason:'admin_panel'});if(x.error)alert(x.error.message);else await loadAdmin()};
+ const beta=document.createElement('button');beta.type='button';beta.textContent=u.staff_role==='beta_tester'?'Remove beta':'Make beta';beta.disabled=u.staff_role==='owner';beta.onclick=async()=>{const x=await client.rpc('nexus_admin_set_beta',{p_target:u.user_id,p_enabled:u.staff_role!=='beta_tester'});if(x.error)alert(x.error.message);else await loadAdmin()};
+ const unlimited=document.createElement('button');unlimited.type='button';unlimited.textContent=u.unlimited?'Disable unlimited':'Enable unlimited';unlimited.disabled=u.staff_role==='owner';unlimited.onclick=async()=>{const x=await client.rpc('nexus_admin_set_unlimited',{p_target:u.user_id,p_unlimited:!u.unlimited});if(x.error)alert(x.error.message);else await loadAdmin()};
+ actions.append(amount,grant,beta,unlimited);row.append(name,saveName,actions);return row;
+}
+async function loadAdmin(){
+ const usersBox=document.getElementById('adminUsers'),feedbackBox=document.getElementById('adminFeedback'),summary=document.getElementById('adminSummary');
+ usersBox.innerHTML='<div class="small">Loading users…</div>';feedbackBox.innerHTML='<div class="small">Loading feedback…</div>';
+ const [users,feedback]=await Promise.all([client.rpc('nexus_admin_list_users'),client.rpc('nexus_admin_list_beta_feedback')]);
+ if(users.error){usersBox.innerHTML='<div class="notice">'+escapeHtml(users.error.message||String(users.error))+'</div>';return}
+ usersBox.innerHTML='';(users.data||[]).forEach(u=>usersBox.appendChild(adminUserRow(u)));
+ summary.textContent=(users.data||[]).length+' users · '+(users.data||[]).filter(x=>x.unlimited).length+' unlimited · '+(users.data||[]).filter(x=>x.staff_role==='beta_tester').length+' beta tester';
+ if(feedback.error){feedbackBox.innerHTML='<div class="notice">'+escapeHtml(feedback.error.message||String(feedback.error))+'</div>';return}
+ feedbackBox.innerHTML='';
+ if(!(feedback.data||[]).length){feedbackBox.innerHTML='<div class="notice">No beta reports yet.</div>';return}
+ (feedback.data||[]).forEach(f=>{
+   const row=document.createElement('div');row.className='jobrow';
+   const h=document.createElement('div');h.className='jobhead';const t=document.createElement('strong');t.textContent=f.title;const st=document.createElement('span');st.className='jobstatus '+(f.status==='fixed'||f.status==='verified'?'completed':'');st.textContent=f.severity+' · '+f.status;h.append(t,st);row.appendChild(h);
+   const m=document.createElement('div');m.className='jobmeta';m.textContent=(f.name||f.email)+' · '+fmtDate(f.created_at)+' · '+f.kind;row.appendChild(m);
+   const d=document.createElement('div');d.className='jobsummary';d.textContent=f.description;row.appendChild(d);
+   const a=document.createElement('div');a.className='jobactions';
+   for(const state of ['in_progress','fixed','verified','closed']){const b=document.createElement('button');b.type='button';b.textContent=state.replaceAll('_',' ');b.onclick=async()=>{const x=await client.rpc('nexus_admin_update_beta_feedback',{p_id:f.id,p_status:state,p_admin_note:null});if(x.error)alert(x.error.message);else await loadAdmin()};a.appendChild(b)}
+   row.appendChild(a);feedbackBox.appendChild(row);
+ });
+}
+function openBeta(){if(!(currentAccess?.is_beta||currentAccess?.is_admin))return;applyAccessUI();document.getElementById('betaModal').classList.add('show')}
+async function openAdmin(){if(!currentAccess?.is_admin)return;document.getElementById('adminModal').classList.add('show');await loadAdmin()}
 function pickField(row,names){for(const n of names){if(row&&row[n]!==undefined&&row[n]!==null&&row[n]!=='')return row[n]}return null}
-const libraryModal=document.getElementById('libraryModal'),pluginsModal=document.getElementById('pluginsModal');
+const libraryModal=document.getElementById('libraryModal'),pluginsModal=document.getElementById('pluginsModal'),betaModal=document.getElementById('betaModal'),adminModal=document.getElementById('adminModal');
 async function loadLibrary(){
  const box=document.getElementById('libraryList');
  if(!currentUser){box.innerHTML='<div class="notice">Sign in to load your private Library.</div>';return}
@@ -1222,6 +1384,14 @@ function openLibrary(){libraryModal.classList.add('show');loadLibrary()}
 function openPlugins(){pluginsModal.classList.add('show');loadPlugins()}
 document.getElementById('libraryBtn').onclick=openLibrary;
 document.getElementById('pluginsBtn').onclick=openPlugins;
+document.getElementById('betaBtn').onclick=openBeta;
+document.getElementById('adminBtn').onclick=openAdmin;
+document.getElementById('betaFeedbackForm').onsubmit=submitBetaFeedback;
+document.getElementById('closeBeta').onclick=()=>betaModal.classList.remove('show');
+document.getElementById('closeAdmin').onclick=()=>adminModal.classList.remove('show');
+document.getElementById('refreshAdmin').onclick=loadAdmin;
+betaModal.onclick=e=>{if(e.target.id==='betaModal')betaModal.classList.remove('show')};
+adminModal.onclick=e=>{if(e.target.id==='adminModal')adminModal.classList.remove('show')};
 document.getElementById('refreshLibrary').onclick=loadLibrary;
 document.getElementById('closeLibrary').onclick=()=>libraryModal.classList.remove('show');
 document.getElementById('refreshPlugins').onclick=loadPlugins;
