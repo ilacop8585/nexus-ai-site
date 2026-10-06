@@ -108,7 +108,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <button class="navbtn" id="jobsBtn"><span>My jobs</span><span class="small">0</span></button>
     <button class="navbtn" id="libraryBtn"><span>Library</span><span class="small" id="libraryCount">Files</span></button>
     <button class="navbtn" id="pluginsBtn"><span>Tools</span><span class="small" id="pluginCount">—</span></button>
-    <button class="navbtn" id="betaBtn" hidden><span>Beta Center</span><span class="small">TEST</span></button>
+    <button class="navbtn" id="betaBtn" hidden><span>Centro Beta</span><span class="small">TEST</span></button>
     <button class="navbtn" id="adminBtn" hidden><span>Admin Center</span><span class="small">OWNER</span></button>
   </div>
   <div class="historybox">
@@ -253,25 +253,25 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 
 <div class="modal" id="betaModal">
   <div class="modal-card jobs-card">
-    <h2>NEXUS Beta Center</h2>
-    <p id="betaIdentity">Beta testing workspace</p>
-    <div class="beta-help"><strong>What to test:</strong> chat separation, Italian responses, coding quality, speed, uploads, jobs and connectors. One issue per report. Include reproduction steps and expected vs actual result.</div>
+    <h2>Centro Beta NEXUS</h2>
+    <p id="betaIdentity">Area dedicata ai test beta</p>
+    <div class="beta-help"><strong>Cosa testare:</strong> separazione delle chat, risposte in italiano, qualità del codice, velocità, allegati, lavori e connettori. Invia una segnalazione per ogni problema e indica come riprodurlo, cosa ti aspettavi e cosa è successo davvero.</div>
     <form id="betaFeedbackForm" class="beta-grid" style="margin-top:12px">
-      <select id="betaKind" aria-label="Feedback type">
-        <option value="bug">Bug</option><option value="model">AI / model</option><option value="performance">Performance</option><option value="ux">UX</option><option value="suggestion">Suggestion</option><option value="other">Other</option>
+      <select id="betaKind" aria-label="Tipo di segnalazione">
+        <option value="bug">Bug</option><option value="model">IA / modello</option><option value="performance">Prestazioni</option><option value="ux">Esperienza d'uso</option><option value="suggestion">Suggerimento</option><option value="other">Altro</option>
       </select>
-      <select id="betaSeverity" aria-label="Severity">
-        <option value="critical">Critical</option><option value="high">High</option><option value="medium" selected>Medium</option><option value="low">Low</option>
+      <select id="betaSeverity" aria-label="Gravità">
+        <option value="critical">Critica</option><option value="high">Alta</option><option value="medium" selected>Media</option><option value="low">Bassa</option>
       </select>
-      <input class="wide" id="betaTitle" maxlength="240" placeholder="Short issue title" required>
-      <textarea class="wide" id="betaDescription" maxlength="12000" placeholder="What happened?" required></textarea>
-      <textarea id="betaRepro" maxlength="12000" placeholder="Steps to reproduce"></textarea>
-      <textarea id="betaExpected" maxlength="8000" placeholder="Expected result"></textarea>
-      <textarea class="wide" id="betaActual" maxlength="8000" placeholder="Actual result / exact error"></textarea>
-      <div class="wide notice" id="betaFeedbackStatus">The current NEXUS chat and page are attached to the report automatically when available.</div>
+      <input class="wide" id="betaTitle" maxlength="240" placeholder="Titolo breve del problema" required>
+      <textarea class="wide" id="betaDescription" maxlength="12000" placeholder="Che cosa è successo?" required></textarea>
+      <textarea id="betaRepro" maxlength="12000" placeholder="Passaggi per riprodurre il problema"></textarea>
+      <textarea id="betaExpected" maxlength="8000" placeholder="Risultato atteso"></textarea>
+      <textarea class="wide" id="betaActual" maxlength="8000" placeholder="Risultato reale / errore esatto"></textarea>
+      <div class="wide notice" id="betaFeedbackStatus">Quando disponibili, la chat NEXUS corrente e la pagina vengono associate automaticamente alla segnalazione.</div>
       <div class="wide modal-actions">
-        <button class="iconbtn enable" id="submitBetaFeedback" type="submit">Submit beta report</button>
-        <button class="iconbtn" id="closeBeta" type="button">Close</button>
+        <button class="iconbtn enable" id="submitBetaFeedback" type="submit">Invia segnalazione</button>
+        <button class="iconbtn" id="closeBeta" type="button">Chiudi</button>
       </div>
     </form>
   </div>
@@ -376,7 +376,7 @@ async function refreshComputeStatus(){
 setInterval(refreshComputeStatus,60000);
 refreshComputeStatus();
 
-function setLevel(){level='free';document.getElementById('levelHint').textContent='Chat included · credits reserved for compute-heavy work'}
+function setLevel(){level='free';document.getElementById('levelHint').textContent='Chat included · jobs use credits · up to 250 MB each · 5 files per job'}
 document.getElementById('attachBtn').onclick=()=>{
   if(!currentUser){
     sessionStorage.setItem('nexus_pending_attach','1');
@@ -393,7 +393,7 @@ input.onchange=()=>{
   }
   const tooBig=candidate.find(f=>f.size>MAX_FILE_BYTES);
   if(tooBig){
-    selectedFiles=[];input.value='';filesEl.innerHTML='<span class="filechip">'+escapeHtml(tooBig.name)+' exceeds the 512 MB client limit. The server also validates storage policy.</span>';filesEl.classList.add('has');return;
+    selectedFiles=[];input.value='';filesEl.innerHTML='<span class="filechip">'+escapeHtml(tooBig.name)+' exceeds the 250 MB per-file limit.</span>';filesEl.classList.add('has');return;
   }
   selectedFiles=candidate;
   filesEl.innerHTML=selectedFiles.map(f=>'<span class="filechip">'+escapeHtml(f.name)+' · '+formatBytes(f.size)+'</span>').join('');
@@ -874,7 +874,7 @@ function applyAccessUI(){
 async function submitBetaFeedback(e){
  e.preventDefault();
  const status=document.getElementById('betaFeedbackStatus');
- status.textContent='Submitting report…';
+ status.textContent='Invio della segnalazione…';
  const {data,error}=await client.rpc('nexus_submit_beta_feedback',{
    p_kind:document.getElementById('betaKind').value,
    p_severity:document.getElementById('betaSeverity').value,
@@ -887,10 +887,10 @@ async function submitBetaFeedback(e){
    p_conversation_id:currentConversationId||null,
    p_client_info:{userAgent:navigator.userAgent,language:navigator.language,viewport:[innerWidth,innerHeight]}
  });
- if(error){status.textContent='Could not submit report: '+(error.message||String(error));return}
+ if(error){status.textContent='Impossibile inviare la segnalazione: '+(error.message||String(error));return}
  document.getElementById('betaFeedbackForm').reset();
  document.getElementById('betaSeverity').value='medium';
- status.textContent='Beta report submitted · '+String(data||'').slice(0,8)+'. It is now visible in the Admin Center.';
+ status.textContent='Segnalazione beta inviata · '+String(data||'').slice(0,8)+'. Ora è visibile nel Centro Admin.';
 }
 function adminUserRow(u){
  const row=document.createElement('div');row.className='jobrow admin-user';
