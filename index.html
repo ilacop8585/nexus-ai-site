@@ -660,10 +660,12 @@ document.getElementById('sendBtn').onclick=async()=>{
      if(job.error)throw job.error;
      const jr=Array.isArray(job.data)?job.data[0]:job.data;
      const shortId=String(jr?.job_id||'').slice(0,8);
-     const reserved=Number(jr?.estimated_credits||0);
-     const creditNote=reserved>0
-       ? (UI_IT?reserved+' crediti prenotati; verranno rimborsati automaticamente in caso di fallimento o annullamento.':reserved+' credits reserved; they will be refunded automatically if the job fails or is cancelled.')
-       : (UI_IT?'Nessun credito prenotato.':'No credits reserved.');
+     const reserved=currentAccess?.unlimited?0:Number(jr?.estimated_credits||0);
+     const creditNote=currentAccess?.unlimited
+       ? (UI_IT?'Profilo illimitato: nessun credito verrà scalato.':'Unlimited profile: no credits will be charged.')
+       : reserved>0
+         ? (UI_IT?reserved+' crediti prenotati; verranno rimborsati automaticamente in caso di fallimento o annullamento.':reserved+' credits reserved; they will be refunded automatically if the job fails or is cancelled.')
+         : (UI_IT?'Nessun credito prenotato.':'No credits reserved.');
      const ack=UI_IT
        ? 'Caricamento verificato. '+uploaded.length+' file archiviato'+(uploaded.length===1?'':'i')+' in modo sicuro. Avvio del job NEXUS '+shortId+'… '+creditNote
        : 'Upload verified. '+uploaded.length+' file'+(uploaded.length===1?'':'s')+' stored securely. Starting NEXUS job '+shortId+'… '+creditNote;
@@ -798,12 +800,15 @@ async function loadJobs(){
    const row=document.createElement('div');row.className='jobrow';
    const head=document.createElement('div');head.className='jobhead';
    const title=document.createElement('strong');title.textContent=(j.kind||'job').replaceAll('_',' ')+' · '+String(j.id).slice(0,8);
-   const status=document.createElement('span');status.className='jobstatus '+j.status;status.textContent=j.status;
+   const status=document.createElement('span');status.className='jobstatus '+j.status;
+   const statusIt={queued:'in coda',claimed:'assegnato',running:'in elaborazione',qa:'controllo qualità',completed:'completato',failed:'fallito',cancelled:'annullato'};
+   status.textContent=UI_IT?(statusIt[j.status]||j.status):j.status;
    head.append(title,status);row.appendChild(head);
    const meta=document.createElement('div');meta.className='jobmeta';
    let creditText='';
-   if(j.charged_credits>0) creditText=j.charged_credits+' credits '+(j.status==='completed'?'used':'reserved')+' · ';
-   else if(['failed','cancelled'].includes(j.status)&&j.estimated_credits>0) creditText=j.estimated_credits+' credits refunded · ';
+   if(currentAccess?.unlimited) creditText=UI_IT?'Profilo illimitato · ':'Unlimited profile · ';
+   else if(j.charged_credits>0) creditText=j.charged_credits+' '+(UI_IT?'crediti ':'credits ')+(j.status==='completed'?(UI_IT?'usati':'used'):(UI_IT?'prenotati':'reserved'))+' · ';
+   else if(['failed','cancelled'].includes(j.status)&&j.estimated_credits>0) creditText=j.estimated_credits+' '+(UI_IT?'crediti rimborsati · ':'credits refunded · ');
    meta.textContent=creditText+fmtDate(j.created_at);row.appendChild(meta);
    if(j.input_summary){const s=document.createElement('div');s.className='jobsummary';s.textContent=j.input_summary;row.appendChild(s)}
    let resultBox=null;
@@ -813,7 +818,7 @@ async function loadJobs(){
      reveal.onclick=()=>{resultBox.hidden=!resultBox.hidden;reveal.textContent=resultBox.hidden?'Show result':'Hide result';reveal.setAttribute('aria-expanded',String(!resultBox.hidden))};
      row.appendChild(reveal);row.appendChild(resultBox);
    }
-   if(j.error_code){const e=document.createElement('div');e.className='jobresult';e.textContent='Error: '+j.error_code;row.appendChild(e)}
+   if(j.error_code){const e=document.createElement('div');e.className='jobresult';e.textContent=(UI_IT?'Errore: ':'Error: ')+j.error_code;row.appendChild(e)}
    if(['image_edit','video_edit','audio_task'].includes(j.kind)&&j.status==='queued'){const wait=document.createElement('div');wait.className='jobmeta';wait.textContent='Queued for processing · '+(j.charged_credits>0?j.charged_credits+' credits reserved':'no credits reserved');row.appendChild(wait)}
    if(j.completed_at){const done=document.createElement('div');done.className='jobmeta';done.textContent='Completed '+fmtDate(j.completed_at);row.appendChild(done)}
    const actions=document.createElement('div');actions.className='jobactions';
