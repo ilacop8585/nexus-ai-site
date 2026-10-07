@@ -420,6 +420,8 @@ async function callPcChatFallback(conversationId,message,history=[]){
   const row=Array.isArray(created.data)?created.data[0]:created.data;
   const jobId=row?.job_id;
   if(!jobId)throw new Error('pc_fallback_job_missing');
+  betaJobByConversation.set(conversationId,String(jobId));
+  nexusDiagnostic.emit('job_created','ROUTING','info',{job_id:jobId,kind:'chat_local',route:'pc-worker'});
   for(let i=0;i<110;i++){
     await new Promise(r=>setTimeout(r,1000));
     const q=await client.from('nexus_jobs')
@@ -537,10 +539,13 @@ async function trackFileJob(jobId,{cid,think,shortId,reserved,jobKind,sendGenera
       continue;
     }
     const j=q.data||{};
-    if(j.status!==lastStatus&&sameChat()){
+    if(j.status!==lastStatus){
       lastStatus=j.status||'';
-      if(j.status==='queued') think.textContent=UI_IT?'Job NEXUS '+shortId+' in coda…':'NEXUS job '+shortId+' queued…';
-      if(['claimed','running','qa'].includes(j.status)) think.textContent=UI_IT?'NEXUS sta elaborando il job '+shortId+'…':'NEXUS is processing job '+shortId+'…';
+      nexusDiagnostic.emit('job_status_changed','JOBS',['failed','cancelled'].includes(j.status)?'error':'info',{job_id:jobId,kind:jobKind,status:j.status||'unknown'});
+      if(sameChat()){
+        if(j.status==='queued') think.textContent=UI_IT?'Job NEXUS '+shortId+' in coda…':'NEXUS job '+shortId+' queued…';
+        if(['claimed','running','qa'].includes(j.status)) think.textContent=UI_IT?'NEXUS sta elaborando il job '+shortId+'…':'NEXUS is processing job '+shortId+'…';
+      }
     }
     if(j.status==='completed'){
       const result=String(j.output_summary||'').trim();
@@ -557,6 +562,7 @@ async function trackFileJob(jobId,{cid,think,shortId,reserved,jobKind,sendGenera
         p_metadata:{level,kind:jobKind,job_id:jobId,job_status:'completed',charged_credits:used,worker_id:j.worker_id||null}
       });
       if(saved.error)console.warn('Could not persist completed job result',saved.error);
+      nexusDiagnostic.emit('job_completed','JOBS','info',{job_id:jobId,kind:jobKind,status:'completed',duration_ms:Date.now()-started});
       await refreshAccountData();
       return j;
     }
@@ -576,6 +582,7 @@ async function trackFileJob(jobId,{cid,think,shortId,reserved,jobKind,sendGenera
         p_metadata:{level,kind:jobKind,job_id:jobId,job_status:j.status,error_code:reason,credits_refunded:refunded}
       });
       if(saved.error)console.warn('Could not persist failed job state',saved.error);
+      nexusDiagnostic.emit('job_failed','JOBS','error',{job_id:jobId,kind:jobKind,status:j.status,code:reason,duration_ms:Date.now()-started});
       await refreshAccountData();
       return j;
     }
@@ -709,6 +716,10 @@ document.getElementById('sendBtn').onclick=async()=>{
      if(job.error)throw job.error;
      const jr=Array.isArray(job.data)?job.data[0]:job.data;
      const shortId=String(jr?.job_id||'').slice(0,8);
+     if(jr?.job_id){
+       betaJobByConversation.set(cid,String(jr.job_id));
+       nexusDiagnostic.emit('job_created','JOBS','info',{job_id:jr.job_id,kind:jobKind,status:'queued'});
+     }
      const reserved=currentAccess?.unlimited?0:Number(jr?.estimated_credits||0);
      const creditNote=currentAccess?.unlimited
        ? (UI_IT?'Profilo illimitato: nessun credito verrà scalato.':'Unlimited profile: no credits will be charged.')
@@ -1004,6 +1015,7 @@ async function loadConversation(id,conversationLevel='free'){
  chatHistory=[];
  let lastUserMessage='';
  (data||[]).forEach(m=>{
+   if(m?.metadata?.job_id)betaJobByConversation.set(id,String(m.metadata.job_id));
    const cls=m.role==='user'?'me':'ai';
    addMsg(m.content,cls);
    if(m.role==='user'){
@@ -1103,26 +1115,147 @@ function applyAccessUI(){
  const identity=document.getElementById('betaIdentity');
  if(identity)identity.textContent=(a.display_name||currentUser?.name||'Tester')+(a.is_beta?' · BETA TESTER':'')+(a.unlimited?' · Unlimited access':'');
 }
+
+function betaStatusLabel(s){
+ const map={APERTO:'APERTO',IN_ANALISI:'IN ANALISI',IN_CORREZIONE:'IN CORREZIONE',DA_VERIFICARE:'DA VERIFICARE',RISOLTO:'RISOLTO',CHIUSO:'CHIUSO'};
+ return map[s]||String(s||'');
+}
+function setBetaPane(which){
+ const isNew=which==='new';
+ document.getElementById('betaNewPane').hidden=!isNew;
+ document.getElementById('betaTicketsPane').hidden=isNew;
+ document.getElementById('betaTabNew').classList.toggle('active',isNew);
+ document.getElementById('betaTabTickets').classList.toggle('active',!isNew);
+}
+async function loadMyBetaTickets(){
+ const box=document.getElementById('betaTicketList');
+ box.innerHTML='<div class="small">Caricamento ticket…</div>';
+ const r=await client.rpc('nexus_beta_list_my_tickets');
+ if(r.error){box.innerHTML='<div class="notice">Impossibile caricare i ticket: '+escapeHtml(String(r.error.message||r.error))+'</div>';return}
+ betaMyTickets=r.data||[];
+ document.getElementById('betaTicketCount').textContent=String(betaMyTickets.length);
+ const verifyCount=betaMyTickets.filter(x=>x.status==='DA_VERIFICARE').length;
+ const badge=document.getElementById('betaNavBadge');if(badge)badge.textContent=verifyCount?String(verifyCount)+' DA VERIFICARE':'LIVE';
+ box.innerHTML='';
+ const detail=document.getElementById('betaTicketDetail');detail.hidden=true;detail.innerHTML='';box.style.display='';
+ if(!betaMyTickets.length){box.innerHTML='<div class="notice">Nessun ticket ancora. Usa “Nuova segnalazione” quando trovi un problema.</div>';return}
+ betaMyTickets.forEach(t=>{
+   const row=document.createElement('div');row.className='jobrow beta-ticket-row';
+   const head=document.createElement('div');head.className='jobhead';
+   const title=document.createElement('div');title.innerHTML='<div class="beta-ticket-code">'+escapeHtml(String(t.public_code||''))+'</div><strong>'+escapeHtml(String(t.title||''))+'</strong>';
+   const st=document.createElement('span');st.className='jobstatus '+(['RISOLTO','CHIUSO'].includes(t.status)?'completed':'');st.textContent=betaStatusLabel(t.status);
+   head.append(title,st);row.appendChild(head);
+   const meta=document.createElement('div');meta.className='jobmeta';meta.textContent=[t.component,t.severity,t.priority,fmtDate(t.updated_at)].filter(Boolean).join(' · ');row.appendChild(meta);
+   row.onclick=()=>openBetaTicket(t.id);box.appendChild(row);
+ });
+}
+function renderBetaThread(detail,target,isAdmin=false){
+ const t=detail?.ticket||{},rows=detail?.messages||[],events=detail?.events||[];
+ target.innerHTML='';
+ const head=document.createElement('div');head.className='beta-detail-head';
+ const left=document.createElement('div');left.innerHTML='<div class="beta-ticket-code">'+escapeHtml(String(t.public_code||''))+'</div><h3 style="margin:4px 0">'+escapeHtml(String(t.title||''))+'</h3><div class="jobmeta">'+escapeHtml([t.component||'OTHER',t.severity,t.priority].filter(Boolean).join(' · '))+'</div>';
+ const st=document.createElement('span');st.className='jobstatus '+(['RISOLTO','CHIUSO'].includes(t.status)?'completed':'');st.textContent=betaStatusLabel(t.status);
+ head.append(left,st);target.appendChild(head);
+ if(t.description){const d=document.createElement('div');d.className='jobsummary';d.style.marginTop='10px';d.textContent=t.description;target.appendChild(d)}
+ if(t.repro_steps||t.expected_result||t.actual_result){
+   const grid=document.createElement('div');grid.className='beta-tech-grid';
+   for(const [label,value] of [['Riproduzione',t.repro_steps],['Atteso',t.expected_result],['Risultato reale',t.actual_result]]){
+     if(!value)continue;
+     const card=document.createElement('div');card.className='beta-tech-card';
+     const strong=document.createElement('strong');strong.textContent=label;
+     const body=document.createElement('div');body.style.marginTop='4px';body.textContent=value;
+     card.append(strong,body);grid.appendChild(card);
+   }
+   target.appendChild(grid);
+ }
+ const thread=document.createElement('div');thread.className='beta-thread';
+ rows.forEach(m=>{
+   const item=document.createElement('div');item.className='beta-message '+(m.sender_type||'system')+(m.is_internal?' internal':'');
+   const mh=document.createElement('div');mh.className='beta-message-head';
+   const who=document.createElement('span');who.textContent=m.is_internal?'NOTA INTERNA':(m.sender_name||m.sender_type||'NEXUS');
+   const when=document.createElement('span');when.textContent=fmtDate(m.created_at);mh.append(who,when);
+   const body=document.createElement('div');body.textContent=m.content||'';item.append(mh,body);thread.appendChild(item);
+ });
+ target.appendChild(thread);
+ if(events.length){
+   const tl=document.createElement('div');tl.className='beta-timeline';
+   events.filter(e=>e.event_type!=='message_added').forEach(e=>{const x=document.createElement('div');x.className='beta-event';x.textContent=fmtDate(e.created_at)+' · '+String(e.event_type||'').replaceAll('_',' ')+(e.to_status?' → '+betaStatusLabel(e.to_status):'');tl.appendChild(x)});
+   target.appendChild(tl);
+ }
+ if(!isAdmin&&t.status==='DA_VERIFICARE'){
+   const ret=document.createElement('div');ret.className='beta-retest';
+   const strong=document.createElement('strong');strong.textContent='Fix pronto da verificare';
+   const sm=document.createElement('div');sm.className='small';sm.style.marginTop='4px';sm.textContent='Riproduci il problema e comunica l’esito. Il retest salva automaticamente un nuovo snapshot tecnico.';
+   const a=document.createElement('div');a.className='beta-ticket-actions';
+   const ok=document.createElement('button');ok.type='button';ok.className='primary';ok.textContent='Confermo: risolto';ok.onclick=()=>betaRetest(true);
+   const no=document.createElement('button');no.type='button';no.textContent='Problema ancora presente';no.onclick=()=>betaRetest(false);
+   a.append(ok,no);ret.append(strong,sm,a);target.appendChild(ret);
+ }
+ if(!isAdmin&&t.status!=='CHIUSO'){
+   const ta=document.createElement('textarea');ta.id='betaThreadMessage';ta.className='beta-message-box';ta.placeholder='Scrivi direttamente al team NEXUS…';
+   const a=document.createElement('div');a.className='beta-thread-actions';const send=document.createElement('button');send.type='button';send.className='primary';send.textContent='Invia messaggio';send.onclick=sendBetaThreadMessage;a.appendChild(send);target.append(ta,a);
+ }
+ if(isAdmin&&(detail?.snapshots||[]).length){
+   const h=document.createElement('h4');h.textContent='Snapshot tecnici';h.style.marginBottom='6px';target.appendChild(h);
+   const grid=document.createElement('div');grid.className='beta-tech-grid';
+   (detail.snapshots||[]).slice().reverse().forEach(s=>{
+     const card=document.createElement('div');card.className='beta-tech-card';
+     card.textContent=[
+       (s.snapshot_type||'snapshot')+' · '+fmtDate(s.created_at),
+       s.job_id?'Job '+String(s.job_id).slice(0,8)+' · '+(s.job_kind||'')+' · '+(s.job_status_at_capture||''):'',
+       s.worker_id?'Worker: '+s.worker_id:'',
+       (s.provider_used||s.model_used)?'Route: '+[s.provider_used,s.model_used].filter(Boolean).join(' / '):'',
+       s.error_code?'Errore: '+s.error_code:'',
+       s.job_charged_credits!==null&&s.job_charged_credits!==undefined?'Crediti addebitati: '+s.job_charged_credits:''
+     ].filter(Boolean).join('\n');
+     grid.appendChild(card);
+   });
+   target.appendChild(grid);
+ }
+ if(isAdmin&&(detail?.fixes||[]).length){
+   const h=document.createElement('h4');h.textContent='Fix collegati';h.style.marginBottom='6px';target.appendChild(h);
+   const grid=document.createElement('div');grid.className='beta-tech-grid';
+   (detail.fixes||[]).forEach(f=>{const card=document.createElement('div');card.className='beta-tech-card';card.textContent=f.fix_type+' · '+f.reference+(f.environment?' · '+f.environment:'');grid.appendChild(card)});
+   target.appendChild(grid);
+ }
+}
+async function openBetaTicket(id){
+ betaCurrentTicketId=id;setBetaPane('tickets');
+ const list=document.getElementById('betaTicketList'),detail=document.getElementById('betaTicketDetail');
+ list.style.display='none';detail.hidden=false;detail.innerHTML='<div class="small">Apertura ticket…</div>';
+ const r=await client.rpc('nexus_beta_get_ticket',{p_ticket_id:id});
+ if(r.error){detail.innerHTML='<div class="notice">'+escapeHtml(String(r.error.message||r.error))+'</div>';return}
+ const back=document.createElement('button');back.className='iconbtn';back.type='button';back.textContent='← Tutti i ticket';back.onclick=async()=>{betaCurrentTicketId=null;detail.hidden=true;detail.innerHTML='';list.style.display='';await loadMyBetaTickets()};
+ const body=document.createElement('div');body.style.marginTop='10px';renderBetaThread(r.data,body,false);detail.innerHTML='';detail.append(back,body);
+}
+async function sendBetaThreadMessage(){
+ const ta=document.getElementById('betaThreadMessage'),content=(ta?.value||'').trim();if(!content||!betaCurrentTicketId)return;
+ const r=await client.rpc('nexus_beta_add_message',{p_ticket_id:betaCurrentTicketId,p_content:content,p_is_internal:false});
+ if(r.error){alert(r.error.message||String(r.error));return}ta.value='';await openBetaTicket(betaCurrentTicketId);
+}
+async function betaRetest(resolved){
+ if(!betaCurrentTicketId)return;
+ const rpc=resolved?'nexus_beta_confirm_resolved':'nexus_beta_report_still_present';
+ nexusDiagnostic.emit('beta_retest','BETA','info',{status:resolved?'resolved':'still_present'});
+ const r=await client.rpc(rpc,{p_ticket_id:betaCurrentTicketId,p_snapshot_data:getBetaSnapshot()});
+ if(r.error){alert(r.error.message||String(r.error));return}await loadMyBetaTickets();await openBetaTicket(betaCurrentTicketId);
+}
 async function submitBetaFeedback(e){
  e.preventDefault();
- const status=document.getElementById('betaFeedbackStatus');
- status.textContent='Invio della segnalazione…';
- const {data,error}=await client.rpc('nexus_submit_beta_feedback',{
-   p_kind:document.getElementById('betaKind').value,
-   p_severity:document.getElementById('betaSeverity').value,
-   p_title:document.getElementById('betaTitle').value.trim(),
-   p_description:document.getElementById('betaDescription').value.trim(),
-   p_repro_steps:document.getElementById('betaRepro').value.trim()||null,
-   p_expected_result:document.getElementById('betaExpected').value.trim()||null,
-   p_actual_result:document.getElementById('betaActual').value.trim()||null,
-   p_page_url:location.href,
-   p_conversation_id:currentConversationId||null,
-   p_client_info:{userAgent:navigator.userAgent,language:navigator.language,viewport:[innerWidth,innerHeight]}
+ const status=document.getElementById('betaFeedbackStatus');status.textContent='Apertura del ticket…';
+ nexusDiagnostic.emit('beta_ticket_submit','BETA','info',{phase:'submit'});
+ const r=await client.rpc('nexus_beta_create_ticket',{
+   p_kind:document.getElementById('betaKind').value,p_severity:document.getElementById('betaSeverity').value,
+   p_title:document.getElementById('betaTitle').value.trim(),p_description:document.getElementById('betaDescription').value.trim(),
+   p_repro_steps:document.getElementById('betaRepro').value.trim()||null,p_expected_result:document.getElementById('betaExpected').value.trim()||null,
+   p_actual_result:document.getElementById('betaActual').value.trim()||null,p_component:document.getElementById('betaComponent').value,
+   p_snapshot_data:getBetaSnapshot()
  });
- if(error){status.textContent='Impossibile inviare la segnalazione: '+(error.message||String(error));return}
- document.getElementById('betaFeedbackForm').reset();
- document.getElementById('betaSeverity').value='medium';
- status.textContent='Segnalazione beta inviata · '+String(data||'').slice(0,8)+'. Ora è visibile nel Centro Admin.';
+ if(r.error){status.textContent='Impossibile aprire il ticket: '+(r.error.message||String(r.error));return}
+ const row=Array.isArray(r.data)?r.data[0]:r.data;
+ document.getElementById('betaFeedbackForm').reset();document.getElementById('betaSeverity').value='medium';document.getElementById('betaComponent').value='OTHER';
+ status.textContent='Ticket '+String(row?.public_code||'').trim()+' creato. Puoi continuare direttamente dal thread Beta Live.';
+ await loadMyBetaTickets();setBetaPane('tickets');if(row?.ticket_id)await openBetaTicket(row.ticket_id);
 }
 function adminUserRow(u){
  const row=document.createElement('div');row.className='jobrow admin-user';
@@ -1139,27 +1272,51 @@ function adminUserRow(u){
  const unlimited=document.createElement('button');unlimited.type='button';unlimited.textContent=u.unlimited?'Disable unlimited':'Enable unlimited';unlimited.disabled=u.staff_role==='owner';unlimited.onclick=async()=>{const x=await client.rpc('nexus_admin_set_unlimited',{p_target:u.user_id,p_unlimited:!u.unlimited});if(x.error)alert(x.error.message);else await loadAdmin()};
  actions.append(amount,grant,beta,unlimited);row.append(name,saveName,actions);return row;
 }
-async function loadAdmin(){
- const usersBox=document.getElementById('adminUsers'),feedbackBox=document.getElementById('adminFeedback'),summary=document.getElementById('adminSummary');
- usersBox.innerHTML='<div class="small">Loading users…</div>';feedbackBox.innerHTML='<div class="small">Loading feedback…</div>';
- const [users,feedback]=await Promise.all([client.rpc('nexus_admin_list_users'),client.rpc('nexus_admin_list_beta_feedback')]);
- if(users.error){usersBox.innerHTML='<div class="notice">'+escapeHtml(users.error.message||String(users.error))+'</div>';return}
- usersBox.innerHTML='';(users.data||[]).forEach(u=>usersBox.appendChild(adminUserRow(u)));
- summary.textContent=(users.data||[]).length+' users · '+(users.data||[]).filter(x=>x.unlimited).length+' unlimited · '+(users.data||[]).filter(x=>x.staff_role==='beta_tester').length+' beta tester';
- if(feedback.error){feedbackBox.innerHTML='<div class="notice">'+escapeHtml(feedback.error.message||String(feedback.error))+'</div>';return}
- feedbackBox.innerHTML='';
- if(!(feedback.data||[]).length){feedbackBox.innerHTML='<div class="notice">No beta reports yet.</div>';return}
- (feedback.data||[]).forEach(f=>{
-   const row=document.createElement('div');row.className='jobrow';
-   const h=document.createElement('div');h.className='jobhead';const t=document.createElement('strong');t.textContent=f.title;const st=document.createElement('span');st.className='jobstatus '+(f.status==='fixed'||f.status==='verified'?'completed':'');st.textContent=f.severity+' · '+f.status;h.append(t,st);row.appendChild(h);
-   const m=document.createElement('div');m.className='jobmeta';m.textContent=(f.name||f.email)+' · '+fmtDate(f.created_at)+' · '+f.kind;row.appendChild(m);
-   const d=document.createElement('div');d.className='jobsummary';d.textContent=f.description;row.appendChild(d);
-   const a=document.createElement('div');a.className='jobactions';
-   for(const state of ['in_progress','fixed','verified','closed']){const b=document.createElement('button');b.type='button';b.textContent=state.replaceAll('_',' ');b.onclick=async()=>{const x=await client.rpc('nexus_admin_update_beta_feedback',{p_id:f.id,p_status:state,p_admin_note:null});if(x.error)alert(x.error.message);else await loadAdmin()};a.appendChild(b)}
-   row.appendChild(a);feedbackBox.appendChild(row);
+function adminNextBetaStates(status){return {APERTO:['IN_ANALISI','CHIUSO'],IN_ANALISI:['IN_CORREZIONE','CHIUSO'],IN_CORREZIONE:['DA_VERIFICARE','IN_ANALISI'],DA_VERIFICARE:['IN_ANALISI','RISOLTO'],RISOLTO:['CHIUSO','IN_ANALISI'],CHIUSO:[]}[status]||[]}
+async function adminBetaTransition(id,next){
+ const r=await client.rpc('nexus_beta_admin_transition',{p_ticket_id:id,p_new_status:next,p_metadata:{source:'admin_center'}});
+ if(r.error){alert(r.error.message||String(r.error));return}await loadAdmin();await openAdminBetaTicket(id);
+}
+async function openAdminBetaTicket(id){
+ adminCurrentBetaTicketId=id;
+ const box=document.getElementById('adminBetaDetail');box.hidden=false;box.innerHTML='<div class="small">Caricamento dettaglio…</div>';
+ const r=await client.rpc('nexus_beta_get_ticket',{p_ticket_id:id});
+ if(r.error){box.innerHTML='<div class="notice">'+escapeHtml(String(r.error.message||r.error))+'</div>';return}
+ const d=r.data||{},t=d.ticket||{},body=document.createElement('div');renderBetaThread(d,body,true);
+ const actions=document.createElement('div');actions.className='beta-ticket-actions';
+ adminNextBetaStates(t.status).forEach(next=>{const b=document.createElement('button');b.type='button';b.className=next==='DA_VERIFICARE'?'primary':'';b.textContent='→ '+betaStatusLabel(next);b.onclick=()=>adminBetaTransition(id,next);actions.appendChild(b)});
+ const msg=document.createElement('textarea');msg.id='adminBetaMessage';msg.className='beta-message-box';msg.placeholder='Messaggio al tester o nota interna…';
+ const internal=document.createElement('label');internal.className='beta-internal-toggle';internal.innerHTML='<input id="adminBetaInternal" type="checkbox"> Nota interna (non visibile al tester)';
+ const send=document.createElement('button');send.type='button';send.className='iconbtn enable';send.textContent='Invia messaggio';
+ send.onclick=async()=>{const val=(msg.value||'').trim();if(!val)return;const x=await client.rpc('nexus_beta_add_message',{p_ticket_id:id,p_content:val,p_is_internal:document.getElementById('adminBetaInternal').checked});if(x.error)alert(x.error.message);else await openAdminBetaTicket(id)};
+ const fix=document.createElement('div');fix.className='beta-admin-controls';
+ fix.innerHTML='<select id="adminFixType"><option value="frontend_commit">Frontend commit</option><option value="worker_change">Worker change</option><option value="database_migration">DB migration</option><option value="deployment">Deployment</option><option value="configuration">Configuration</option></select><input id="adminFixRef" placeholder="Commit / run / versione"><input id="adminFixEnv" value="production" placeholder="Ambiente"><button class="iconbtn" id="adminLinkFix" type="button">Collega fix</button>';
+ box.innerHTML='';box.append(body,actions,msg,internal,send,fix);
+ document.getElementById('adminLinkFix').onclick=async()=>{const ref=document.getElementById('adminFixRef').value.trim();if(!ref)return;const x=await client.rpc('nexus_beta_admin_link_fix',{p_ticket_id:id,p_fix_type:document.getElementById('adminFixType').value,p_reference:ref,p_environment:document.getElementById('adminFixEnv').value||'production',p_metadata:{source:'admin_center'}});if(x.error)alert(x.error.message);else await openAdminBetaTicket(id)};
+}
+function renderAdminBetaTickets(rows){
+ const box=document.getElementById('adminFeedback'),filter=document.getElementById('adminBetaStatusFilter')?.value||'',list=(rows||[]).filter(x=>!filter||x.status===filter);
+ box.innerHTML='';if(!list.length){box.innerHTML='<div class="notice">Nessun ticket per questo filtro.</div>';return}
+ list.forEach(f=>{
+   const row=document.createElement('div');row.className='jobrow beta-ticket-row';
+   const h=document.createElement('div');h.className='jobhead';
+   const t=document.createElement('div');t.innerHTML='<div class="beta-ticket-code">'+escapeHtml(String(f.public_code||''))+'</div><strong>'+escapeHtml(String(f.title||''))+'</strong>';
+   const st=document.createElement('span');st.className='jobstatus '+(['RISOLTO','CHIUSO'].includes(f.status)?'completed':'');st.textContent=betaStatusLabel(f.status);h.append(t,st);row.appendChild(h);
+   const m=document.createElement('div');m.className='jobmeta';m.textContent=[f.name||f.email,f.component,f.severity,f.priority,fmtDate(f.updated_at)].filter(Boolean).join(' · ');row.appendChild(m);
+   row.onclick=()=>openAdminBetaTicket(f.id);box.appendChild(row);
  });
 }
-function openBeta(){if(!(currentAccess?.is_beta||currentAccess?.is_admin))return;applyAccessUI();document.getElementById('betaModal').classList.add('show')}
+async function loadAdmin(){
+ const usersBox=document.getElementById('adminUsers'),feedbackBox=document.getElementById('adminFeedback'),summary=document.getElementById('adminSummary');
+ usersBox.innerHTML='<div class="small">Loading users…</div>';feedbackBox.innerHTML='<div class="small">Loading Beta Live…</div>';
+ const [users,tickets]=await Promise.all([client.rpc('nexus_admin_list_users'),client.rpc('nexus_beta_admin_list_tickets')]);
+ if(users.error){usersBox.innerHTML='<div class="notice">'+escapeHtml(String(users.error.message||users.error))+'</div>';return}
+ usersBox.innerHTML='';(users.data||[]).forEach(u=>usersBox.appendChild(adminUserRow(u)));
+ summary.textContent=(users.data||[]).length+' users · '+(users.data||[]).filter(x=>x.unlimited).length+' unlimited · '+(users.data||[]).filter(x=>x.staff_role==='beta_tester').length+' beta tester';
+ if(tickets.error){feedbackBox.innerHTML='<div class="notice">'+escapeHtml(String(tickets.error.message||tickets.error))+'</div>';return}
+ adminBetaTicketsCache=tickets.data||[];renderAdminBetaTickets(adminBetaTicketsCache);
+}
+async function openBeta(){if(!(currentAccess?.is_beta||currentAccess?.is_admin))return;applyAccessUI();document.getElementById('betaModal').classList.add('show');setBetaPane('new');await loadMyBetaTickets()}
 async function openAdmin(){if(!currentAccess?.is_admin)return;document.getElementById('adminModal').classList.add('show');await loadAdmin()}
 function pickField(row,names){for(const n of names){if(row&&row[n]!==undefined&&row[n]!==null&&row[n]!=='')return row[n]}return null}
 const libraryModal=document.getElementById('libraryModal'),pluginsModal=document.getElementById('pluginsModal'),betaModal=document.getElementById('betaModal'),adminModal=document.getElementById('adminModal');
@@ -1619,6 +1776,9 @@ document.getElementById('pluginsBtn').onclick=openPlugins;
 document.getElementById('betaBtn').onclick=openBeta;
 document.getElementById('adminBtn').onclick=openAdmin;
 document.getElementById('betaFeedbackForm').onsubmit=submitBetaFeedback;
+document.getElementById('betaTabNew').onclick=()=>setBetaPane('new');
+document.getElementById('betaTabTickets').onclick=async()=>{setBetaPane('tickets');await loadMyBetaTickets()};
+document.getElementById('adminBetaStatusFilter').onchange=()=>renderAdminBetaTickets(adminBetaTicketsCache);
 document.getElementById('closeBeta').onclick=()=>betaModal.classList.remove('show');
 document.getElementById('closeAdmin').onclick=()=>adminModal.classList.remove('show');
 document.getElementById('refreshAdmin').onclick=loadAdmin;
