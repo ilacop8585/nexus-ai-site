@@ -96,6 +96,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 .admin-user button:disabled{opacity:.42;cursor:not-allowed}
 .admin-user>button{justify-self:start}
 .beta-help{padding:10px 12px;border-radius:10px;background:rgba(120,140,255,.08);font-size:12px;line-height:1.45}
+.beta-live-card{max-width:980px}.beta-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.beta-tabs button,.beta-ticket-actions button,.beta-thread-actions button{appearance:none;border:1px solid rgba(255,255,255,.14);background:#121824;color:#eef3ff;border-radius:9px;padding:9px 12px;font-weight:750;cursor:pointer}.beta-tabs button.active,.beta-ticket-actions button.primary,.beta-thread-actions button.primary{background:var(--accent);color:#04100b;border-color:var(--accent)}.beta-pane[hidden],#betaTicketDetail[hidden],#adminBetaDetail[hidden]{display:none!important}.beta-ticket-row{cursor:pointer}.beta-ticket-row:hover{border-color:rgba(255,255,255,.24)}.beta-ticket-code{font-size:11px;color:var(--accent);font-weight:800;letter-spacing:.05em}.beta-thread{display:grid;gap:9px;margin-top:12px}.beta-message{padding:10px 12px;border:1px solid rgba(255,255,255,.10);border-radius:10px;background:#0c121b}.beta-message.admin{border-color:rgba(70,220,150,.26)}.beta-message.system{opacity:.78}.beta-message.internal{border-style:dashed}.beta-message-head{display:flex;justify-content:space-between;gap:10px;font-size:10px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}.beta-detail-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}.beta-retest{margin-top:12px;padding:12px;border:1px solid rgba(70,220,150,.28);background:rgba(70,220,150,.07);border-radius:10px}.beta-ticket-actions,.beta-thread-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.beta-message-box{width:100%;box-sizing:border-box;background:#0d111b;color:#eef3ff;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px;min-height:78px;resize:vertical}.beta-tech-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.beta-tech-card{border:1px solid rgba(255,255,255,.09);border-radius:9px;padding:9px;background:#0b1018;font-size:11px;overflow-wrap:anywhere}.beta-timeline{display:grid;gap:6px;margin-top:10px}.beta-event{font-size:11px;color:var(--muted);padding-left:10px;border-left:2px solid rgba(255,255,255,.12)}.beta-admin-controls{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-top:10px}.beta-admin-controls input,.beta-admin-controls select{width:100%;box-sizing:border-box;background:#0d111b;color:#eef3ff;border:1px solid rgba(255,255,255,.12);border-radius:9px;padding:9px}.beta-internal-toggle{display:flex;gap:7px;align-items:center;font-size:11px;color:var(--muted)}@media(max-width:700px){.beta-tech-grid,.beta-admin-controls{grid-template-columns:1fr}.beta-live-card{max-width:96vw}}
 @media(max-width:700px){.beta-grid{grid-template-columns:1fr}.beta-grid .wide{grid-column:auto}.admin-user .admin-actions{grid-template-columns:1fr 1fr}.admin-credit-input{grid-column:1/-1}}
 </style>
 </head>
@@ -108,7 +109,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <button class="navbtn" id="jobsBtn"><span>My jobs</span><span class="small">0</span></button>
     <button class="navbtn" id="libraryBtn"><span>Library</span><span class="small" id="libraryCount">Files</span></button>
     <button class="navbtn" id="pluginsBtn"><span>Tools</span><span class="small" id="pluginCount">—</span></button>
-    <button class="navbtn" id="betaBtn" hidden><span>Centro Beta</span><span class="small">TEST</span></button>
+    <button class="navbtn" id="betaBtn" hidden><span>Centro Beta</span><span class="small" id="betaNavBadge">LIVE</span></button>
     <button class="navbtn" id="adminBtn" hidden><span>Admin Center</span><span class="small">OWNER</span></button>
   </div>
   <div class="historybox">
@@ -253,28 +254,41 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 </div>
 
 <div class="modal" id="betaModal">
-  <div class="modal-card jobs-card">
-    <h2>Centro Beta NEXUS</h2>
-    <p id="betaIdentity">Area dedicata ai test beta</p>
-    <div class="beta-help"><strong>Cosa testare:</strong> separazione delle chat, risposte in italiano, qualità del codice, velocità, allegati, lavori e connettori. Invia una segnalazione per ogni problema e indica come riprodurlo, cosa ti aspettavi e cosa è successo davvero.</div>
-    <form id="betaFeedbackForm" class="beta-grid" style="margin-top:12px">
-      <select id="betaKind" aria-label="Tipo di segnalazione">
-        <option value="bug">Bug</option><option value="model">IA / modello</option><option value="performance">Prestazioni</option><option value="ux">Esperienza d'uso</option><option value="suggestion">Suggerimento</option><option value="other">Altro</option>
-      </select>
-      <select id="betaSeverity" aria-label="Gravità">
-        <option value="critical">Critica</option><option value="high">Alta</option><option value="medium" selected>Media</option><option value="low">Bassa</option>
-      </select>
-      <input class="wide" id="betaTitle" maxlength="240" placeholder="Titolo breve del problema" required>
-      <textarea class="wide" id="betaDescription" maxlength="12000" placeholder="Che cosa è successo?" required></textarea>
-      <textarea id="betaRepro" maxlength="12000" placeholder="Passaggi per riprodurre il problema"></textarea>
-      <textarea id="betaExpected" maxlength="8000" placeholder="Risultato atteso"></textarea>
-      <textarea class="wide" id="betaActual" maxlength="8000" placeholder="Risultato reale / errore esatto"></textarea>
-      <div class="wide notice" id="betaFeedbackStatus">Quando disponibili, la chat NEXUS corrente e la pagina vengono associate automaticamente alla segnalazione.</div>
-      <div class="wide modal-actions">
-        <button class="iconbtn enable" id="submitBetaFeedback" type="submit">Invia segnalazione</button>
-        <button class="iconbtn" id="closeBeta" type="button">Chiudi</button>
-      </div>
-    </form>
+  <div class="modal-card jobs-card beta-live-card">
+    <div class="beta-detail-head">
+      <div><h2>Beta Live NEXUS</h2><p id="betaIdentity">Area dedicata ai test beta</p></div>
+      <span class="role-badge">LIVE QA</span>
+    </div>
+    <div class="beta-tabs">
+      <button id="betaTabNew" type="button" class="active">Nuova segnalazione</button>
+      <button id="betaTabTickets" type="button">I miei ticket · <span id="betaTicketCount">0</span></button>
+    </div>
+    <section id="betaNewPane" class="beta-pane">
+      <div class="beta-help"><strong>Cosa testare:</strong> separazione delle chat, risposte in italiano, qualità del codice, velocità, allegati, lavori e connettori. NEXUS associa automaticamente il contesto tecnico disponibile senza acquisire password, token o contenuti dei file.</div>
+      <form id="betaFeedbackForm" class="beta-grid" style="margin-top:12px">
+        <select id="betaKind" aria-label="Tipo di segnalazione">
+          <option value="bug">Bug</option><option value="model">IA / modello</option><option value="performance">Prestazioni</option><option value="ux">Esperienza d'uso</option><option value="suggestion">Suggerimento</option><option value="other">Altro</option>
+        </select>
+        <select id="betaSeverity" aria-label="Gravità">
+          <option value="critical">Critica</option><option value="high">Alta</option><option value="medium" selected>Media</option><option value="low">Bassa</option>
+        </select>
+        <select id="betaComponent" class="wide" aria-label="Componente">
+          <option value="OTHER">Componente: non so / altro</option><option value="AUTH">Login / account</option><option value="CHAT">Chat</option><option value="ROUTING">Routing IA</option><option value="PC_WORKER">Worker PC</option><option value="JOBS">Job</option><option value="UPLOAD">Upload</option><option value="LIBRARY">Library</option><option value="CREDITS">Crediti</option><option value="CONNECTORS">Connettori</option><option value="BETA">Centro Beta</option><option value="ADMIN">Admin</option><option value="UI">Interfaccia</option><option value="SEO">SEO</option>
+        </select>
+        <input class="wide" id="betaTitle" maxlength="240" placeholder="Titolo breve del problema" required>
+        <textarea class="wide" id="betaDescription" maxlength="12000" placeholder="Che cosa è successo?" required></textarea>
+        <textarea id="betaRepro" maxlength="12000" placeholder="Passaggi per riprodurre il problema"></textarea>
+        <textarea id="betaExpected" maxlength="8000" placeholder="Risultato atteso"></textarea>
+        <textarea class="wide" id="betaActual" maxlength="8000" placeholder="Risultato reale / errore esatto"></textarea>
+        <div class="wide notice" id="betaFeedbackStatus">La chat corrente, l'ultimo job della chat e un buffer diagnostico sanitizzato vengono associati quando disponibili.</div>
+        <div class="wide modal-actions"><button class="iconbtn enable" id="submitBetaFeedback" type="submit">Apri ticket</button></div>
+      </form>
+    </section>
+    <section id="betaTicketsPane" class="beta-pane" hidden>
+      <div class="joblist" id="betaTicketList"><div class="small">Caricamento ticket…</div></div>
+      <div id="betaTicketDetail" hidden></div>
+    </section>
+    <div class="modal-actions"><button class="iconbtn" id="closeBeta" type="button">Chiudi</button></div>
   </div>
 </div>
 
@@ -284,8 +298,14 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <p>Owner controls for access, credits and beta feedback. Every change is audited server-side.</p>
     <div class="small" id="adminSummary">Loading users…</div>
     <div class="joblist admin-grid" id="adminUsers"><div class="small">Loading…</div></div>
-    <h3 style="margin-top:18px">Beta feedback</h3>
-    <div class="joblist" id="adminFeedback"><div class="small">Loading…</div></div>
+    <h3 style="margin-top:18px">Beta Live</h3>
+    <div class="plugin-tools">
+      <select id="adminBetaStatusFilter" aria-label="Filtra ticket beta">
+        <option value="">Tutti gli stati</option><option value="APERTO">Aperti</option><option value="IN_ANALISI">In analisi</option><option value="IN_CORREZIONE">In correzione</option><option value="DA_VERIFICARE">Da verificare</option><option value="RISOLTO">Risolti</option><option value="CHIUSO">Chiusi</option>
+      </select>
+    </div>
+    <div class="joblist" id="adminFeedback"><div class="small">Caricamento ticket…</div></div>
+    <div id="adminBetaDetail" hidden></div>
     <div class="modal-actions">
       <button class="iconbtn" id="refreshAdmin" type="button">Refresh</button>
       <button class="iconbtn" id="closeAdmin" type="button">Close</button>
@@ -315,13 +335,42 @@ import { createClient } from 'https://esm.sh/@neondatabase/neon-js@0.7.0-beta';
 const client = createClient('https://ep-sparkling-forest-b2v7x4ux.c-6.eu-central-1.aws.neon.tech/neondb');
 
 const promptEl=document.getElementById('prompt'), filesEl=document.getElementById('files'), input=document.getElementById('fileInput'), messages=document.getElementById('messages'), intro=document.getElementById('intro');
-let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null, computeCapabilities=new Set(), allConversations=[], historyLimit=50, lastConversationBatchSize=0, retryConversationId=null, retryPrompt='', coreTools=[], pluginCatalog=[], pluginState=new Map(), pluginBusy=new Set(), pluginActionMessage='', showAllPlugins=false, pendingKeyPlugin=null, currentAccess=null, chatGeneration=0;
+let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null, computeCapabilities=new Set(), allConversations=[], historyLimit=50, lastConversationBatchSize=0, retryConversationId=null, retryPrompt='', coreTools=[], pluginCatalog=[], pluginState=new Map(), pluginBusy=new Set(), pluginActionMessage='', showAllPlugins=false, pendingKeyPlugin=null, currentAccess=null, chatGeneration=0, betaMyTickets=[], betaCurrentTicketId=null, adminCurrentBetaTicketId=null, adminBetaTicketsCache=[];
+const betaJobByConversation=new Map();
 const MAX_FILE_BYTES=250*1024*1024, MAX_FILES_PER_JOB=5, LAST_CHAT_KEY='nexus_last_conversation_id';
 const ROUTER_URL='https://nexus-ai-router.ilario-coppola.workers.dev/chat';
 const FILES_URL='https://br-jolly-scene-b2wyu6gt-nexusfiles.compute.c-6.eu-central-1.aws.neon.tech/';
 const STATUS_URL='https://br-jolly-scene-b2wyu6gt-nexusstatus.compute.c-6.eu-central-1.aws.neon.tech/';
 const CONNECTOR_BRIDGE_URL='https://nexus-connectors.ilario-coppola.workers.dev';
 const UI_IT=(navigator.language||'').toLowerCase().startsWith('it');
+const BETA_BUILD='beta-live-v1';
+const nexusDiagnostic=(()=>{
+  const events=[];
+  let tabSessionId='';
+  try{tabSessionId=sessionStorage.getItem('nexus_beta_tab_session_id')||''}catch{}
+  if(!tabSessionId){
+    tabSessionId=(globalThis.crypto?.randomUUID?.()||('tab-'+Date.now()+'-'+Math.random().toString(36).slice(2))).slice(0,120);
+    try{sessionStorage.setItem('nexus_beta_tab_session_id',tabSessionId)}catch{}
+  }
+  const allowedMeta=new Set(['status','code','job_id','kind','duration_ms','phase','route']);
+  function emit(event_name,component='UI',severity='info',safe_metadata={}){
+    const safe={};
+    for(const [k,v] of Object.entries(safe_metadata||{})){
+      if(!allowedMeta.has(k)||v===undefined||v===null)continue;
+      safe[k]=String(v).slice(0,160);
+    }
+    events.push({timestamp:new Date().toISOString(),event_name:String(event_name||'event').slice(0,80),component:String(component||'UI').slice(0,40),severity:String(severity||'info').slice(0,20),safe_metadata:safe});
+    if(events.length>100)events.splice(0,events.length-100);
+  }
+  return {tabSessionId,emit,getSanitizedPayload:()=>events.slice(-100)};
+})();
+function getBetaSnapshot(extra={}){
+  const mappedJob=currentConversationId?betaJobByConversation.get(currentConversationId):null;
+  return {client_route:location.pathname+location.search,tab_session_id:nexusDiagnostic.tabSessionId,user_agent:navigator.userAgent,viewport:innerWidth+'x'+innerHeight,conversation_id:currentConversationId||null,job_id:extra.job_id||mappedJob||null,frontend_build_commit:BETA_BUILD,error_code:extra.error_code||null,diagnostic_buffer:nexusDiagnostic.getSanitizedPayload()};
+}
+nexusDiagnostic.emit('page_loaded','UI','info',{route:location.pathname});
+window.addEventListener('error',e=>nexusDiagnostic.emit('frontend_exception','UI','error',{code:e?.error?.name||'window_error',phase:'runtime'}));
+window.addEventListener('unhandledrejection',e=>nexusDiagnostic.emit('frontend_exception','UI','error',{code:e?.reason?.name||'promise_rejection',phase:'promise'}));
 
 async function getNexusAccessToken(){
  const tokenResult=await client.auth.token();
