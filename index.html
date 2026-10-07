@@ -184,6 +184,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <div class="modal-actions">
       <button class="iconbtn" id="googleLogin" type="button">Continue with Google</button>
       <button class="iconbtn" id="toggleAuth" type="button">Create account</button>
+      <button class="iconbtn" id="forgotPassword" type="button">Password dimenticata?</button>
       <button class="iconbtn" id="closeLogin" type="button">Close</button>
     </div>
     <div class="notice" id="authNotice">NEXUS accounts are powered by Neon Auth. Passwords are handled by the authentication service, not stored in the page.</div>
@@ -789,6 +790,27 @@ document.getElementById('toggleAuth').onclick=()=>{
  document.getElementById('toggleAuth').textContent=isSignUp?'I already have an account':'Create account';
  document.getElementById('authName').style.display=isSignUp?'block':'none';
  document.getElementById('authPassword').autocomplete=isSignUp?'new-password':'current-password';
+ document.getElementById('forgotPassword').hidden=isSignUp;
+};
+
+document.getElementById('forgotPassword').onclick=async()=>{
+ const email=document.getElementById('authEmail').value.trim();
+ if(!email){
+   setAuthNotice('Inserisci prima l’indirizzo email del tuo account.');
+   document.getElementById('authEmail').focus();
+   return;
+ }
+ setAuthNotice('Invio del link per reimpostare la password…');
+ try{
+   const r=await client.auth.requestPasswordReset({
+     email,
+     redirectTo:'https://nexusword.it/reset-password.html'
+   });
+   if(r?.error)throw new Error(r.error.message||'reset_failed');
+   setAuthNotice('Se l’indirizzo è registrato, riceverai una email con il link per scegliere una nuova password. Controlla anche Spam/Posta indesiderata.');
+ }catch(err){
+   setAuthNotice('Impossibile inviare il reset password: '+(err?.message||String(err)));
+ }
 };
 
 document.getElementById('authForm').onsubmit=async e=>{
@@ -796,13 +818,29 @@ document.getElementById('authForm').onsubmit=async e=>{
  const email=document.getElementById('authEmail').value.trim();
  const password=document.getElementById('authPassword').value;
  const name=document.getElementById('authName').value.trim()||email.split('@')[0]||'NEXUS user';
- setAuthNotice(isSignUp?'Creating account…':'Signing in…');
- const result=isSignUp
-   ? await client.auth.signUp.email({name,email,password,callbackURL:'https://nexusword.it/'})
-   : await client.auth.signIn.email({email,password,rememberMe:true,callbackURL:'https://nexusword.it/'});
- if(result.error){setAuthNotice(result.error.message);return}
- await loadSession();
- modal.classList.remove('show');
+ setAuthNotice(isSignUp?'Creazione account…':'Accesso in corso…');
+ try{
+   const result=isSignUp
+     ? await client.auth.signUp.email({name,email,password,callbackURL:'https://nexusword.it/'})
+     : await client.auth.signIn.email({email,password,rememberMe:true,callbackURL:'https://nexusword.it/'});
+   if(result?.error){
+     const raw=String(result.error.message||'auth_failed');
+     if(!isSignUp&&/password|credential|invalid|email/i.test(raw)){
+       setAuthNotice('Email o password non corrette. Se non ricordi la password, usa “Password dimenticata?”.');
+     }else{
+       setAuthNotice(raw);
+     }
+     return;
+   }
+   await loadSession();
+   if(!currentUser){
+     setAuthNotice('Accesso non completato. Riprova oppure usa “Password dimenticata?”.');
+     return;
+   }
+   modal.classList.remove('show');
+ }catch(err){
+   setAuthNotice('Accesso non riuscito: '+(err?.message||String(err)));
+ }
 };
 
 document.getElementById('googleLogin').onclick=async()=>{
