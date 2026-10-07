@@ -474,6 +474,73 @@ function detectJobKind(file){
   if(type.includes('pdf')||type.includes('document')||type.includes('text')||/\.(pdf|docx?|xlsx?|pptx?|txt|md|csv)$/.test(name))return 'document_task';
   return 'general_file';
 }
+async function trackFileJob(jobId,{cid,think,shortId,reserved,jobKind,sendGeneration}){
+  const sameChat=()=>sendGeneration===chatGeneration&&currentConversationId===cid;
+  const started=Date.now();
+  let lastStatus='';
+  for(let i=0;i<150;i++){
+    await new Promise(r=>setTimeout(r,1000));
+    const q=await client.from('nexus_jobs')
+      .select('status,charged_credits,output_summary,error_code,worker_id,completed_at')
+      .eq('id',jobId).single();
+    if(q.error){
+      console.warn('Job tracking error',q.error);
+      continue;
+    }
+    const j=q.data||{};
+    if(j.status!==lastStatus&&sameChat()){
+      lastStatus=j.status||'';
+      if(j.status==='queued') think.textContent=UI_IT?'Job NEXUS '+shortId+' in coda…':'NEXUS job '+shortId+' queued…';
+      if(['claimed','running','qa'].includes(j.status)) think.textContent=UI_IT?'NEXUS sta elaborando il job '+shortId+'…':'NEXUS is processing job '+shortId+'…';
+    }
+    if(j.status==='completed'){
+      const result=String(j.output_summary||'').trim();
+      const used=Number(j.charged_credits||0);
+      const done=result||(UI_IT?'Job '+shortId+' completato.':'Job '+shortId+' completed.');
+      if(sameChat()){
+        think.className='msg ai';
+        think.textContent=done;
+        chatHistory.push({role:'assistant',content:done});
+      }
+      const saved=await client.rpc('nexus_store_assistant_message',{
+        p_conversation_id:cid,
+        p_content:done,
+        p_metadata:{level,kind:jobKind,job_id:jobId,job_status:'completed',charged_credits:used,worker_id:j.worker_id||null}
+      });
+      if(saved.error)console.warn('Could not persist completed job result',saved.error);
+      await refreshAccountData();
+      return j;
+    }
+    if(['failed','cancelled'].includes(j.status)){
+      const refunded=reserved>0?reserved:0;
+      const reason=String(j.error_code||'JOB_FAILED');
+      const msg=UI_IT
+        ? 'Il job NEXUS '+shortId+' non è riuscito. '+(refunded?refunded+' crediti sono stati rimborsati automaticamente. ':'')+'Errore: '+reason
+        : 'NEXUS job '+shortId+' failed. '+(refunded?refunded+' credits were automatically refunded. ':'')+'Error: '+reason;
+      if(sameChat()){
+        think.className='msg ai';
+        think.textContent=msg;
+      }
+      const saved=await client.rpc('nexus_store_assistant_message',{
+        p_conversation_id:cid,
+        p_content:msg,
+        p_metadata:{level,kind:jobKind,job_id:jobId,job_status:j.status,error_code:reason,credits_refunded:refunded}
+      });
+      if(saved.error)console.warn('Could not persist failed job state',saved.error);
+      await refreshAccountData();
+      return j;
+    }
+    if(Date.now()-started>150000)break;
+  }
+  if(sameChat()){
+    think.className='msg ai';
+    think.textContent=UI_IT
+      ? 'Il job NEXUS '+shortId+' è ancora in elaborazione. Puoi continuare a usare la chat; lo stato resta visibile in Jobs.'
+      : 'NEXUS job '+shortId+' is still processing. You can keep using the chat; its state remains visible in Jobs.';
+  }
+  return null;
+}
+
 async function uploadOne(file,cid){
   const ticket=await client.rpc('nexus_create_upload_ticket',{
     p_conversation_id:cid,
@@ -595,20 +662,22 @@ document.getElementById('sendBtn').onclick=async()=>{
      const shortId=String(jr?.job_id||'').slice(0,8);
      const reserved=Number(jr?.estimated_credits||0);
      const creditNote=reserved>0
-       ? reserved+' credits reserved now and automatically refunded if the job fails or is cancelled.'
-       : 'No credits reserved.';
-     const ack='Upload verified. '+uploaded.length+' file'+(uploaded.length===1?'':'s')+' stored securely. NEXUS job '+shortId+' is queued. '+creditNote;
+       ? (UI_IT?reserved+' crediti prenotati; verranno rimborsati automaticamente in caso di fallimento o annullamento.':reserved+' credits reserved; they will be refunded automatically if the job fails or is cancelled.')
+       : (UI_IT?'Nessun credito prenotato.':'No credits reserved.');
+     const ack=UI_IT
+       ? 'Caricamento verificato. '+uploaded.length+' file archiviato'+(uploaded.length===1?'':'i')+' in modo sicuro. Avvio del job NEXUS '+shortId+'… '+creditNote
+       : 'Upload verified. '+uploaded.length+' file'+(uploaded.length===1?'':'s')+' stored securely. Starting NEXUS job '+shortId+'… '+creditNote;
      if(sendGeneration===chatGeneration&&currentConversationId===cid){
-       think.className='msg ai';
+       think.className='msg ai thinking';
        think.textContent=ack;
-       chatHistory.push({role:'assistant',content:ack});
      }
      const savedAck=await client.rpc('nexus_store_assistant_message',{
-       p_conversation_id:cid,p_content:ack,p_metadata:{level,kind:jobKind,job_id:jr?.job_id||null}
+       p_conversation_id:cid,p_content:ack,p_metadata:{level,kind:jobKind,job_id:jr?.job_id||null,job_status:'queued'}
      });
      if(savedAck.error){
-       await client.from('nexus_messages').insert({conversation_id:cid,role:'assistant',content:ack,metadata:{level,kind:jobKind,job_id:jr?.job_id||null}});
+       await client.from('nexus_messages').insert({conversation_id:cid,role:'assistant',content:ack,metadata:{level,kind:jobKind,job_id:jr?.job_id||null,job_status:'queued'}});
      }
+     trackFileJob(jr?.job_id,{cid,think,shortId,reserved,jobKind,sendGeneration}).catch(err=>console.warn('Job tracker stopped',err));
      sendSucceeded=true;retryConversationId=null;retryPrompt='';
    } else {
      const pcOnline=computeCapabilities.has('local-chat');
@@ -774,7 +843,7 @@ async function openJobs(){
  refresh.textContent='Refresh';
  refresh.onclick=loadJobs;
  await loadJobs();
- jobsPoll=setInterval(()=>{if(jobsModal.classList.contains('show'))loadJobs()},5000)
+ jobsPoll=setInterval(()=>{if(jobsModal.classList.contains('show'))loadJobs()},2000)
 }
 document.getElementById('jobsBtn').onclick=openJobs;
 document.getElementById('topJobsBtn').onclick=openJobs;
