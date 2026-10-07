@@ -543,6 +543,9 @@ document.getElementById('sendBtn').onclick=async()=>{
  const visibleText=(q||'[File upload]')+(selectedFiles.length?'\nAttachments selected: '+selectedFiles.map(f=>f.name).join(', '):'');
  const userTurnText=visibleText;
  addMsg(visibleText,'me');
+ // Clear the composer immediately after the message is accepted into the chat.
+ // If delivery fails, the catch block restores q for one-tap retry.
+ promptEl.value='';
 
  const retryingSame=!!(userTurnText&&currentConversationId&&retryConversationId===currentConversationId&&retryPrompt===userTurnText);
  let historyForRouter=chatHistory.slice(-12);
