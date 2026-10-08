@@ -1079,8 +1079,20 @@ document.getElementById('sendBtn').onclick=async()=>{
 
  const sendGeneration=chatGeneration;
  const agentContext=await AgentOS.getContext();
- const effectiveLevel=(agentContext?.routing_profile==='max'&&currentAccess?.unlimited)?'deep':(agentContext?.project_default_level||level);
- const runtimeRequest=AgentOS.decoratePrompt(q||('Process '+selectedFiles.map(f=>f.name).join(', ')),agentContext).slice(0,11900);
+ let execution=LaunchOS.resolve(q,selectedFiles);
+ let quotedCredits=0;
+ if(!selectedFiles.length&&execution.heavy&&['agent','work','code'].includes(execution.mode)){
+   try{quotedCredits=await LaunchOS.quote(execution.mode,execution.level)}catch(e){console.warn('Could not quote text task',e)}
+   const decision=currentAccess?.unlimited?'run':await confirmComputeTask({mode:execution.mode,level:execution.level,credits:quotedCredits,reason:execution.reason});
+   if(decision==='cancel')return;
+   if(decision==='chat')execution={mode:'chat',heavy:false,level:'free',reason:'user_selected_basic_chat'};
+ }
+ const effectiveLevel=selectedFiles.length
+   ? ((agentContext?.routing_profile==='max'&&currentAccess?.unlimited)?'deep':(agentContext?.project_default_level||level))
+   : (execution.mode==='chat'?'free':execution.level);
+ const baseRequest=q||('Process '+selectedFiles.map(f=>f.name).join(', '));
+ const contextualRequest=AgentOS.decoratePrompt(baseRequest,agentContext).slice(0,11900);
+ const runtimeRequest=LaunchOS.decorateChat(contextualRequest).slice(0,11900);
  let requestConversationId=null;
  intro.style.display='none';messages.classList.add('has');
  const visibleText=(q||'[File upload]')+(selectedFiles.length?'\nAttachments selected: '+selectedFiles.map(f=>f.name).join(', '):'');
@@ -1106,7 +1118,7 @@ document.getElementById('sendBtn').onclick=async()=>{
    const cid=await ensureConversation(q||userTurnText,sendGeneration,agentContext);
    requestConversationId=cid;
    if(userTurnText&&!retryingSame){
-     const {error}=await client.from('nexus_messages').insert({conversation_id:cid,role:'user',content:userTurnText,metadata:{level:effectiveLevel,attachment_count:selectedFiles.length,project_id:agentContext?.project_id||null,agent_id:agentContext?.agent_id||null}});
+     const {error}=await client.from('nexus_messages').insert({conversation_id:cid,role:'user',content:userTurnText,metadata:{level:effectiveLevel,execution_mode:execution.mode,attachment_count:selectedFiles.length,project_id:agentContext?.project_id||null,agent_id:agentContext?.agent_id||null}});
      if(error) throw error;
    }
 
@@ -1162,28 +1174,52 @@ document.getElementById('sendBtn').onclick=async()=>{
      }
      trackFileJob(jr?.job_id,{cid,think,shortId,reserved,jobKind,sendGeneration}).catch(err=>console.warn('Job tracker stopped',err));
      sendSucceeded=true;retryConversationId=null;retryPrompt='';
+   } else if(execution.heavy&&['agent','work','code'].includes(execution.mode)){
+     const recent=historyForRouter.slice(-6).map(m=>(m.role==='assistant'?'ASSISTANT':'USER')+': '+String(m.content||'').slice(0,900)).join('\n');
+     const taskPrompt=(recent?('RECENT CONVERSATION:\n'+recent+'\n\n'):'')+runtimeRequest;
+     think.textContent=UI_IT
+       ? 'Creo il task '+LaunchOS.modeLabel(execution.mode)+' e lo metto in esecuzione…'
+       : 'Creating the '+LaunchOS.modeLabel(execution.mode)+' task…';
+     const job=await client.rpc('nexus_create_text_task',{
+       p_conversation_id:cid,
+       p_mode:execution.mode,
+       p_level:execution.level,
+       p_prompt:taskPrompt.slice(0,11900)
+     });
+     if(job.error)throw job.error;
+     const jr=Array.isArray(job.data)?job.data[0]:job.data;
+     const shortId=String(jr?.job_id||'').slice(0,8);
+     if(jr?.job_id){
+       await AgentOS.bindJob(jr.job_id,agentContext);
+       betaJobByConversation.set(cid,String(jr.job_id));
+       nexusDiagnostic.emit('job_created','JOBS','info',{job_id:jr.job_id,kind:execution.mode+'_text',status:'queued'});
+     }
+     const reserved=currentAccess?.unlimited?0:Number(jr?.estimated_credits||quotedCredits||0);
+     const creditNote=currentAccess?.unlimited
+       ? (UI_IT?'profilo illimitato, 0 crediti':'unlimited profile, 0 credits')
+       : reserved+' '+(UI_IT?'crediti prenotati':'credits reserved');
+     const ack=(UI_IT?'Task ':'')+LaunchOS.modeLabel(execution.mode)+' '+shortId+' · '+creditNote+' · '+(UI_IT?'puoi continuare a usare NEXUS mentre lavora.':'you can keep using NEXUS while it runs.');
+     if(sendGeneration===chatGeneration&&currentConversationId===cid){
+       think.className='msg ai thinking';think.textContent=ack;
+     }
+     const savedAck=await client.rpc('nexus_store_assistant_message',{
+       p_conversation_id:cid,p_content:ack,p_metadata:{level:execution.level,execution_mode:execution.mode,job_id:jr?.job_id||null,job_status:'queued'}
+     });
+     if(savedAck.error)console.warn('Could not persist text task acknowledgement',savedAck.error);
+     trackFileJob(jr?.job_id,{cid,think,shortId,reserved,jobKind:execution.mode+'_text',sendGeneration}).catch(err=>console.warn('Text task tracker stopped',err));
+     sendSucceeded=true;retryConversationId=null;retryPrompt='';
    } else {
+     // Basic Chat is deliberately the fast path: no PC queue, no credits.
      const pcOnline=computeCapabilities.has('local-chat');
-     const routeProfile=agentContext?.routing_profile||'local_first';
-     const preferPc=pcOnline&&(routeProfile==='local_first'||(routeProfile==='balanced'&&!!currentAccess?.unlimited));
      let data;
-     if(preferPc){
-       if(sendGeneration===chatGeneration&&currentConversationId===cid)think.textContent=UI_IT?'NEXUS sta usando la flotta IA del PC…':'NEXUS is using the PC AI fleet…';
-       try{
-         data=await callPcChatFallback(cid,runtimeRequest,historyForRouter,agentContext);
-       }catch(pcError){
-         console.warn('NEXUS PC route unavailable, falling back to cloud',pcError?.message||String(pcError));
-         if(sendGeneration===chatGeneration&&currentConversationId===cid)think.textContent=UI_IT?'NEXUS sta provando il cloud…':'NEXUS is trying cloud…';
-         data=await callNexus({message:runtimeRequest,level:effectiveLevel,history:historyForRouter});
-       }
-     }else{
-       try{
-         data=await callNexus({message:runtimeRequest,level:effectiveLevel,history:historyForRouter});
-       }catch(cloudError){
-         if(!pcOnline)throw cloudError;
-         if(sendGeneration===chatGeneration&&currentConversationId===cid)think.textContent=UI_IT?'Cloud occupato: passo alla flotta IA del PC…':'Cloud busy: switching to the PC AI fleet…';
-         data=await callPcChatFallback(cid,runtimeRequest,historyForRouter,agentContext);
-       }
+     if(sendGeneration===chatGeneration&&currentConversationId===cid)think.textContent=UI_IT?'NEXUS risponde in chat…':'NEXUS is replying…';
+     try{
+       data=await callNexus({message:runtimeRequest,level:'free',history:historyForRouter});
+     }catch(cloudError){
+       if(!pcOnline)throw cloudError;
+       console.warn('Fast chat unavailable, using PC fallback',cloudError?.message||String(cloudError));
+       if(sendGeneration===chatGeneration&&currentConversationId===cid)think.textContent=UI_IT?'Fast chat non disponibile: uso il fallback locale…':'Fast chat unavailable: using local fallback…';
+       data=await callPcChatFallback(cid,runtimeRequest,historyForRouter,agentContext);
      }
      if(sendGeneration===chatGeneration&&currentConversationId===cid){
        think.className='msg ai';
@@ -1191,7 +1227,7 @@ document.getElementById('sendBtn').onclick=async()=>{
        chatHistory.push({role:'assistant',content:data.reply});
      }
 
-     const assistantMeta={level,model:data.model||null,provider:data.provider||null,fallback_used:!!data.fallbackUsed,local_job_id:data.localJobId||null};
+     const assistantMeta={level:'free',execution_mode:'chat',model:data.model||null,provider:data.provider||null,fallback_used:!!data.fallbackUsed,local_job_id:data.localJobId||null};
      if(data.provider!=='nexus-pc-worker'){
        const saved=await client.rpc('nexus_store_assistant_message',{
          p_conversation_id:cid,
@@ -1209,16 +1245,22 @@ document.getElementById('sendBtn').onclick=async()=>{
        }
      }
      sendSucceeded=true;retryConversationId=null;retryPrompt='';
-
    }
  }catch(e){
    console.error('NEXUS delivery failure:',e?.message||String(e));
    const sameChat=sendGeneration===chatGeneration&&(!requestConversationId||currentConversationId===requestConversationId);
    if(sameChat)think.className='msg ai';
-   const mediaCapacityUnavailable=e?.code==='MEDIA_CAPACITY_UNAVAILABLE'||String(e?.message||'')==='MEDIA_CAPACITY_UNAVAILABLE';
+   const errorText=String(e?.message||'');
+   const mediaCapacityUnavailable=e?.code==='MEDIA_CAPACITY_UNAVAILABLE'||errorText==='MEDIA_CAPACITY_UNAVAILABLE';
+   const insufficientCredits=errorText.includes('insufficient_credits');
+   const jobLimit=errorText.includes('active_job_limit')||errorText.includes('daily_job_limit');
    const safeFailure=mediaCapacityUnavailable
-     ? (UI_IT?'La capacità multimediale NEXUS non è disponibile per questo tipo di file. Il file non è stato caricato e non sono stati riservati crediti. Riprova quando il compute compatibile è online.':'NEXUS media compute is not available for this file type right now. The file was not uploaded and no credits were reserved. Retry when compatible media compute is online.')
-     : (UI_IT?'NEXUS non riesce temporaneamente a completare la risposta. Il messaggio è salvato in questa chat e non è stato usato alcun credito extra. Puoi riprovare senza riscriverlo.':'NEXUS is temporarily having trouble answering. Your message is saved in this chat and no extra credit was used. You can retry without retyping it.');
+     ? (UI_IT?'La capacità multimediale NEXUS non è disponibile per questo tipo di file. Il file non è stato caricato e non sono stati riservati crediti.':'NEXUS media compute is not available for this file type. The file was not uploaded and no credits were reserved.')
+     : insufficientCredits
+       ? (UI_IT?'Crediti insufficienti per avviare questo task. La chat base resta disponibile gratuitamente; puoi acquistare crediti oppure scegliere Chat.':'Not enough credits to start this task. Basic Chat remains included; buy credits or choose Chat.')
+       : jobLimit
+         ? (UI_IT?'Hai già raggiunto il limite di task attivi o giornalieri. La chat base resta disponibile mentre i task esistenti terminano.':'You reached the active or daily task limit. Basic Chat remains available while existing tasks finish.')
+         : (UI_IT?'NEXUS non riesce temporaneamente a completare la risposta. Il messaggio è salvato in questa chat e non è stato usato alcun credito extra. Puoi riprovare senza riscriverlo.':'NEXUS is temporarily having trouble answering. Your message is saved in this chat and no extra credit was used. You can retry without retyping it.');
    if(sameChat){
      think.textContent=safeFailure;
      retryConversationId=requestConversationId||currentConversationId;retryPrompt=userTurnText;
