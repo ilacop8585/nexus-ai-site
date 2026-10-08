@@ -657,6 +657,8 @@ BEGIN
       )
     );
 
+  v_prompt:=v_prompt||E'USER LANGUAGE: '||v_settings.language||E'\nUSER TIMEZONE: '||v_settings.timezone||E'\n\n';
+
   IF v_project.id IS NOT NULL AND length(trim(v_project.instructions))>0 THEN
     v_prompt:=v_prompt||E'PROJECT: '||v_project.name||E'\nPROJECT INSTRUCTIONS:\n'||v_project.instructions||E'\n\n';
   END IF;
@@ -684,11 +686,15 @@ BEGIN
   RETURN jsonb_build_object(
     'project_id',v_project.id,
     'project_name',v_project.name,
+    'project_default_level',coalesce(v_project.default_level,'free'),
     'agent_id',v_agent.id,
     'agent_name',v_agent.name,
     'routing_profile',coalesce(v_agent.routing_profile,v_settings.routing_profile),
     'autonomy_level',coalesce(v_agent.autonomy_level,v_settings.autonomy_level),
     'approval_policy',coalesce(v_agent.approval_policy,v_settings.approval_policy),
+    'language',v_settings.language,
+    'timezone',v_settings.timezone,
+    'notifications_in_app',v_settings.notifications_in_app,
     'skills',v_skills,
     'prompt_prefix',left(v_prompt,18000)
   );
