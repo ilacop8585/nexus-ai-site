@@ -1019,7 +1019,7 @@ class _Composer extends StatelessWidget {
                 decoration: const InputDecoration(
                   hintText: 'Scrivi a NEXUS…',
                 ),
-                onSubmitted: (_) => busy ? null : onSend(),
+                onSubmitted: (_) {\n                  if (!busy) onSend();\n                },
               ),
             ),
             const SizedBox(width: 8),
