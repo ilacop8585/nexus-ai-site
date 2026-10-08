@@ -140,12 +140,12 @@ function renderActivePane(){
 }
 async function open(projectId=null){
  if(!ctx?.getUser?.()){ctx.requestSignIn?.('Sign in to open your Projects.');return}
- showSurface();setTab(activeTab);
+ ctx.closeTask?.();showSurface();setTab(activeTab);
  if(projectId)currentProjectId=String(projectId);
  try{await loadProjects()}catch(e){setNotice('Project workspace unavailable: '+String(e?.message||e),true)}
 }
 async function newChat(){
- if(!currentProjectId)return;
+ if(!currentProjectId){setNotice('Create a Project first, then start a chat in that workspace.',true);return}
  close();await ctx.startProjectChat(currentProjectId);
 }
 function openSettings(){close();ctx.openProjectSettings?.()}
