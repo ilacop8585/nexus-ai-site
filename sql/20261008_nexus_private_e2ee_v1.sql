@@ -1,33 +1,39 @@
--- NEXUS Private E2EE V1
--- Browser-native protocol:
--- ECDH P-256 + HKDF-SHA-256 + AES-256-GCM + ECDSA P-256/SHA-256.
--- Neon stores ciphertext, public keys, wrapped per-device content keys and delivery metadata only.
+-- NEXUS Private MLS V1
+-- RFC 9420 relay/storage schema. Server stores MLS ciphertext/public bootstrap material only.
+-- Plaintext and MLS private state MUST remain client-side.
 
 CREATE TABLE IF NOT EXISTS public.nexus_secure_devices (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES neon_auth."user"(id) ON DELETE CASCADE,
   device_label text NOT NULL,
-  ecdh_public_jwk jsonb NOT NULL,
-  signing_public_jwk jsonb NOT NULL,
+  identity_public_key text NOT NULL,
   identity_fingerprint text NOT NULL,
-  protocol_version text NOT NULL DEFAULT 'NEXUS-E2EE-v1',
   created_at timestamptz NOT NULL DEFAULT now(),
   last_seen_at timestamptz NOT NULL DEFAULT now(),
   revoked_at timestamptz NULL,
   UNIQUE(user_id,identity_fingerprint)
 );
 
+CREATE TABLE IF NOT EXISTS public.nexus_secure_key_packages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  device_id uuid NOT NULL REFERENCES public.nexus_secure_devices(id) ON DELETE CASCADE,
+  key_package_ref text NOT NULL,
+  key_package text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  consumed_at timestamptz NULL,
+  UNIQUE(device_id,key_package_ref)
+);
+
 CREATE TABLE IF NOT EXISTS public.nexus_secure_rooms (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  room_type text NOT NULL CHECK (room_type IN ('beta_group','owner_beta_dm')),
+  room_type text NOT NULL CHECK(room_type IN ('beta_group','owner_beta_dm')),
   display_name text NOT NULL,
   created_by uuid NOT NULL REFERENCES neon_auth."user"(id) ON DELETE RESTRICT,
   dm_owner_user_id uuid NULL REFERENCES neon_auth."user"(id) ON DELETE CASCADE,
   dm_beta_user_id uuid NULL REFERENCES neon_auth."user"(id) ON DELETE CASCADE,
-  membership_version bigint NOT NULL DEFAULT 1 CHECK (membership_version>0),
   created_at timestamptz NOT NULL DEFAULT now(),
   archived_at timestamptz NULL,
-  CHECK (
+  CHECK(
     (room_type='beta_group' AND dm_owner_user_id IS NULL AND dm_beta_user_id IS NULL)
     OR
     (room_type='owner_beta_dm' AND dm_owner_user_id IS NOT NULL AND dm_beta_user_id IS NOT NULL AND dm_owner_user_id<>dm_beta_user_id)
@@ -45,10 +51,31 @@ CREATE UNIQUE INDEX IF NOT EXISTS nexus_secure_owner_beta_dm_idx
 CREATE TABLE IF NOT EXISTS public.nexus_secure_room_members (
   room_id uuid NOT NULL REFERENCES public.nexus_secure_rooms(id) ON DELETE CASCADE,
   user_id uuid NOT NULL REFERENCES neon_auth."user"(id) ON DELETE CASCADE,
-  member_role text NOT NULL DEFAULT 'member' CHECK (member_role IN ('owner','member')),
+  member_role text NOT NULL DEFAULT 'member' CHECK(member_role IN ('owner','member')),
   joined_at timestamptz NOT NULL DEFAULT now(),
   left_at timestamptz NULL,
   PRIMARY KEY(room_id,user_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.nexus_secure_room_devices (
+  room_id uuid NOT NULL REFERENCES public.nexus_secure_rooms(id) ON DELETE CASCADE,
+  device_id uuid NOT NULL REFERENCES public.nexus_secure_devices(id) ON DELETE CASCADE,
+  joined_epoch bigint NOT NULL CHECK(joined_epoch>=0),
+  joined_at timestamptz NOT NULL DEFAULT now(),
+  left_at timestamptz NULL,
+  PRIMARY KEY(room_id,device_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.nexus_secure_welcomes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_id uuid NOT NULL REFERENCES public.nexus_secure_rooms(id) ON DELETE CASCADE,
+  recipient_device_id uuid NOT NULL REFERENCES public.nexus_secure_devices(id) ON DELETE CASCADE,
+  sender_device_id uuid NOT NULL REFERENCES public.nexus_secure_devices(id) ON DELETE RESTRICT,
+  key_package_ref text NOT NULL,
+  epoch bigint NOT NULL CHECK(epoch>=0),
+  welcome_ciphertext text NOT NULL CHECK(length(welcome_ciphertext) BETWEEN 1 AND 1400000),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  consumed_at timestamptz NULL
 );
 
 CREATE TABLE IF NOT EXISTS public.nexus_secure_messages (
@@ -57,557 +84,440 @@ CREATE TABLE IF NOT EXISTS public.nexus_secure_messages (
   sender_user_id uuid NOT NULL REFERENCES neon_auth."user"(id) ON DELETE RESTRICT,
   sender_device_id uuid NOT NULL REFERENCES public.nexus_secure_devices(id) ON DELETE RESTRICT,
   client_message_id uuid NOT NULL,
-  membership_version bigint NOT NULL CHECK (membership_version>0),
-  protocol_version text NOT NULL DEFAULT 'NEXUS-E2EE-v1',
-  payload_iv text NOT NULL CHECK (length(payload_iv) BETWEEN 8 AND 128),
-  salt text NOT NULL CHECK (length(salt) BETWEEN 16 AND 256),
-  ephemeral_public_jwk jsonb NOT NULL,
-  ciphertext text NOT NULL CHECK (length(ciphertext) BETWEEN 1 AND 1400000),
-  signature text NOT NULL CHECK (length(signature) BETWEEN 16 AND 4096),
+  epoch bigint NOT NULL CHECK(epoch>=0),
+  content_type text NOT NULL DEFAULT 'application/vnd.nexus.mls' CHECK(length(content_type)<=120),
+  ciphertext text NOT NULL CHECK(length(ciphertext) BETWEEN 1 AND 1400000),
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(sender_device_id,client_message_id)
 );
 
-CREATE TABLE IF NOT EXISTS public.nexus_secure_message_keys (
-  message_id uuid NOT NULL REFERENCES public.nexus_secure_messages(id) ON DELETE CASCADE,
-  recipient_device_id uuid NOT NULL REFERENCES public.nexus_secure_devices(id) ON DELETE CASCADE,
-  wrap_iv text NOT NULL CHECK (length(wrap_iv) BETWEEN 8 AND 128),
-  wrapped_key text NOT NULL CHECK (length(wrapped_key) BETWEEN 16 AND 4096),
-  PRIMARY KEY(message_id,recipient_device_id)
-);
-
-CREATE INDEX IF NOT EXISTS nexus_secure_members_user_idx
-  ON public.nexus_secure_room_members(user_id,room_id)
-  WHERE left_at IS NULL;
-CREATE INDEX IF NOT EXISTS nexus_secure_messages_room_created_idx
-  ON public.nexus_secure_messages(room_id,created_at,id);
-CREATE INDEX IF NOT EXISTS nexus_secure_message_keys_device_idx
-  ON public.nexus_secure_message_keys(recipient_device_id,message_id);
-CREATE INDEX IF NOT EXISTS nexus_secure_devices_user_active_idx
-  ON public.nexus_secure_devices(user_id,created_at)
-  WHERE revoked_at IS NULL;
+CREATE INDEX IF NOT EXISTS nexus_secure_members_user_idx ON public.nexus_secure_room_members(user_id,room_id) WHERE left_at IS NULL;
+CREATE INDEX IF NOT EXISTS nexus_secure_room_devices_device_idx ON public.nexus_secure_room_devices(device_id,room_id) WHERE left_at IS NULL;
+CREATE INDEX IF NOT EXISTS nexus_secure_messages_room_created_idx ON public.nexus_secure_messages(room_id,created_at,id);
+CREATE INDEX IF NOT EXISTS nexus_secure_welcomes_device_created_idx ON public.nexus_secure_welcomes(recipient_device_id,created_at) WHERE consumed_at IS NULL;
+CREATE INDEX IF NOT EXISTS nexus_secure_key_packages_available_idx ON public.nexus_secure_key_packages(device_id,created_at) WHERE consumed_at IS NULL;
 
 ALTER TABLE public.nexus_secure_devices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.nexus_secure_key_packages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.nexus_secure_rooms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.nexus_secure_room_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.nexus_secure_room_devices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.nexus_secure_welcomes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.nexus_secure_messages ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.nexus_secure_message_keys ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION public.nexus_secure_has_room_access(p_room uuid,p_user uuid)
-RETURNS boolean
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path TO 'public','pg_temp'
-AS $function$
+RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path TO 'public','pg_temp'
+AS $f$
   SELECT EXISTS(
-    SELECT 1
-    FROM public.nexus_secure_room_members m
+    SELECT 1 FROM public.nexus_secure_room_members m
     JOIN public.nexus_secure_rooms r ON r.id=m.room_id
     WHERE m.room_id=p_room AND m.user_id=p_user AND m.left_at IS NULL AND r.archived_at IS NULL
   )
-$function$;
+$f$;
 
 CREATE OR REPLACE FUNCTION public.nexus_secure_register_device(
-  p_device_label text,
-  p_ecdh_public_jwk jsonb,
-  p_signing_public_jwk jsonb,
-  p_identity_fingerprint text
+  p_device_label text,p_identity_public_key text,p_identity_fingerprint text
 )
-RETURNS uuid
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public','pg_temp'
-AS $function$
-DECLARE v_user uuid; v_id uuid; v_revoked timestamptz;
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
+AS $f$
+DECLARE v_user uuid;v_id uuid;
 BEGIN
   v_user:=(auth.user_id())::uuid;
   IF v_user IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
-  IF NOT EXISTS(SELECT 1 FROM public.nexus_staff_accounts s WHERE s.user_id=v_user AND s.role IN ('owner','beta_tester')) THEN RAISE EXCEPTION 'secure_messaging_access_required'; END IF;
+  IF NOT public.nexus_beta_has_access(v_user) THEN RAISE EXCEPTION 'secure_messaging_access_required'; END IF;
   IF length(trim(coalesce(p_device_label,'')))<1 THEN RAISE EXCEPTION 'device_label_required'; END IF;
-  IF jsonb_typeof(p_ecdh_public_jwk)<>'object' OR jsonb_typeof(p_signing_public_jwk)<>'object'
-    THEN RAISE EXCEPTION 'public_key_invalid'; END IF;
-  IF length(trim(coalesce(p_identity_fingerprint,'')))<32 THEN RAISE EXCEPTION 'fingerprint_invalid'; END IF;
+  IF length(trim(coalesce(p_identity_public_key,'')))<32 THEN RAISE EXCEPTION 'identity_public_key_invalid'; END IF;
+  IF length(trim(coalesce(p_identity_fingerprint,'')))<16 THEN RAISE EXCEPTION 'identity_fingerprint_invalid'; END IF;
 
-  SELECT id,revoked_at INTO v_id,v_revoked
-  FROM public.nexus_secure_devices
-  WHERE user_id=v_user AND identity_fingerprint=left(trim(p_identity_fingerprint),256);
+  INSERT INTO public.nexus_secure_devices(user_id,device_label,identity_public_key,identity_fingerprint,last_seen_at)
+  VALUES(v_user,left(trim(p_device_label),160),p_identity_public_key,left(trim(p_identity_fingerprint),256),now())
+  ON CONFLICT(user_id,identity_fingerprint) DO UPDATE
+    SET device_label=excluded.device_label,last_seen_at=now()
+  RETURNING id INTO v_id;
 
-  IF v_id IS NOT NULL THEN
-    IF v_revoked IS NOT NULL THEN RAISE EXCEPTION 'device_revoked'; END IF;
-    UPDATE public.nexus_secure_devices
-       SET device_label=left(trim(p_device_label),160),
-           ecdh_public_jwk=p_ecdh_public_jwk,
-           signing_public_jwk=p_signing_public_jwk,
-           last_seen_at=now()
-     WHERE id=v_id;
-    RETURN v_id;
-  END IF;
-
-  INSERT INTO public.nexus_secure_devices(
-    user_id,device_label,ecdh_public_jwk,signing_public_jwk,identity_fingerprint
-  ) VALUES(
-    v_user,left(trim(p_device_label),160),p_ecdh_public_jwk,p_signing_public_jwk,left(trim(p_identity_fingerprint),256)
-  ) RETURNING id INTO v_id;
+  IF EXISTS(SELECT 1 FROM public.nexus_secure_devices WHERE id=v_id AND revoked_at IS NOT NULL)
+    THEN RAISE EXCEPTION 'device_revoked'; END IF;
   RETURN v_id;
 END
-$function$;
+$f$;
 
-CREATE OR REPLACE FUNCTION public.nexus_secure_revoke_device(p_device_id uuid)
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public','pg_temp'
-AS $function$
+CREATE OR REPLACE FUNCTION public.nexus_secure_publish_key_package(
+  p_device_id uuid,p_key_package_ref text,p_key_package text
+)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
+AS $f$
+DECLARE v_user uuid;v_id uuid;
+BEGIN
+  v_user:=(auth.user_id())::uuid;
+  IF v_user IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.nexus_secure_devices d WHERE d.id=p_device_id AND d.user_id=v_user AND d.revoked_at IS NULL)
+    THEN RAISE EXCEPTION 'device_not_owned_or_revoked'; END IF;
+  IF length(trim(coalesce(p_key_package_ref,'')))<8 OR length(coalesce(p_key_package,''))<32
+    THEN RAISE EXCEPTION 'key_package_invalid'; END IF;
+
+  INSERT INTO public.nexus_secure_key_packages(device_id,key_package_ref,key_package)
+  VALUES(p_device_id,left(trim(p_key_package_ref),256),p_key_package)
+  ON CONFLICT(device_id,key_package_ref) DO UPDATE SET key_package=excluded.key_package
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END
+$f$;
+
+CREATE OR REPLACE FUNCTION public.nexus_secure_key_package_available(p_device_id uuid,p_key_package_ref text)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
+AS $f$
 DECLARE v_user uuid;
 BEGIN
   v_user:=(auth.user_id())::uuid;
-  IF v_user IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
-  UPDATE public.nexus_secure_devices
-     SET revoked_at=coalesce(revoked_at,now()),last_seen_at=now()
-   WHERE id=p_device_id AND user_id=v_user;
-  RETURN FOUND;
+  IF v_user IS NULL THEN RETURN false; END IF;
+  RETURN EXISTS(
+    SELECT 1 FROM public.nexus_secure_key_packages k
+    JOIN public.nexus_secure_devices d ON d.id=k.device_id
+    WHERE k.device_id=p_device_id AND k.key_package_ref=p_key_package_ref
+      AND k.consumed_at IS NULL AND d.user_id=v_user AND d.revoked_at IS NULL
+  );
 END
-$function$;
+$f$;
 
-CREATE OR REPLACE FUNCTION public.nexus_secure_sync_beta_group(p_display_name text DEFAULT 'Comitiva Beta')
-RETURNS uuid
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public','pg_temp'
-AS $function$
-DECLARE v_owner uuid; v_room uuid;
+CREATE OR REPLACE FUNCTION public.nexus_secure_create_beta_group(p_display_name text DEFAULT 'Comitiva Beta')
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
+AS $f$
+DECLARE v_owner uuid;v_id uuid;
 BEGIN
   v_owner:=(auth.user_id())::uuid;
   IF v_owner IS NULL OR NOT public.nexus_is_owner(v_owner) THEN RAISE EXCEPTION 'owner_required'; END IF;
-
-  SELECT id INTO v_room
-  FROM public.nexus_secure_rooms
-  WHERE room_type='beta_group' AND archived_at IS NULL
-  LIMIT 1;
-
-  IF v_room IS NULL THEN
+  SELECT id INTO v_id FROM public.nexus_secure_rooms WHERE room_type='beta_group' AND archived_at IS NULL LIMIT 1;
+  IF v_id IS NULL THEN
     INSERT INTO public.nexus_secure_rooms(room_type,display_name,created_by)
     VALUES('beta_group',left(coalesce(nullif(trim(p_display_name),''),'Comitiva Beta'),160),v_owner)
-    RETURNING id INTO v_room;
-  ELSE
-    UPDATE public.nexus_secure_rooms
-       SET display_name=left(coalesce(nullif(trim(p_display_name),''),display_name),160)
-     WHERE id=v_room;
-
-    IF EXISTS(
-      SELECT 1
-      FROM (
-        SELECT v_owner AS user_id
-        UNION
-        SELECT s.user_id FROM public.nexus_staff_accounts s WHERE s.role='beta_tester'
-      ) desired
-      WHERE NOT EXISTS(
-        SELECT 1 FROM public.nexus_secure_room_members m
-        WHERE m.room_id=v_room AND m.user_id=desired.user_id AND m.left_at IS NULL
-      )
-    ) OR EXISTS(
-      SELECT 1 FROM public.nexus_secure_room_members m
-      WHERE m.room_id=v_room AND m.left_at IS NULL
-        AND m.user_id<>v_owner
-        AND NOT EXISTS(
-          SELECT 1 FROM public.nexus_staff_accounts s
-          WHERE s.user_id=m.user_id AND s.role='beta_tester'
-        )
-    ) THEN
-      UPDATE public.nexus_secure_rooms SET membership_version=membership_version+1 WHERE id=v_room;
-    END IF;
+    RETURNING id INTO v_id;
   END IF;
-
   INSERT INTO public.nexus_secure_room_members(room_id,user_id,member_role,left_at)
-  VALUES(v_room,v_owner,'owner',NULL)
+  VALUES(v_id,v_owner,'owner',NULL)
   ON CONFLICT(room_id,user_id) DO UPDATE SET member_role='owner',left_at=NULL;
-
-  INSERT INTO public.nexus_secure_room_members(room_id,user_id,member_role,left_at)
-  SELECT v_room,s.user_id,'member',NULL
-  FROM public.nexus_staff_accounts s
-  WHERE s.role='beta_tester'
-  ON CONFLICT(room_id,user_id) DO UPDATE SET member_role='member',left_at=NULL;
-
-  UPDATE public.nexus_secure_room_members m
-     SET left_at=now()
-   WHERE m.room_id=v_room
-     AND m.user_id<>v_owner
-     AND m.left_at IS NULL
-     AND NOT EXISTS(
-       SELECT 1 FROM public.nexus_staff_accounts s
-       WHERE s.user_id=m.user_id AND s.role='beta_tester'
-     );
-
-  RETURN v_room;
+  RETURN v_id;
 END
-$function$;
+$f$;
 
 CREATE OR REPLACE FUNCTION public.nexus_secure_create_owner_beta_dm(p_beta_user_id uuid)
-RETURNS uuid
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public','pg_temp'
-AS $function$
-DECLARE v_owner uuid; v_room uuid; v_name text;
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
+AS $f$
+DECLARE v_owner uuid;v_id uuid;v_name text;
 BEGIN
   v_owner:=(auth.user_id())::uuid;
   IF v_owner IS NULL OR NOT public.nexus_is_owner(v_owner) THEN RAISE EXCEPTION 'owner_required'; END IF;
   IF NOT EXISTS(SELECT 1 FROM public.nexus_staff_accounts s WHERE s.user_id=p_beta_user_id AND s.role='beta_tester')
     THEN RAISE EXCEPTION 'target_not_beta_tester'; END IF;
 
-  SELECT id INTO v_room
-  FROM public.nexus_secure_rooms
-  WHERE room_type='owner_beta_dm' AND dm_owner_user_id=v_owner AND dm_beta_user_id=p_beta_user_id AND archived_at IS NULL
-  LIMIT 1;
+  SELECT id INTO v_id FROM public.nexus_secure_rooms
+  WHERE room_type='owner_beta_dm' AND dm_owner_user_id=v_owner AND dm_beta_user_id=p_beta_user_id AND archived_at IS NULL LIMIT 1;
 
-  IF v_room IS NULL THEN
-    SELECT coalesce(p.display_name,u.name,u.email,'Beta tester')
-      INTO v_name
-      FROM neon_auth."user" u
-      LEFT JOIN public.nexus_profiles p ON p.user_id=u.id
-     WHERE u.id=p_beta_user_id;
-
+  IF v_id IS NULL THEN
+    SELECT coalesce(p.display_name,u.name,u.email,'Beta tester') INTO v_name
+    FROM neon_auth."user" u LEFT JOIN public.nexus_profiles p ON p.user_id=u.id WHERE u.id=p_beta_user_id;
     INSERT INTO public.nexus_secure_rooms(room_type,display_name,created_by,dm_owner_user_id,dm_beta_user_id)
     VALUES('owner_beta_dm','Privato · '||left(coalesce(v_name,'Beta tester'),120),v_owner,v_owner,p_beta_user_id)
-    RETURNING id INTO v_room;
+    RETURNING id INTO v_id;
   END IF;
 
   INSERT INTO public.nexus_secure_room_members(room_id,user_id,member_role,left_at)
-  VALUES(v_room,v_owner,'owner',NULL)
+  VALUES(v_id,v_owner,'owner',NULL)
   ON CONFLICT(room_id,user_id) DO UPDATE SET member_role='owner',left_at=NULL;
-
-  INSERT INTO public.nexus_secure_room_members(room_id,user_id,member_role,left_at)
-  VALUES(v_room,p_beta_user_id,'member',NULL)
-  ON CONFLICT(room_id,user_id) DO UPDATE SET member_role='member',left_at=NULL;
-
-  RETURN v_room;
+  RETURN v_id;
 END
-$function$;
+$f$;
 
-CREATE OR REPLACE FUNCTION public.nexus_secure_open_owner_dm()
-RETURNS uuid
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public','pg_temp'
-AS $function$
-DECLARE v_user uuid; v_owner uuid; v_room uuid; v_name text;
+CREATE OR REPLACE FUNCTION public.nexus_secure_bind_owner_device(p_room_id uuid,p_device_id uuid,p_epoch bigint)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
+AS $f$
+DECLARE v_owner uuid;
 BEGIN
-  v_user:=(auth.user_id())::uuid;
-  IF v_user IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
-  IF NOT EXISTS(SELECT 1 FROM public.nexus_staff_accounts s WHERE s.user_id=v_user AND s.role='beta_tester')
-    THEN RAISE EXCEPTION 'beta_tester_required'; END IF;
+  v_owner:=(auth.user_id())::uuid;
+  IF v_owner IS NULL OR NOT public.nexus_is_owner(v_owner) THEN RAISE EXCEPTION 'owner_required'; END IF;
+  IF NOT public.nexus_secure_has_room_access(p_room_id,v_owner) THEN RAISE EXCEPTION 'room_access_denied'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.nexus_secure_devices d WHERE d.id=p_device_id AND d.user_id=v_owner AND d.revoked_at IS NULL)
+    THEN RAISE EXCEPTION 'device_not_owned_or_revoked'; END IF;
+  IF EXISTS(
+    SELECT 1 FROM public.nexus_secure_room_devices rd
+    JOIN public.nexus_secure_devices d ON d.id=rd.device_id
+    WHERE rd.room_id=p_room_id AND rd.left_at IS NULL AND d.user_id=v_owner AND rd.device_id<>p_device_id
+  ) THEN RAISE EXCEPTION 'owner_device_already_bound'; END IF;
 
-  SELECT s.user_id INTO v_owner FROM public.nexus_staff_accounts s WHERE s.role='owner' LIMIT 1;
-  IF v_owner IS NULL THEN RAISE EXCEPTION 'owner_not_configured'; END IF;
-
-  SELECT id INTO v_room
-  FROM public.nexus_secure_rooms
-  WHERE room_type='owner_beta_dm' AND dm_owner_user_id=v_owner AND dm_beta_user_id=v_user AND archived_at IS NULL
-  LIMIT 1;
-
-  IF v_room IS NULL THEN
-    SELECT coalesce(p.display_name,u.name,u.email,'Beta tester')
-      INTO v_name
-      FROM neon_auth."user" u
-      LEFT JOIN public.nexus_profiles p ON p.user_id=u.id
-     WHERE u.id=v_user;
-
-    INSERT INTO public.nexus_secure_rooms(room_type,display_name,created_by,dm_owner_user_id,dm_beta_user_id)
-    VALUES('owner_beta_dm','Privato · '||left(coalesce(v_name,'Beta tester'),120),v_owner,v_owner,v_user)
-    RETURNING id INTO v_room;
-  END IF;
-
-  INSERT INTO public.nexus_secure_room_members(room_id,user_id,member_role,left_at)
-  VALUES(v_room,v_owner,'owner',NULL)
-  ON CONFLICT(room_id,user_id) DO UPDATE SET member_role='owner',left_at=NULL;
-
-  INSERT INTO public.nexus_secure_room_members(room_id,user_id,member_role,left_at)
-  VALUES(v_room,v_user,'member',NULL)
-  ON CONFLICT(room_id,user_id) DO UPDATE SET member_role='member',left_at=NULL;
-
-  RETURN v_room;
+  INSERT INTO public.nexus_secure_room_devices(room_id,device_id,joined_epoch,left_at)
+  VALUES(p_room_id,p_device_id,greatest(0,p_epoch),NULL)
+  ON CONFLICT(room_id,device_id) DO UPDATE SET left_at=NULL;
+  RETURN true;
 END
-$function$;
+$f$;
 
 CREATE OR REPLACE FUNCTION public.nexus_secure_list_rooms()
-RETURNS TABLE(
-  id uuid,
-  room_type text,
-  display_name text,
-  membership_version bigint,
-  created_at timestamptz,
-  member_count bigint,
-  active_device_count bigint
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public','pg_temp'
-AS $function$
+RETURNS TABLE(id uuid,room_type text,display_name text,created_at timestamptz,member_count bigint,enrolled_device_count bigint)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
+AS $f$
 DECLARE v_user uuid;
 BEGIN
   v_user:=(auth.user_id())::uuid;
   IF v_user IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
-
   RETURN QUERY
-  SELECT r.id,r.room_type,r.display_name,r.membership_version,r.created_at,
-         (SELECT count(*) FROM public.nexus_secure_room_members mm WHERE mm.room_id=r.id AND mm.left_at IS NULL),
-         (
-           SELECT count(*)
-           FROM public.nexus_secure_devices d
-           JOIN public.nexus_secure_room_members mm ON mm.user_id=d.user_id
-           WHERE mm.room_id=r.id AND mm.left_at IS NULL AND d.revoked_at IS NULL
-         )
+  SELECT r.id,r.room_type,r.display_name,r.created_at,
+    (SELECT count(*) FROM public.nexus_secure_room_members x WHERE x.room_id=r.id AND x.left_at IS NULL),
+    (SELECT count(*) FROM public.nexus_secure_room_devices d WHERE d.room_id=r.id AND d.left_at IS NULL)
   FROM public.nexus_secure_rooms r
   JOIN public.nexus_secure_room_members m ON m.room_id=r.id
   WHERE m.user_id=v_user AND m.left_at IS NULL AND r.archived_at IS NULL
-  ORDER BY CASE r.room_type WHEN 'beta_group' THEN 0 ELSE 1 END,r.created_at,r.id;
+  ORDER BY CASE r.room_type WHEN 'beta_group' THEN 0 ELSE 1 END,r.created_at;
 END
-$function$;
+$f$;
+
+CREATE OR REPLACE FUNCTION public.nexus_secure_list_beta_candidates()
+RETURNS TABLE(user_id uuid,display_name text,active_device_count bigint,available_key_package_count bigint)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
+AS $f$
+DECLARE v_owner uuid;
+BEGIN
+  v_owner:=(auth.user_id())::uuid;
+  IF v_owner IS NULL OR NOT public.nexus_is_owner(v_owner) THEN RAISE EXCEPTION 'owner_required'; END IF;
+  RETURN QUERY
+  SELECT s.user_id,coalesce(p.display_name,u.name,u.email,'Beta tester')::text,
+    (SELECT count(*) FROM public.nexus_secure_devices d WHERE d.user_id=s.user_id AND d.revoked_at IS NULL),
+    (SELECT count(*) FROM public.nexus_secure_key_packages k JOIN public.nexus_secure_devices d ON d.id=k.device_id
+      WHERE d.user_id=s.user_id AND d.revoked_at IS NULL AND k.consumed_at IS NULL)
+  FROM public.nexus_staff_accounts s
+  JOIN neon_auth."user" u ON u.id=s.user_id
+  LEFT JOIN public.nexus_profiles p ON p.user_id=s.user_id
+  WHERE s.role='beta_tester'
+  ORDER BY coalesce(p.display_name,u.name,u.email,'Beta tester'),s.user_id;
+END
+$f$;
+
+CREATE OR REPLACE FUNCTION public.nexus_secure_list_room_members(p_room_id uuid)
+RETURNS TABLE(user_id uuid,display_name text,member_role text,joined_at timestamptz)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
+AS $f$
+DECLARE v_user uuid;
+BEGIN
+  v_user:=(auth.user_id())::uuid;
+  IF v_user IS NULL OR NOT public.nexus_secure_has_room_access(p_room_id,v_user) THEN RAISE EXCEPTION 'room_access_denied'; END IF;
+  RETURN QUERY
+  SELECT m.user_id,coalesce(p.display_name,u.name,u.email,'NEXUS user')::text,m.member_role,m.joined_at
+  FROM public.nexus_secure_room_members m
+  JOIN neon_auth."user" u ON u.id=m.user_id
+  LEFT JOIN public.nexus_profiles p ON p.user_id=m.user_id
+  WHERE m.room_id=p_room_id AND m.left_at IS NULL
+  ORDER BY CASE m.member_role WHEN 'owner' THEN 0 ELSE 1 END,m.joined_at,m.user_id;
+END
+$f$;
 
 CREATE OR REPLACE FUNCTION public.nexus_secure_list_member_devices(p_room_id uuid)
-RETURNS TABLE(
-  device_id uuid,
-  user_id uuid,
-  device_label text,
-  ecdh_public_jwk jsonb,
-  signing_public_jwk jsonb,
-  identity_fingerprint text,
-  protocol_version text,
-  created_at timestamptz
+RETURNS TABLE(device_id uuid,user_id uuid,display_name text,device_label text,identity_public_key text,identity_fingerprint text,joined_epoch bigint,created_at timestamptz)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
+AS $f$
+DECLARE v_user uuid;
+BEGIN
+  v_user:=(auth.user_id())::uuid;
+  IF v_user IS NULL OR NOT public.nexus_secure_has_room_access(p_room_id,v_user) THEN RAISE EXCEPTION 'room_access_denied'; END IF;
+  RETURN QUERY
+  SELECT d.id,d.user_id,coalesce(p.display_name,u.name,u.email,'NEXUS user')::text,d.device_label,d.identity_public_key,d.identity_fingerprint,rd.joined_epoch,d.created_at
+  FROM public.nexus_secure_room_devices rd
+  JOIN public.nexus_secure_devices d ON d.id=rd.device_id
+  JOIN neon_auth."user" u ON u.id=d.user_id
+  LEFT JOIN public.nexus_profiles p ON p.user_id=d.user_id
+  WHERE rd.room_id=p_room_id AND rd.left_at IS NULL AND d.revoked_at IS NULL
+  ORDER BY rd.joined_at,d.id;
+END
+$f$;
+
+CREATE OR REPLACE FUNCTION public.nexus_secure_validate_credential(p_identity text,p_signature_public_key text)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
+AS $f$
+DECLARE v_caller uuid;v_identity uuid;
+BEGIN
+  v_caller:=(auth.user_id())::uuid;
+  IF v_caller IS NULL OR NOT public.nexus_beta_has_access(v_caller) THEN RETURN false; END IF;
+  BEGIN v_identity:=p_identity::uuid; EXCEPTION WHEN OTHERS THEN RETURN false; END;
+  IF NOT public.nexus_beta_has_access(v_identity) THEN RETURN false; END IF;
+  RETURN EXISTS(
+    SELECT 1 FROM public.nexus_secure_devices d
+    WHERE d.user_id=v_identity AND d.revoked_at IS NULL AND d.identity_public_key=p_signature_public_key
+  );
+END
+$f$;
+
+CREATE OR REPLACE FUNCTION public.nexus_secure_owner_take_beta_key_package(p_room_id uuid,p_beta_user_id uuid)
+RETURNS TABLE(device_id uuid,key_package_ref text,key_package text,identity_fingerprint text)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
+AS $f$
+DECLARE v_owner uuid;v_id uuid;v_device uuid;v_ref text;v_package text;v_fp text;
+BEGIN
+  v_owner:=(auth.user_id())::uuid;
+  IF v_owner IS NULL OR NOT public.nexus_is_owner(v_owner) THEN RAISE EXCEPTION 'owner_required'; END IF;
+  IF NOT public.nexus_secure_has_room_access(p_room_id,v_owner) THEN RAISE EXCEPTION 'room_owner_required'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.nexus_staff_accounts s WHERE s.user_id=p_beta_user_id AND s.role='beta_tester')
+    THEN RAISE EXCEPTION 'target_not_beta_tester'; END IF;
+
+  SELECT k.id,k.device_id,k.key_package_ref,k.key_package,d.identity_fingerprint
+    INTO v_id,v_device,v_ref,v_package,v_fp
+  FROM public.nexus_secure_key_packages k
+  JOIN public.nexus_secure_devices d ON d.id=k.device_id
+  WHERE d.user_id=p_beta_user_id AND d.revoked_at IS NULL AND k.consumed_at IS NULL
+    AND NOT EXISTS(
+      SELECT 1 FROM public.nexus_secure_room_devices rd
+      WHERE rd.room_id=p_room_id AND rd.device_id=d.id AND rd.left_at IS NULL
+    )
+  ORDER BY k.created_at,k.id
+  FOR UPDATE OF k SKIP LOCKED
+  LIMIT 1;
+
+  IF v_id IS NULL THEN RAISE EXCEPTION 'no_beta_key_package_available'; END IF;
+  UPDATE public.nexus_secure_key_packages SET consumed_at=now() WHERE id=v_id;
+  RETURN QUERY SELECT v_device,v_ref,v_package,v_fp;
+END
+$f$;
+
+CREATE OR REPLACE FUNCTION public.nexus_secure_owner_finalize_add(
+  p_room_id uuid,p_beta_user_id uuid,p_recipient_device_id uuid,p_sender_device_id uuid,
+  p_key_package_ref text,p_epoch bigint,p_commit_ciphertext text,p_welcome_ciphertext text
 )
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public','pg_temp'
-AS $function$
+RETURNS TABLE(commit_message_id uuid,welcome_id uuid)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
+AS $f$
+DECLARE v_owner uuid;v_commit uuid;v_welcome uuid;
+BEGIN
+  v_owner:=(auth.user_id())::uuid;
+  IF v_owner IS NULL OR NOT public.nexus_is_owner(v_owner) THEN RAISE EXCEPTION 'owner_required'; END IF;
+  IF NOT public.nexus_secure_has_room_access(p_room_id,v_owner) THEN RAISE EXCEPTION 'room_owner_required'; END IF;
+  IF NOT EXISTS(
+    SELECT 1 FROM public.nexus_secure_room_devices rd JOIN public.nexus_secure_devices d ON d.id=rd.device_id
+    WHERE rd.room_id=p_room_id AND rd.device_id=p_sender_device_id AND rd.left_at IS NULL
+      AND d.user_id=v_owner AND d.revoked_at IS NULL
+  ) THEN RAISE EXCEPTION 'sender_device_not_enrolled'; END IF;
+  IF EXISTS(SELECT 1 FROM public.nexus_secure_room_devices rd WHERE rd.room_id=p_room_id AND rd.device_id=p_recipient_device_id AND rd.left_at IS NULL)
+    THEN RAISE EXCEPTION 'recipient_device_already_enrolled'; END IF;
+  IF NOT EXISTS(
+    SELECT 1 FROM public.nexus_secure_key_packages k JOIN public.nexus_secure_devices d ON d.id=k.device_id
+    WHERE k.device_id=p_recipient_device_id AND d.user_id=p_beta_user_id AND d.revoked_at IS NULL
+      AND k.key_package_ref=p_key_package_ref AND k.consumed_at IS NOT NULL
+  ) THEN RAISE EXCEPTION 'recipient_key_package_not_taken'; END IF;
+
+  INSERT INTO public.nexus_secure_room_members(room_id,user_id,member_role,left_at)
+  VALUES(p_room_id,p_beta_user_id,'member',NULL)
+  ON CONFLICT(room_id,user_id) DO UPDATE SET member_role='member',left_at=NULL;
+
+  INSERT INTO public.nexus_secure_room_devices(room_id,device_id,joined_epoch,left_at)
+  VALUES(p_room_id,p_recipient_device_id,p_epoch,NULL)
+  ON CONFLICT(room_id,device_id) DO UPDATE SET joined_epoch=excluded.joined_epoch,left_at=NULL;
+
+  INSERT INTO public.nexus_secure_messages(room_id,sender_user_id,sender_device_id,client_message_id,epoch,content_type,ciphertext)
+  VALUES(p_room_id,v_owner,p_sender_device_id,gen_random_uuid(),p_epoch,'application/vnd.nexus.mls-commit',p_commit_ciphertext)
+  RETURNING id INTO v_commit;
+
+  INSERT INTO public.nexus_secure_welcomes(room_id,recipient_device_id,sender_device_id,key_package_ref,epoch,welcome_ciphertext)
+  VALUES(p_room_id,p_recipient_device_id,p_sender_device_id,left(p_key_package_ref,256),p_epoch,p_welcome_ciphertext)
+  RETURNING id INTO v_welcome;
+
+  RETURN QUERY SELECT v_commit,v_welcome;
+END
+$f$;
+
+CREATE OR REPLACE FUNCTION public.nexus_secure_fetch_welcomes(p_device_id uuid)
+RETURNS TABLE(id uuid,room_id uuid,sender_device_id uuid,key_package_ref text,epoch bigint,welcome_ciphertext text,created_at timestamptz)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
+AS $f$
 DECLARE v_user uuid;
 BEGIN
   v_user:=(auth.user_id())::uuid;
   IF v_user IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
-  IF NOT public.nexus_secure_has_room_access(p_room_id,v_user) THEN RAISE EXCEPTION 'room_access_denied'; END IF;
-
+  IF NOT EXISTS(SELECT 1 FROM public.nexus_secure_devices d WHERE d.id=p_device_id AND d.user_id=v_user AND d.revoked_at IS NULL)
+    THEN RAISE EXCEPTION 'device_not_owned_or_revoked'; END IF;
   RETURN QUERY
-  SELECT d.id,d.user_id,d.device_label,d.ecdh_public_jwk,d.signing_public_jwk,
-         d.identity_fingerprint,d.protocol_version,d.created_at
-  FROM public.nexus_secure_devices d
-  JOIN public.nexus_secure_room_members m ON m.user_id=d.user_id
-  WHERE m.room_id=p_room_id AND m.left_at IS NULL AND d.revoked_at IS NULL
-  ORDER BY d.user_id,d.created_at,d.id;
+  SELECT w.id,w.room_id,w.sender_device_id,w.key_package_ref,w.epoch,w.welcome_ciphertext,w.created_at
+  FROM public.nexus_secure_welcomes w
+  WHERE w.recipient_device_id=p_device_id AND w.consumed_at IS NULL
+  ORDER BY w.created_at,w.id;
 END
-$function$;
+$f$;
 
-CREATE OR REPLACE FUNCTION public.nexus_secure_send_envelope(
-  p_room_id uuid,
-  p_sender_device_id uuid,
-  p_client_message_id uuid,
-  p_membership_version bigint,
-  p_payload_iv text,
-  p_salt text,
-  p_ephemeral_public_jwk jsonb,
-  p_ciphertext text,
-  p_signature text,
-  p_recipient_keys jsonb
-)
-RETURNS uuid
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public','pg_temp'
-AS $function$
-DECLARE
-  v_user uuid; v_message uuid; v_expected integer; v_given integer; v_current_version bigint;
+CREATE OR REPLACE FUNCTION public.nexus_secure_mark_welcome_consumed(p_welcome_id uuid)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
+AS $f$
+DECLARE v_user uuid;
 BEGIN
   v_user:=(auth.user_id())::uuid;
   IF v_user IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
-  IF NOT public.nexus_secure_has_room_access(p_room_id,v_user) THEN RAISE EXCEPTION 'room_access_denied'; END IF;
-  IF NOT EXISTS(
+  UPDATE public.nexus_secure_welcomes w SET consumed_at=coalesce(w.consumed_at,now())
+  WHERE w.id=p_welcome_id AND EXISTS(
     SELECT 1 FROM public.nexus_secure_devices d
-    WHERE d.id=p_sender_device_id AND d.user_id=v_user AND d.revoked_at IS NULL
-  ) THEN RAISE EXCEPTION 'sender_device_invalid'; END IF;
-
-  SELECT membership_version INTO v_current_version
-  FROM public.nexus_secure_rooms
-  WHERE id=p_room_id AND archived_at IS NULL;
-  IF v_current_version IS NULL THEN RAISE EXCEPTION 'room_not_found'; END IF;
-  IF p_membership_version<>v_current_version THEN RAISE EXCEPTION 'membership_changed_refresh_room'; END IF;
-
-  IF jsonb_typeof(p_recipient_keys)<>'array' THEN RAISE EXCEPTION 'recipient_keys_array_required'; END IF;
-  IF jsonb_typeof(p_ephemeral_public_jwk)<>'object' THEN RAISE EXCEPTION 'ephemeral_public_key_invalid'; END IF;
-  IF length(coalesce(p_ciphertext,''))<1 OR length(p_ciphertext)>1400000 THEN RAISE EXCEPTION 'ciphertext_size_invalid'; END IF;
-  IF length(coalesce(p_signature,''))<16 OR length(p_signature)>4096 THEN RAISE EXCEPTION 'signature_invalid'; END IF;
-
-  SELECT count(*) INTO v_expected
-  FROM public.nexus_secure_devices d
-  JOIN public.nexus_secure_room_members m ON m.user_id=d.user_id
-  WHERE m.room_id=p_room_id AND m.left_at IS NULL AND d.revoked_at IS NULL;
-
-  SELECT count(DISTINCT (x->>'device_id')::uuid) INTO v_given
-  FROM jsonb_array_elements(p_recipient_keys) x
-  WHERE x ? 'device_id' AND x ? 'wrap_iv' AND x ? 'wrapped_key';
-
-  IF v_expected<1 OR v_given<>v_expected THEN RAISE EXCEPTION 'recipient_device_set_incomplete'; END IF;
-
-  IF EXISTS(
-    SELECT 1
-    FROM jsonb_array_elements(p_recipient_keys) x
-    LEFT JOIN public.nexus_secure_devices d ON d.id=(x->>'device_id')::uuid AND d.revoked_at IS NULL
-    LEFT JOIN public.nexus_secure_room_members m ON m.user_id=d.user_id AND m.room_id=p_room_id AND m.left_at IS NULL
-    WHERE d.id IS NULL OR m.room_id IS NULL
-  ) THEN RAISE EXCEPTION 'recipient_device_not_in_room'; END IF;
-
-  INSERT INTO public.nexus_secure_messages(
-    room_id,sender_user_id,sender_device_id,client_message_id,membership_version,
-    payload_iv,salt,ephemeral_public_jwk,ciphertext,signature
-  ) VALUES(
-    p_room_id,v_user,p_sender_device_id,p_client_message_id,p_membership_version,
-    left(p_payload_iv,128),left(p_salt,256),p_ephemeral_public_jwk,p_ciphertext,left(p_signature,4096)
-  )
-  ON CONFLICT(sender_device_id,client_message_id)
-  DO UPDATE SET client_message_id=excluded.client_message_id
-  RETURNING id INTO v_message;
-
-  INSERT INTO public.nexus_secure_message_keys(message_id,recipient_device_id,wrap_iv,wrapped_key)
-  SELECT v_message,(x->>'device_id')::uuid,left(x->>'wrap_iv',128),left(x->>'wrapped_key',4096)
-  FROM jsonb_array_elements(p_recipient_keys) x
-  ON CONFLICT(message_id,recipient_device_id)
-  DO UPDATE SET wrap_iv=excluded.wrap_iv,wrapped_key=excluded.wrapped_key;
-
-  RETURN v_message;
+    WHERE d.id=w.recipient_device_id AND d.user_id=v_user AND d.revoked_at IS NULL
+  );
+  RETURN FOUND;
 END
-$function$;
+$f$;
+
+CREATE OR REPLACE FUNCTION public.nexus_secure_send_ciphertext(
+  p_room_id uuid,p_sender_device_id uuid,p_client_message_id uuid,p_epoch bigint,
+  p_ciphertext text,p_content_type text DEFAULT 'application/vnd.nexus.mls'
+)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
+AS $f$
+DECLARE v_user uuid;v_id uuid;
+BEGIN
+  v_user:=(auth.user_id())::uuid;
+  IF v_user IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
+  IF NOT EXISTS(
+    SELECT 1 FROM public.nexus_secure_room_devices rd
+    JOIN public.nexus_secure_devices d ON d.id=rd.device_id
+    WHERE rd.room_id=p_room_id AND rd.device_id=p_sender_device_id AND rd.left_at IS NULL
+      AND d.user_id=v_user AND d.revoked_at IS NULL
+  ) THEN RAISE EXCEPTION 'sender_device_not_enrolled'; END IF;
+  IF p_epoch<0 THEN RAISE EXCEPTION 'invalid_epoch'; END IF;
+  IF length(coalesce(p_ciphertext,''))<1 OR length(p_ciphertext)>1400000 THEN RAISE EXCEPTION 'ciphertext_size_invalid'; END IF;
+
+  INSERT INTO public.nexus_secure_messages(room_id,sender_user_id,sender_device_id,client_message_id,epoch,content_type,ciphertext)
+  VALUES(p_room_id,v_user,p_sender_device_id,p_client_message_id,p_epoch,left(coalesce(nullif(trim(p_content_type),''),'application/vnd.nexus.mls'),120),p_ciphertext)
+  ON CONFLICT(sender_device_id,client_message_id) DO UPDATE SET client_message_id=excluded.client_message_id
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END
+$f$;
 
 CREATE OR REPLACE FUNCTION public.nexus_secure_fetch_messages(
-  p_room_id uuid,
-  p_device_id uuid,
-  p_after timestamptz DEFAULT NULL,
-  p_limit integer DEFAULT 200
+  p_room_id uuid,p_device_id uuid,p_after timestamptz DEFAULT NULL,p_limit integer DEFAULT 200
 )
-RETURNS TABLE(
-  id uuid,
-  sender_user_id uuid,
-  sender_device_id uuid,
-  sender_device_label text,
-  sender_fingerprint text,
-  sender_signing_public_jwk jsonb,
-  client_message_id uuid,
-  membership_version bigint,
-  protocol_version text,
-  payload_iv text,
-  salt text,
-  ephemeral_public_jwk jsonb,
-  ciphertext text,
-  signature text,
-  wrap_iv text,
-  wrapped_key text,
-  created_at timestamptz
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public','pg_temp'
-AS $function$
-DECLARE v_user uuid; v_limit integer;
+RETURNS TABLE(id uuid,sender_user_id uuid,sender_device_id uuid,client_message_id uuid,epoch bigint,content_type text,ciphertext text,created_at timestamptz)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
+AS $f$
+DECLARE v_user uuid;v_limit integer;
 BEGIN
   v_user:=(auth.user_id())::uuid;
   IF v_user IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
-  IF NOT public.nexus_secure_has_room_access(p_room_id,v_user) THEN RAISE EXCEPTION 'room_access_denied'; END IF;
   IF NOT EXISTS(
-    SELECT 1 FROM public.nexus_secure_devices d
-    WHERE d.id=p_device_id AND d.user_id=v_user AND d.revoked_at IS NULL
-  ) THEN RAISE EXCEPTION 'device_not_owned_or_revoked'; END IF;
-
+    SELECT 1 FROM public.nexus_secure_room_devices rd JOIN public.nexus_secure_devices d ON d.id=rd.device_id
+    WHERE rd.room_id=p_room_id AND rd.device_id=p_device_id AND rd.left_at IS NULL
+      AND d.user_id=v_user AND d.revoked_at IS NULL
+  ) THEN RAISE EXCEPTION 'device_not_enrolled'; END IF;
   v_limit:=greatest(1,least(coalesce(p_limit,200),500));
-
   RETURN QUERY
-  SELECT m.id,m.sender_user_id,m.sender_device_id,sd.device_label,sd.identity_fingerprint,sd.signing_public_jwk,
-         m.client_message_id,m.membership_version,m.protocol_version,m.payload_iv,m.salt,
-         m.ephemeral_public_jwk,m.ciphertext,m.signature,k.wrap_iv,k.wrapped_key,m.created_at
+  SELECT m.id,m.sender_user_id,m.sender_device_id,m.client_message_id,m.epoch,m.content_type,m.ciphertext,m.created_at
   FROM public.nexus_secure_messages m
-  JOIN public.nexus_secure_message_keys k ON k.message_id=m.id AND k.recipient_device_id=p_device_id
-  JOIN public.nexus_secure_devices sd ON sd.id=m.sender_device_id
   WHERE m.room_id=p_room_id AND (p_after IS NULL OR m.created_at>p_after)
   ORDER BY m.created_at,m.id
   LIMIT v_limit;
 END
-$function$;
+$f$;
 
-
-CREATE OR REPLACE FUNCTION public.nexus_secure_staff_membership_guard()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public','pg_temp'
-AS $function$
-DECLARE
-  v_user uuid;
-  v_old_role text;
-  v_new_role text;
-  v_group uuid;
-  v_was_active boolean;
+CREATE OR REPLACE FUNCTION public.nexus_secure_revoke_device(p_device_id uuid)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
+AS $f$
+DECLARE v_user uuid;
 BEGIN
-  IF TG_OP='DELETE' THEN v_user:=OLD.user_id; ELSE v_user:=NEW.user_id; END IF;
-  v_old_role:=CASE WHEN TG_OP IN ('UPDATE','DELETE') THEN OLD.role ELSE NULL END;
-  v_new_role:=CASE WHEN TG_OP IN ('UPDATE','INSERT') THEN NEW.role ELSE NULL END;
-
-  IF v_old_role='beta_tester' AND coalesce(v_new_role,'')<>'beta_tester' THEN
-    SELECT r.id INTO v_group
-    FROM public.nexus_secure_rooms r
-    JOIN public.nexus_secure_room_members m ON m.room_id=r.id
-    WHERE r.room_type='beta_group' AND r.archived_at IS NULL
-      AND m.user_id=v_user AND m.left_at IS NULL
-    LIMIT 1;
-
-    IF v_group IS NOT NULL THEN
-      UPDATE public.nexus_secure_room_members
-         SET left_at=now()
-       WHERE room_id=v_group AND user_id=v_user AND left_at IS NULL;
-      UPDATE public.nexus_secure_rooms
-         SET membership_version=membership_version+1
-       WHERE id=v_group;
-    END IF;
-
-    UPDATE public.nexus_secure_rooms
-       SET archived_at=coalesce(archived_at,now()),
-           membership_version=membership_version+1
-     WHERE room_type='owner_beta_dm'
-       AND dm_beta_user_id=v_user
-       AND archived_at IS NULL;
-
-    UPDATE public.nexus_secure_room_members
-       SET left_at=coalesce(left_at,now())
-     WHERE user_id=v_user AND left_at IS NULL;
-
-    UPDATE public.nexus_secure_devices
-       SET revoked_at=coalesce(revoked_at,now()),last_seen_at=now()
-     WHERE user_id=v_user AND revoked_at IS NULL;
+  v_user:=(auth.user_id())::uuid;
+  IF v_user IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
+  UPDATE public.nexus_secure_devices SET revoked_at=coalesce(revoked_at,now()),last_seen_at=now()
+  WHERE id=p_device_id AND user_id=v_user;
+  IF FOUND THEN
+    UPDATE public.nexus_secure_room_devices SET left_at=coalesce(left_at,now()) WHERE device_id=p_device_id AND left_at IS NULL;
+    RETURN true;
   END IF;
-
-  IF v_new_role='beta_tester' AND coalesce(v_old_role,'')<>'beta_tester' THEN
-    SELECT id INTO v_group
-    FROM public.nexus_secure_rooms
-    WHERE room_type='beta_group' AND archived_at IS NULL
-    LIMIT 1;
-
-    IF v_group IS NOT NULL THEN
-      SELECT EXISTS(
-        SELECT 1 FROM public.nexus_secure_room_members
-        WHERE room_id=v_group AND user_id=v_user AND left_at IS NULL
-      ) INTO v_was_active;
-
-      INSERT INTO public.nexus_secure_room_members(room_id,user_id,member_role,left_at)
-      VALUES(v_group,v_user,'member',NULL)
-      ON CONFLICT(room_id,user_id) DO UPDATE SET member_role='member',left_at=NULL;
-
-      IF NOT v_was_active THEN
-        UPDATE public.nexus_secure_rooms
-           SET membership_version=membership_version+1
-         WHERE id=v_group;
-      END IF;
-    END IF;
-  END IF;
-
-  IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
+  RETURN false;
 END
-$function$;
-
-DROP TRIGGER IF EXISTS nexus_secure_staff_membership_guard_trg ON public.nexus_staff_accounts;
-CREATE TRIGGER nexus_secure_staff_membership_guard_trg
-AFTER INSERT OR UPDATE OR DELETE ON public.nexus_staff_accounts
-FOR EACH ROW EXECUTE FUNCTION public.nexus_secure_staff_membership_guard();
+$f$;
