@@ -115,6 +115,9 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 @media(max-width:700px){.beta-grid{grid-template-columns:1fr}.beta-grid .wide{grid-column:auto}.admin-user .admin-actions{grid-template-columns:1fr 1fr}.admin-credit-input{grid-column:1/-1}}
 .notification-list{display:grid;gap:9px;margin-top:12px}.notification-item{width:100%;text-align:left;border:1px solid var(--line);background:#090f16;color:var(--text);border-radius:12px;padding:12px;cursor:pointer}.notification-item.unread{border-color:rgba(124,245,195,.42);background:rgba(124,245,195,.055)}.notification-item.warning{border-left:3px solid var(--gold)}.notification-item.critical{border-left:3px solid var(--danger)}.notification-item.success{border-left:3px solid var(--accent)}.notification-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.notification-head strong{font-size:13px}.notification-body{font-size:12px;color:#c7d4e2;line-height:1.45;margin-top:5px}.notification-meta{font-size:10px;color:var(--muted);margin-top:6px}.owner-toast{position:fixed;right:18px;top:82px;z-index:95;width:min(390px,calc(100vw - 28px));border:1px solid rgba(124,245,195,.38);background:#0b131a;border-radius:14px;padding:12px 14px;box-shadow:0 20px 70px rgba(0,0,0,.48);opacity:0;transform:translateY(-10px);pointer-events:none;transition:.18s ease}.owner-toast.show{opacity:1;transform:translateY(0);pointer-events:auto}.owner-toast strong{display:block;font-size:13px}.owner-toast span{display:block;margin-top:4px;color:#b9c8d9;font-size:11px;line-height:1.4}
 .private-card{width:min(96vw,1040px);max-height:88vh;overflow:auto}.private-layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:12px;margin-top:12px}.private-sidebar{display:flex;flex-direction:column;gap:8px}.private-room{width:100%;text-align:left;border:1px solid var(--line);background:#090f16;color:var(--text);border-radius:11px;padding:10px;cursor:pointer}.private-room strong,.private-room span{display:block}.private-room.active{border-color:var(--accent);background:rgba(124,245,195,.07)}.private-main{min-width:0}.private-security{display:grid;gap:5px;border:1px solid rgba(124,245,195,.24);background:rgba(124,245,195,.055);border-radius:11px;padding:11px;margin-bottom:10px}.private-fingerprint{font:10px ui-monospace,monospace;color:#aebed0;overflow-wrap:anywhere}.private-messages{display:flex;flex-direction:column;gap:9px;min-height:220px;max-height:390px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:10px;background:#070b10}.private-message{max-width:86%;padding:10px 12px;border:1px solid #253447;border-radius:12px;background:#0d151f;white-space:pre-wrap;overflow-wrap:anywhere}.private-message.mine{align-self:flex-end;background:#17372b;border-color:#275641}.private-message.theirs{align-self:flex-start}.private-message-head{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}.private-compose{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:10px}.private-compose textarea{border:1px solid var(--line);background:#080d14;border-radius:11px;padding:10px;min-height:64px}.private-owner-tools{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;margin-top:10px}.private-owner-tools select{min-width:0;background:#0d111b;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:9px}.private-state{margin-top:9px}.private-lock{display:inline-flex;align-items:center;gap:6px;color:var(--accent);font-weight:850}@media(max-width:760px){.private-layout{grid-template-columns:1fr}.private-sidebar{max-height:180px;overflow:auto}.private-owner-tools{grid-template-columns:1fr 1fr}.private-owner-tools select{grid-column:1/-1}.private-message{max-width:94%}}
+
+.agentos-card{width:min(96vw,1160px);max-height:90vh;overflow:auto}.agentos-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.agentos-head h2{margin:0}.agentos-context{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(124,245,195,.28);background:rgba(124,245,195,.06);border-radius:999px;padding:6px 9px;font-size:10px;color:#bdebd3;font-weight:800}.agentos-tabs{display:flex;gap:7px;flex-wrap:wrap;margin:16px 0}.agentos-tabs button{border:1px solid var(--line);background:#0b1118;color:var(--text);border-radius:9px;padding:8px 11px;cursor:pointer}.agentos-tabs button.active{border-color:var(--accent);background:rgba(124,245,195,.08)}.agentos-pane{min-height:360px}.agentos-grid{display:grid;grid-template-columns:minmax(230px,.8fr) minmax(0,1.5fr);gap:14px}.agentos-panel{border:1px solid var(--line);background:#080d13;border-radius:13px;padding:12px;min-width:0}.agentos-list{display:grid;gap:7px;max-height:460px;overflow:auto;margin-top:10px}.agentos-row{display:grid;gap:3px;text-align:left;width:100%;border:1px solid var(--line);background:#0b1118;color:var(--text);border-radius:10px;padding:10px;cursor:pointer}.agentos-row.active{border-color:var(--accent);background:rgba(124,245,195,.06)}.agentos-row strong{font-size:13px}.agentos-row span,.agentos-row small{font-size:10px;color:var(--muted)}.agentos-form{display:grid;gap:9px}.agentos-form label{font-size:11px;color:var(--muted);font-weight:750}.agentos-form input,.agentos-form select,.agentos-form textarea{width:100%;border:1px solid var(--line);background:#070c12;color:var(--text);border-radius:9px;padding:9px}.agentos-form textarea{min-height:92px;resize:vertical}.agentos-form textarea.tall{min-height:170px}.agentos-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}.agentos-checks{display:flex;gap:7px;flex-wrap:wrap;border:1px solid var(--line);border-radius:9px;padding:9px;min-height:42px}.agentos-check{font-size:11px;color:#c8d6e5;background:#0b1118;border:1px solid #1d2a38;border-radius:999px;padding:6px 8px}.agentos-defaults{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.agentos-defaults .wide{grid-column:1/-1}.agentos-kpi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:12px}.agentos-kpi div{border:1px solid var(--line);background:#080d13;border-radius:11px;padding:11px}.agentos-kpi strong{display:block;font-size:22px}.agentos-kpi span{font-size:10px;color:var(--muted)}@media(max-width:760px){.agentos-grid{grid-template-columns:1fr}.agentos-defaults{grid-template-columns:1fr}.agentos-defaults .wide{grid-column:auto}.agentos-kpi{grid-template-columns:1fr 1fr 1fr}}
+
 </style>
 </head>
 <body>
@@ -126,6 +129,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <button class="navbtn" id="jobsBtn"><span>My jobs</span><span class="small">0</span></button>
     <button class="navbtn" id="libraryBtn"><span>Library</span><span class="small" id="libraryCount">Files</span></button>
     <button class="navbtn" id="pluginsBtn"><span>Tools</span><span class="small" id="pluginCount">—</span></button>
+    <button class="navbtn" id="agentOsBtn" hidden><span>Settings</span><span class="small" id="agentOsBadge">OS</span></button>
     <button class="navbtn" id="socialBtn" hidden><span>Social Publisher</span><span class="small">OWNER</span></button>
     <button class="navbtn" id="betaBtn" hidden><span>Centro Beta</span><span class="small" id="betaNavBadge">LIVE</span></button>
     <button class="navbtn" id="privateBtn" hidden><span>NEXUS Private</span><span class="small">MLS</span></button>
@@ -268,6 +272,124 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
       <button class="iconbtn" id="refreshLibrary" type="button">Refresh</button>
       <button class="iconbtn" id="closeLibrary" type="button">Close</button>
     </div>
+  </div>
+</div>
+
+<div class="modal" id="agentOsModal">
+  <div class="modal-card agentos-card">
+    <div class="agentos-head">
+      <div>
+        <h2>NEXUS Agent OS · Settings</h2>
+        <p>Projects, agenti persistenti, skill e policy operative. Solo impostazioni realmente collegate al runtime.</p>
+      </div>
+      <span class="agentos-context" id="agentOsContextPill">Default NEXUS</span>
+    </div>
+    <div class="agentos-tabs">
+      <button type="button" class="active" data-agentos-tab="defaults">Defaults</button>
+      <button type="button" data-agentos-tab="projects">Projects</button>
+      <button type="button" data-agentos-tab="agents">Agents</button>
+      <button type="button" data-agentos-tab="skills">Skills</button>
+      <button type="button" data-agentos-tab="connectors">Connectors</button>
+    </div>
+    <div class="notice" id="agentOsNotice">Agent OS non ancora caricato.</div>
+
+    <section class="agentos-pane" data-agentos-pane="defaults">
+      <div class="agentos-kpi">
+        <div><strong id="agentOsProjectsKpi">—</strong><span>Projects</span></div>
+        <div><strong id="agentOsAgentsKpi">—</strong><span>Agents</span></div>
+        <div><strong id="agentOsSkillsKpi">—</strong><span>Skills</span></div>
+      </div>
+      <div class="agentos-panel">
+        <h3>Runtime defaults</h3>
+        <div class="small" id="agentRuntimeSummary">Caricamento runtime…</div>
+        <div class="agentos-defaults" style="margin-top:12px">
+          <label>Project predefinito<select id="agentDefaultProject"></select></label>
+          <label>Agent predefinito<select id="agentDefaultAgent"></select></label>
+          <label>Routing<select id="agentRoutingProfile"><option value="local_first">Local first</option><option value="balanced">Balanced</option><option value="max">Max</option></select></label>
+          <label>Autonomia<select id="agentAutonomyLevel"><option value="assist">Assist</option><option value="supervised">Supervised</option><option value="autonomous">Autonomous</option></select></label>
+          <label>Conferme<select id="agentApprovalPolicy"><option value="always_confirm">Always confirm</option><option value="risk_based">Risk based</option><option value="trusted_low_risk">Trusted low risk</option></select></label>
+          <label>Timezone<input id="agentTimezone" maxlength="100"></label>
+          <label>Lingua<input id="agentLanguage" maxlength="16"></label>
+          <label class="wide agentos-check"><input id="agentNotifications" type="checkbox" checked> Notifiche interne NEXUS abilitate</label>
+        </div>
+        <div class="agentos-actions"><button class="iconbtn enable" id="saveAgentDefaults" type="button">Salva defaults</button></div>
+      </div>
+    </section>
+
+    <section class="agentos-pane" data-agentos-pane="projects" hidden>
+      <div class="agentos-grid">
+        <div class="agentos-panel">
+          <div class="beta-detail-head"><strong>Projects</strong><button class="iconbtn" id="newProject" type="button">＋ Nuovo</button></div>
+          <div class="agentos-list" id="agentProjectsList"></div>
+        </div>
+        <div class="agentos-panel agentos-form">
+          <h3>Project</h3>
+          <label>Nome<input id="projectName" maxlength="160" placeholder="es. NEXUS Word"></label>
+          <label>Descrizione<textarea id="projectDescription" maxlength="4000" placeholder="Scopo del progetto"></textarea></label>
+          <label>Istruzioni persistenti<textarea class="tall" id="projectInstructions" maxlength="20000" placeholder="Regole e contesto che ogni task del Project deve ereditare"></textarea></label>
+          <label>Livello job predefinito<select id="projectDefaultLevel"><option value="free">Free/local</option><option value="smart">Smart</option><option value="deep">Deep</option></select></label>
+          <div class="agentos-actions"><button class="iconbtn enable" id="saveProject" type="button">Salva Project</button><button class="iconbtn" id="projectArchive" type="button" hidden>Archivia</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="agentos-pane" data-agentos-pane="agents" hidden>
+      <div class="agentos-grid">
+        <div class="agentos-panel">
+          <div class="beta-detail-head"><strong>Persistent Agents</strong><button class="iconbtn" id="newAgent" type="button">＋ Nuovo</button></div>
+          <div class="agentos-list" id="agentAgentsList"></div>
+        </div>
+        <div class="agentos-panel agentos-form">
+          <h3>Agent</h3>
+          <label>Nome<input id="agentName" maxlength="160" placeholder="es. QA Agent"></label>
+          <label>Project<select id="agentProject"></select></label>
+          <label>Descrizione<textarea id="agentDescription" maxlength="4000"></textarea></label>
+          <label>Missione persistente<textarea class="tall" id="agentMission" maxlength="20000" placeholder="Obiettivi e limiti permanenti dell’agente"></textarea></label>
+          <div class="agentos-defaults">
+            <label>Routing<select id="agentRouting"><option value="local_first">Local first</option><option value="balanced">Balanced</option><option value="max">Max</option></select></label>
+            <label>Autonomia<select id="agentAutonomy"><option value="assist">Assist</option><option value="supervised">Supervised</option><option value="autonomous">Autonomous</option></select></label>
+            <label>Conferme<select id="agentApproval"><option value="always_confirm">Always confirm</option><option value="risk_based">Risk based</option><option value="trusted_low_risk">Trusted low risk</option></select></label>
+          </div>
+          <label>Skill assegnate<div class="agentos-checks" id="agentSkillAssignments"></div></label>
+          <div class="agentos-actions"><button class="iconbtn enable" id="saveAgent" type="button">Salva Agent</button><button class="iconbtn" id="agentArchive" type="button" hidden>Archivia</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="agentos-pane" data-agentos-pane="skills" hidden>
+      <div class="agentos-grid">
+        <div class="agentos-panel">
+          <div class="beta-detail-head"><strong>Skills</strong><button class="iconbtn" id="newSkill" type="button">＋ Nuova</button></div>
+          <div class="agentos-list" id="agentSkillsList"></div>
+        </div>
+        <div class="agentos-panel agentos-form">
+          <h3>Skill</h3>
+          <div class="agentos-defaults">
+            <label>Nome<input id="skillName" maxlength="160" placeholder="es. SEO Audit"></label>
+            <label>Slug<input id="skillSlug" maxlength="120" placeholder="seo-audit"></label>
+            <label>Versione<input id="skillVersion" maxlength="40" value="1.0.0"></label>
+            <label>Scope<select id="skillScope"><option value="personal">Personal</option><option value="project">Project</option><option value="agent">Agent</option></select></label>
+          </div>
+          <label>Descrizione<textarea id="skillDescription" maxlength="4000"></textarea></label>
+          <label>Istruzioni / workflow<textarea class="tall" id="skillInstructions" maxlength="30000" placeholder="Procedura riutilizzabile che NEXUS segue quando la skill è attiva"></textarea></label>
+          <label class="agentos-check"><input id="skillEnabled" type="checkbox" checked> Skill abilitata</label>
+          <label>Projects<div class="agentos-checks" id="skillProjectAssignments"></div></label>
+          <label>Agents<div class="agentos-checks" id="skillAgentAssignments"></div></label>
+          <div class="agentos-actions"><button class="iconbtn enable" id="saveSkill" type="button">Salva Skill</button><button class="iconbtn" id="skillArchive" type="button" hidden>Archivia</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="agentos-pane" data-agentos-pane="connectors" hidden>
+      <div class="agentos-panel">
+        <h3>Connectors & Plugins</h3>
+        <p>Il catalogo Tools resta il registro unico di OAuth, MCP, API e capacità native. Agent OS lo usa senza duplicare le credenziali.</p>
+        <div class="notice">Nessun secret viene copiato nel Settings Hub: le credenziali restano nel bridge server-side già esistente.</div>
+        <div class="agentos-actions"><button class="iconbtn enable" id="agentOpenPlugins" type="button">Apri Tools & Connectors</button></div>
+      </div>
+    </section>
+
+    <div class="modal-actions"><button class="iconbtn" id="closeAgentOs" type="button">Chiudi</button></div>
   </div>
 </div>
 
@@ -446,6 +568,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 <script type="module">
 import { createClient } from 'https://esm.sh/@neondatabase/neon-js@0.7.0-beta';
 import * as NexusPrivate from './nexus-private.js';
+import * as AgentOS from './agent-os.js';
 
 const client = createClient('https://ep-sparkling-forest-b2v7x4ux.c-6.eu-central-1.aws.neon.tech/neondb');
 
@@ -453,6 +576,7 @@ const promptEl=document.getElementById('prompt'), filesEl=document.getElementByI
 let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null, computeCapabilities=new Set(), allConversations=[], historyLimit=50, lastConversationBatchSize=0, retryConversationId=null, retryPrompt='', coreTools=[], pluginCatalog=[], pluginState=new Map(), pluginBusy=new Set(), pluginActionMessage='', showAllPlugins=false, pendingKeyPlugin=null, currentAccess=null, chatGeneration=0, betaMyTickets=[], betaCurrentTicketId=null, adminCurrentBetaTicketId=null, adminBetaTicketsCache=[], adminBetaConversationsCache=[], adminCurrentBetaConversationId=null, ownerNotifications=[], notificationPoll=null, notificationUnread=0, notificationPollingReady=false, notificationLastToastId=null, notificationToastTimer=null;
 const betaJobByConversation=new Map();
 NexusPrivate.init({client,getUser:()=>currentUser,getAccess:()=>currentAccess});
+AgentOS.init({client,getUser:()=>currentUser,openPlugins});
 const MAX_FILE_BYTES=250*1024*1024, MAX_FILES_PER_JOB=5, LAST_CHAT_KEY='nexus_last_conversation_id';
 const ROUTER_URL='https://nexus-ai-router.ilario-coppola.workers.dev/chat';
 const FILES_URL='https://br-jolly-scene-b2wyu6gt-nexusfiles.compute.c-6.eu-central-1.aws.neon.tech/';
@@ -520,7 +644,7 @@ async function callNexus(payload){
     throw err;
   }finally{clearTimeout(timer)}
 }
-async function callPcChatFallback(conversationId,message,history=[]){
+async function callPcChatFallback(conversationId,message,history=[],agentContext=null){
   const context=(history||[]).slice(-8).map(m=>(m.role==='assistant'?'ASSISTENTE':'UTENTE')+': '+String(m.content||'').slice(0,1200)).join('\n');
   const prompt=[
     'Sei NEXUS AI. Rispondi nella stessa lingua dell utente; se scrive in italiano, usa italiano naturale.',
@@ -537,6 +661,7 @@ async function callPcChatFallback(conversationId,message,history=[]){
   const jobId=row?.job_id;
   if(!jobId)throw new Error('pc_fallback_job_missing');
   betaJobByConversation.set(conversationId,String(jobId));
+  await AgentOS.bindJob(jobId,agentContext||await AgentOS.getContext());
   nexusDiagnostic.emit('job_created','ROUTING','info',{job_id:jobId,kind:'chat_local',route:'pc-worker'});
   for(let i=0;i<110;i++){
     await new Promise(r=>setTimeout(r,1000));
@@ -792,15 +917,16 @@ async function uploadOne(file,cid){
   return {attachmentId:dd.attachmentId,objectKey:dd.objectKey,name:file.name};
 }
 
-async function ensureConversation(firstText,requestGeneration=chatGeneration){
+async function ensureConversation(firstText,requestGeneration=chatGeneration,agentContext=null){
   const existing=currentConversationId;
   if(existing) return existing;
   if(!currentUser) return null;
   const title=(firstText||'New chat').replace(/\s+/g,' ').slice(0,72) || 'New chat';
-  const {data,error}=await client.from('nexus_conversations').insert({title,level}).select('id').single();
+  const context=agentContext||await AgentOS.getContext();
+  const {data,error}=await client.from('nexus_conversations').insert({title,level,project_id:context?.project_id||null,agent_id:context?.agent_id||null}).select('id').single();
   if(error) throw error;
   const createdId=data.id;
-  allConversations=[{id:createdId,title,level,updated_at:new Date().toISOString()},...allConversations.filter(x=>x.id!==createdId)];
+  allConversations=[{id:createdId,title,level,project_id:context?.project_id||null,agent_id:context?.agent_id||null,updated_at:new Date().toISOString()},...allConversations.filter(x=>x.id!==createdId)];
   renderHistory(allConversations);
   if(requestGeneration===chatGeneration){
     currentConversationId=createdId;
@@ -822,6 +948,8 @@ document.getElementById('sendBtn').onclick=async()=>{
  }
 
  const sendGeneration=chatGeneration;
+ const agentContext=await AgentOS.getContext();
+ const runtimeRequest=AgentOS.decoratePrompt(q||('Process '+selectedFiles.map(f=>f.name).join(', ')),agentContext).slice(0,11900);
  let requestConversationId=null;
  intro.style.display='none';messages.classList.add('has');
  const visibleText=(q||'[File upload]')+(selectedFiles.length?'\nAttachments selected: '+selectedFiles.map(f=>f.name).join(', '):'');
@@ -844,10 +972,10 @@ document.getElementById('sendBtn').onclick=async()=>{
  let sendSucceeded=false;
 
  try{
-   const cid=await ensureConversation(q||userTurnText,sendGeneration);
+   const cid=await ensureConversation(q||userTurnText,sendGeneration,agentContext);
    requestConversationId=cid;
    if(userTurnText&&!retryingSame){
-     const {error}=await client.from('nexus_messages').insert({conversation_id:cid,role:'user',content:userTurnText,metadata:{level,attachment_count:selectedFiles.length}});
+     const {error}=await client.from('nexus_messages').insert({conversation_id:cid,role:'user',content:userTurnText,metadata:{level,attachment_count:selectedFiles.length,project_id:agentContext?.project_id||null,agent_id:agentContext?.agent_id||null}});
      if(error) throw error;
    }
 
@@ -872,12 +1000,13 @@ document.getElementById('sendBtn').onclick=async()=>{
        p_kind:jobKind,
        p_level:level,
        p_attachment_ids:uploaded.map(x=>x.attachmentId),
-       p_summary:q||('Process '+originalFiles.map(x=>x.name).join(', '))
+       p_summary:runtimeRequest
      });
      if(job.error)throw job.error;
      const jr=Array.isArray(job.data)?job.data[0]:job.data;
      const shortId=String(jr?.job_id||'').slice(0,8);
      if(jr?.job_id){
+       await AgentOS.bindJob(jr.job_id,agentContext);
        betaJobByConversation.set(cid,String(jr.job_id));
        nexusDiagnostic.emit('job_created','JOBS','info',{job_id:jr.job_id,kind:jobKind,status:'queued'});
      }
@@ -909,19 +1038,19 @@ document.getElementById('sendBtn').onclick=async()=>{
      if(preferPc){
        if(sendGeneration===chatGeneration&&currentConversationId===cid)think.textContent=UI_IT?'NEXUS sta usando la flotta IA del PC…':'NEXUS is using the PC AI fleet…';
        try{
-         data=await callPcChatFallback(cid,q,historyForRouter);
+         data=await callPcChatFallback(cid,runtimeRequest,historyForRouter,agentContext);
        }catch(pcError){
          console.warn('NEXUS PC route unavailable, falling back to cloud',pcError?.message||String(pcError));
          if(sendGeneration===chatGeneration&&currentConversationId===cid)think.textContent=UI_IT?'NEXUS sta provando il cloud…':'NEXUS is trying cloud…';
-         data=await callNexus({message:q,level,history:historyForRouter});
+         data=await callNexus({message:runtimeRequest,level,history:historyForRouter});
        }
      }else{
        try{
-         data=await callNexus({message:q,level,history:historyForRouter});
+         data=await callNexus({message:runtimeRequest,level,history:historyForRouter});
        }catch(cloudError){
          if(!pcOnline)throw cloudError;
          if(sendGeneration===chatGeneration&&currentConversationId===cid)think.textContent=UI_IT?'Cloud occupato: passo alla flotta IA del PC…':'Cloud busy: switching to the PC AI fleet…';
-         data=await callPcChatFallback(cid,q,historyForRouter);
+         data=await callPcChatFallback(cid,runtimeRequest,historyForRouter,agentContext);
        }
      }
      if(sendGeneration===chatGeneration&&currentConversationId===cid){
@@ -993,6 +1122,7 @@ document.getElementById('mobileChatsBtn').onclick=()=>setSideOpen(true);
 sideBackdrop.onclick=()=>setSideOpen(false);
 function resetChat(){
  chatGeneration++;
+ AgentOS.clearConversationContext();
  currentConversationId=null;retryConversationId=null;retryPrompt='';chatHistory=[];
  messages.innerHTML='';messages.classList.remove('has');intro.style.display='block';
  promptEl.value='';selectedFiles=[];input.value='';filesEl.innerHTML='';filesEl.classList.remove('has');
@@ -1165,6 +1295,7 @@ async function loadSession(){
    if(currentUser){
      document.getElementById('loginBtn').textContent=(currentUser.name||currentUser.email||'Account').slice(0,22);
      await refreshAccountData();
+     await AgentOS.applySession();
      // A fresh browser/page opening starts on a blank New chat, like ChatGPT.
      // Existing conversations remain saved in the sidebar and open only when selected by the user.
      resetChat();
@@ -1175,6 +1306,8 @@ async function loadSession(){
 }
 async function loadConversation(id,conversationLevel='free'){
  if(!currentUser)return;
+ const conv=allConversations.find(x=>String(x.id)===String(id));
+ try{await AgentOS.useConversationContext(conv?.project_id||null,conv?.agent_id||null)}catch(e){console.warn('Could not restore Agent OS conversation context',e)}
  const {data,error}=await client.from('nexus_messages').select('role,content,metadata,created_at').eq('conversation_id',id).order('created_at',{ascending:true});
  if(error){alert(error.message);return}
  currentConversationId=id;retryConversationId=null;retryPrompt='';
@@ -1240,7 +1373,7 @@ async function refreshAccountData(){
  if(!currentUser)return;
  const [profile,convos,jobs]=await Promise.all([
    client.from('nexus_profiles').select('plan,credits_balance,daily_credit_allowance,analytics_opt_in,content_training_opt_in').single(),
-   client.from('nexus_conversations').select('id,title,level,updated_at').order('updated_at',{ascending:false}).limit(historyLimit),
+   client.from('nexus_conversations').select('id,title,level,updated_at,project_id,agent_id').order('updated_at',{ascending:false}).limit(historyLimit),
    client.from('nexus_jobs').select('id,input_summary').limit(100)
  ]);
  const access=await loadMyAccess();
@@ -1275,6 +1408,7 @@ function setLoggedOutUI(){
  document.getElementById('betaBtn').hidden=true;document.getElementById('privateBtn').hidden=true;document.getElementById('adminBtn').hidden=true;document.getElementById('socialBtn').hidden=true;document.getElementById('notificationsBtn').hidden=true;
  stopOwnerNotificationPolling();updateNotificationBadge(0);
  NexusPrivate.reset();
+ AgentOS.reset();
 }
 function applyAccessUI(){
  const a=currentAccess||{},badge=document.getElementById('roleBadge');
