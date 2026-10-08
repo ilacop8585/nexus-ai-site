@@ -222,46 +222,6 @@ BEGIN
 END
 $function$;
 
-CREATE OR REPLACE FUNCTION public.nexus_task_event_emit(
-  p_job_id uuid,
-  p_event_type text,
-  p_phase text,
-  p_title text,
-  p_detail text DEFAULT '',
-  p_metadata jsonb DEFAULT '{}'::jsonb
-)
-RETURNS bigint
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public','pg_temp'
-AS $function$
-DECLARE v_user uuid;v_id bigint;
-BEGIN
-  v_user:=(auth.user_id())::uuid;
-  IF v_user IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
-  IF NOT EXISTS(
-    SELECT 1 FROM public.nexus_jobs j WHERE j.id=p_job_id AND j.user_id=v_user
-  ) THEN RAISE EXCEPTION 'task_not_found'; END IF;
-
-  IF length(trim(coalesce(p_event_type,'')))<1 THEN RAISE EXCEPTION 'event_type_required'; END IF;
-  IF length(trim(coalesce(p_title,'')))<1 THEN RAISE EXCEPTION 'event_title_required'; END IF;
-
-  INSERT INTO public.nexus_task_events(
-    job_id,user_id,event_type,phase,title,detail,metadata
-  )
-  VALUES(
-    p_job_id,v_user,left(trim(p_event_type),80),left(nullif(trim(coalesce(p_phase,'')),''),80),
-    left(trim(p_title),320),left(coalesce(p_detail,''),4000),coalesce(p_metadata,'{}'::jsonb)
-  )
-  RETURNING id INTO v_id;
-
-  RETURN v_id;
-END
-$function$;
-
 REVOKE ALL ON TABLE public.nexus_task_events FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.nexus_task_timeline(uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.nexus_task_event_emit(uuid,text,text,text,text,jsonb) FROM PUBLIC;
-
 GRANT EXECUTE ON FUNCTION public.nexus_task_timeline(uuid) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.nexus_task_event_emit(uuid,text,text,text,text,jsonb) TO authenticated;
