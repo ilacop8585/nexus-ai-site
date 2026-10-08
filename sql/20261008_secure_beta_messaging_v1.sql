@@ -83,6 +83,9 @@ CREATE TABLE IF NOT EXISTS public.nexus_secure_messages (
   UNIQUE(sender_device_id,client_message_id)
 );
 
+ALTER TABLE public.nexus_secure_welcomes
+  ADD COLUMN IF NOT EXISTS key_package_ref text NULL;
+
 CREATE INDEX IF NOT EXISTS nexus_secure_members_user_idx
   ON public.nexus_secure_room_members(user_id,room_id)
   WHERE left_at IS NULL;
