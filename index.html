@@ -129,6 +129,11 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 @media(max-width:1050px){.mode-hint{display:none}.mode-switch button{padding:7px 7px}.account #topNewChat,.account #topJobsBtn{display:none}}
 @media(max-width:820px){.beta-release-strip{justify-content:flex-start;overflow:hidden;white-space:nowrap}.app{height:calc(100dvh - 36px);margin-top:36px}.side,.main{height:calc(100dvh - 36px)}.mode-switch button{font-size:10px;padding:7px 6px}.mode-switch button[data-nexus-mode="work"]{display:none}.mode-shell{width:100%;justify-content:center}.account{margin-left:auto}}
 
+
+.task-runtime-panel{position:fixed;top:102px;right:0;bottom:0;width:360px;z-index:45;border-left:1px solid #243447;background:rgba(7,11,17,.985);box-shadow:-24px 0 70px rgba(0,0,0,.34);transform:translateX(102%);transition:transform .2s ease;display:flex;flex-direction:column;min-height:0}.task-runtime-panel.open{transform:translateX(0)}.runtime-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:15px;border-bottom:1px solid var(--line)}.runtime-head h3{margin:0;font-size:14px}.runtime-head .small{margin-top:4px}.runtime-head-actions{display:flex;gap:5px}.runtime-head-actions button{border:1px solid var(--line);background:#0d151f;color:#cbd8e5;border-radius:8px;padding:6px 8px;cursor:pointer}.runtime-scroll{overflow:auto;min-height:0;padding:14px}.runtime-status{display:inline-flex;border:1px solid #32455a;border-radius:999px;padding:5px 8px;font:800 10px ui-monospace,monospace;text-transform:uppercase}.runtime-status.running,.runtime-status.claimed{color:var(--gold);border-color:#725f2c}.runtime-status.completed{color:var(--accent);border-color:#24543a}.runtime-status.failed,.runtime-status.cancelled{color:var(--danger);border-color:#66343a}.runtime-request{white-space:pre-wrap;font-size:12px;line-height:1.5;color:#d7e2ee;margin:10px 0 5px}.runtime-meta{font-size:10px;color:var(--muted);margin-bottom:15px}.runtime-section-title{font-size:9px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#778a9e;margin:15px 0 8px}.runtime-plan{display:grid;gap:7px}.runtime-step{display:flex;gap:9px;align-items:center;border:1px solid #1d2a39;background:#09111a;border-radius:10px;padding:9px}.runtime-step-dot{width:23px;height:23px;flex:0 0 23px;display:grid;place-items:center;border-radius:50%;border:1px solid #33475d;color:#8296aa;font-size:10px;font-weight:900}.runtime-step strong{display:block;font-size:11px}.runtime-step small{display:block;font-size:9px;color:var(--muted);margin-top:2px}.runtime-step.done .runtime-step-dot{border-color:#2f6a50;color:var(--accent);background:#0e211a}.runtime-step.active{border-color:#725f2c;background:#18150d}.runtime-step.active .runtime-step-dot{border-color:var(--gold);color:var(--gold)}.runtime-step.error{border-color:#65353b}.runtime-step.error .runtime-step-dot{color:var(--danger);border-color:var(--danger)}.runtime-events{display:grid;gap:7px}.runtime-event{border-left:2px solid #30435a;padding:6px 0 6px 10px}.runtime-event-head{display:flex;justify-content:space-between;gap:8px}.runtime-event-head strong{font-size:11px}.runtime-event-head span{font-size:9px;color:var(--muted)}.runtime-event-detail,.runtime-event-meta{font-size:10px;color:#9fb0c2;line-height:1.45;margin-top:3px}.runtime-event-meta{color:#72869a}.runtime-result{white-space:pre-wrap;border:1px solid rgba(124,245,195,.24);background:rgba(124,245,195,.045);border-radius:10px;padding:10px;font-size:11px;line-height:1.5;color:#dceae4}.runtime-empty{font-size:10px;color:var(--muted);padding:8px 0}
+@media(min-width:1101px){body.task-runtime-open .main{padding-right:360px}body.task-runtime-open .composer-wrap{right:360px}.task-runtime-open .stage{max-width:900px}}
+@media(max-width:1100px){.task-runtime-panel{top:36px;width:min(100%,420px);z-index:48}.task-runtime-open .composer-wrap{right:0}}
+
 </style>
 </head>
 <body>
@@ -225,6 +230,23 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
   </section>
 </main>
 </div>
+
+<aside class="task-runtime-panel" id="taskRuntimePanel" aria-label="Task runtime">
+  <div class="runtime-head">
+    <div><h3 id="taskRuntimeTitle">NEXUS Task</h3><div class="small"><span class="runtime-status" id="taskRuntimeStatus">Task</span></div></div>
+    <div class="runtime-head-actions"><button id="refreshTaskRuntime" type="button" title="Refresh">↻</button><button id="closeTaskRuntime" type="button" title="Close">×</button></div>
+  </div>
+  <div class="runtime-scroll">
+    <div class="runtime-request" id="taskRuntimeRequest">No task selected.</div>
+    <div class="runtime-meta" id="taskRuntimeMeta"></div>
+    <div class="runtime-section-title">Plan</div>
+    <div class="runtime-plan" id="taskRuntimePlan"></div>
+    <div class="runtime-section-title">Timeline</div>
+    <div class="runtime-events" id="taskRuntimeEvents"></div>
+    <div class="runtime-section-title">Result</div>
+    <div class="runtime-result" id="taskRuntimeResult" hidden></div>
+  </div>
+</aside>
 
 <div class="composer-wrap">
   <div class="composer">
@@ -660,6 +682,7 @@ import { createClient } from 'https://esm.sh/@neondatabase/neon-js@0.7.0-beta';
 import * as NexusPrivate from './nexus-private.js';
 import * as AgentOS from './agent-os.js';
 import * as LaunchOS from './launch-os.js';
+import * as TaskRuntime from './task-runtime.js';
 
 const client = createClient('https://ep-sparkling-forest-b2v7x4ux.c-6.eu-central-1.aws.neon.tech/neondb');
 
@@ -669,6 +692,7 @@ const betaJobByConversation=new Map();
 NexusPrivate.init({client,getUser:()=>currentUser,getAccess:()=>currentAccess});
 AgentOS.init({client,getUser:()=>currentUser,openPlugins});
 LaunchOS.init({client,getUser:()=>currentUser,getAccess:()=>currentAccess});
+TaskRuntime.init({client,getUser:()=>currentUser});
 window.addEventListener('nexus-agentos-settings',e=>{
  if(currentAccess?.staff_role!=='owner')return;
  if(e.detail?.notifications_in_app===false){stopOwnerNotificationPolling();updateNotificationBadge(0)}
@@ -1152,6 +1176,7 @@ document.getElementById('sendBtn').onclick=async()=>{
        await AgentOS.bindJob(jr.job_id,agentContext);
        betaJobByConversation.set(cid,String(jr.job_id));
        nexusDiagnostic.emit('job_created','JOBS','info',{job_id:jr.job_id,kind:jobKind,status:'queued'});
+       TaskRuntime.watchJob(jr.job_id,{openPanel:true}).catch(err=>console.warn('Task runtime unavailable',err));
      }
      const reserved=currentAccess?.unlimited?0:Number(jr?.estimated_credits||0);
      const creditNote=currentAccess?.unlimited
@@ -1193,6 +1218,7 @@ document.getElementById('sendBtn').onclick=async()=>{
        await AgentOS.bindJob(jr.job_id,agentContext);
        betaJobByConversation.set(cid,String(jr.job_id));
        nexusDiagnostic.emit('job_created','JOBS','info',{job_id:jr.job_id,kind:execution.mode+'_text',status:'queued'});
+       TaskRuntime.watchJob(jr.job_id,{openPanel:true}).catch(err=>console.warn('Task runtime unavailable',err));
      }
      const reserved=currentAccess?.unlimited?0:Number(jr?.estimated_credits||quotedCredits||0);
      const creditNote=currentAccess?.unlimited
@@ -1357,6 +1383,7 @@ async function loadJobs(){
    if(['image_edit','video_edit','audio_task'].includes(j.kind)&&j.status==='queued'){const wait=document.createElement('div');wait.className='jobmeta';wait.textContent='Queued for processing · '+(j.charged_credits>0?j.charged_credits+' credits reserved':'no credits reserved');row.appendChild(wait)}
    if(j.completed_at){const done=document.createElement('div');done.className='jobmeta';done.textContent='Completed '+fmtDate(j.completed_at);row.appendChild(done)}
    const actions=document.createElement('div');actions.className='jobactions';
+   const runtime=document.createElement('button');runtime.type='button';runtime.textContent='Open runtime';runtime.onclick=async()=>{jobsModal.classList.remove('show');clearInterval(jobsPoll);jobsPoll=null;await TaskRuntime.open(j.id)};actions.appendChild(runtime);
    if(j.conversation_id){
      const open=document.createElement('button');open.type='button';open.textContent='Open chat';open.onclick=async()=>{jobsModal.classList.remove('show');clearInterval(jobsPoll);jobsPoll=null;await loadConversation(j.conversation_id,j.level||'free')};actions.appendChild(open);
    }
@@ -1585,6 +1612,7 @@ function setLoggedOutUI(){
  NexusPrivate.reset();
  AgentOS.reset();
  LaunchOS.reset();
+ TaskRuntime.reset();
  updateRoleNavGroups();
 }
 function updateRoleNavGroups(){
