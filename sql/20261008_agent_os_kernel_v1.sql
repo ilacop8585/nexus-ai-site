@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS public.nexus_agents (
   name text NOT NULL CHECK(length(name) BETWEEN 1 AND 160),
   description text NOT NULL DEFAULT '' CHECK(length(description) <= 4000),
   mission text NOT NULL DEFAULT '' CHECK(length(mission) <= 20000),
-  routing_profile text NOT NULL DEFAULT 'local_first'
+  routing_profile text NOT NULL DEFAULT 'balanced'
     CHECK(routing_profile IN ('local_first','balanced','max')),
   autonomy_level text NOT NULL DEFAULT 'supervised'
     CHECK(autonomy_level IN ('assist','supervised','autonomous')),
