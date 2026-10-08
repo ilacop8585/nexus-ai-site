@@ -15,6 +15,9 @@ function b64(bytes){
 function ub64(s){const raw=atob(String(s||'')),a=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i);return a}
 function hex(bytes){return [...new Uint8Array(bytes)].map(x=>x.toString(16).padStart(2,'0')).join('').toUpperCase()}
 function fmtFp(v){return String(v||'').replace(/[^A-Fa-f0-9]/g,'').match(/.{1,4}/g)?.join(' ')||String(v||'')}
+function trustKey(fp){return 'nexus_private_trust:'+String(fp||'').replace(/[^A-Fa-f0-9]/g,'').toUpperCase()}
+function isTrusted(fp){try{return localStorage.getItem(trustKey(fp))==='1'}catch{return false}}
+function setTrusted(fp,on){try{if(on)localStorage.setItem(trustKey(fp),'1');else localStorage.removeItem(trustKey(fp))}catch{}}
 function aad(roomId,messageId,senderDeviceId,version){return enc.encode(['NEXUS-E2EE-v1',roomId,messageId,senderDeviceId,String(version)].join('|'))}
 function canonical(roomId,messageId,senderDeviceId,version,salt,payloadIv,ciphertext,eph){
   return enc.encode([roomId,messageId,senderDeviceId,String(version),salt,payloadIv,ciphertext,stable(eph)].join('|'));
@@ -132,15 +135,31 @@ async function decryptRow(room,row){
 }
 async function renderSecurity(room,devices){
   const box=el('privateSecurity');clearNode(box);
-  const peerOk=peerVerifiedRooms.has(room.id),full=localCryptoOk&&peerOk;
-  const status=full?'E2EE VERIFICATA TRA DISPOSITIVI':localCryptoOk?'CRITTOGRAFIA LOCALE OK · ATTESA VERIFICA PEER':'VERIFICA CRITTOGRAFICA FALLITA';
+  const peers=devices.filter(d=>d.device_id!==device.serverId);
+  const peerOk=peerVerifiedRooms.has(room.id);
+  const fingerprintsOk=peers.length>0&&peers.every(d=>isTrusted(d.identity_fingerprint));
+  const full=localCryptoOk&&peerOk&&fingerprintsOk;
+  const status=full?'E2EE VERIFICATA · PEER CONFERMATI':!localCryptoOk?'VERIFICA CRITTOGRAFICA FALLITA':!peerOk?'CRITTOGRAFIA OK · ATTESA MESSAGGIO PEER':'CRITTOGRAFIA OK · VERIFICA I FINGERPRINT';
   addText(box,'strong',status);
   addText(box,'div','Protocollo: NEXUS-E2EE-v1','small');
   addText(box,'div','ECDH P-256 · HKDF-SHA-256 · AES-256-GCM · ECDSA P-256/SHA-256','small');
   addText(box,'div','Versione membri: '+room.membership_version+' · '+room.member_count+' membri · '+devices.length+' dispositivi attivi','small');
   addText(box,'div','Questo dispositivo: '+fmtFp(device.fingerprint),'small');
   if(Number(room.member_count)>devices.length)addText(box,'div','Attenzione: almeno un membro non ha ancora registrato un dispositivo NEXUS Private. I messaggi inviati ora non saranno recuperabili retroattivamente da quel futuro dispositivo.','notice');
-  for(const d of devices)addText(box,'div',(d.device_id===device.serverId?'Questo dispositivo':'Peer')+' · '+d.device_label+' · '+fmtFp(d.identity_fingerprint),'private-fingerprint');
+  for(const d of devices){
+    const row=document.createElement('div');row.className='private-fingerprint';
+    const mine=d.device_id===device.serverId;
+    const txt=document.createElement('span');txt.textContent=(mine?'Questo dispositivo':'Peer')+' · '+d.device_label+' · '+fmtFp(d.identity_fingerprint)+(mine?'':(isTrusted(d.identity_fingerprint)?' · VERIFICATO':' · NON VERIFICATO'));row.appendChild(txt);
+    if(!mine){
+      const b=document.createElement('button');b.type='button';b.className='iconbtn';b.style.marginLeft='8px';b.style.padding='4px 7px';b.style.fontSize='10px';
+      b.textContent=isTrusted(d.identity_fingerprint)?'Rimuovi verifica':'Segna verificato';
+      b.title='Confronta prima il fingerprint con il beta tramite un canale indipendente.';
+      b.onclick=()=>{setTrusted(d.identity_fingerprint,!isTrusted(d.identity_fingerprint));renderSecurity(room,devices)};
+      row.appendChild(b);
+    }
+    box.appendChild(row);
+  }
+  addText(box,'div','Per il lucchetto verde, confronta i fingerprint con l’altra persona tramite un canale indipendente e marca i dispositivi corretti.','small');
   addText(box,'div','Il server conserva ciphertext e chiavi contenuto avvolte per dispositivo. NEXUS AI non riceve il testo in chiaro.','small');
 }
 async function renderMessages(room,rows){
