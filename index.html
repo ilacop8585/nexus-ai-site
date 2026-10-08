@@ -823,10 +823,10 @@ async function getNexusAccessToken(){
  return token;
 }
 async function callNexus(payload){
+  const token=await getNexusAccessToken();
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),12000);
   try{
-    const token=await getNexusAccessToken();
     const response=await fetch(ROUTER_URL,{
       method:'POST',
       headers:{
@@ -1367,11 +1367,12 @@ document.getElementById('sendBtn').onclick=async()=>{
    }
  }finally{
    document.getElementById('sendBtn').disabled=false;
-   if(requestConversationId) await touchConversation(requestConversationId);
+   if(requestConversationId)touchConversation(requestConversationId).catch(e=>console.warn('Conversation touch failed',e));
    if(sendSucceeded&&sendGeneration===chatGeneration){
      promptEl.value='';selectedFiles=[];input.value='';filesEl.innerHTML='';filesEl.classList.remove('has');
    }
-   await refreshAccountData();
+   // Balance/history refresh must not hold the composer hostage after every reply.
+   refreshAccountData().catch(e=>console.warn('Account refresh failed',e));
  }
 };
 
