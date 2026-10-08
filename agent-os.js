@@ -16,8 +16,16 @@ function showNotice(text,error=false){
  n.textContent=text||'';n.classList.toggle('danger',!!error);
 }
 function updateBadge(){
- const b=el('agentOsBadge');if(!b)return;
- b.textContent=(state.projects?.length||0)+'P · '+(state.agents?.length||0)+'A';
+ const b=el('agentOsBadge');
+ if(b)b.textContent=(state.projects?.length||0)+'P · '+(state.agents?.length||0)+'A';
+ if(el('agentOsProjectsKpi'))el('agentOsProjectsKpi').textContent=String(state.projects?.length||0);
+ if(el('agentOsAgentsKpi'))el('agentOsAgentsKpi').textContent=String(state.agents?.length||0);
+ if(el('agentOsSkillsKpi'))el('agentOsSkillsKpi').textContent=String(state.skills?.length||0);
+}
+function updateContextPill(){
+ const pill=el('agentOsContextPill');if(!pill)return;
+ const parts=[runtimeContext.project_name,runtimeContext.agent_name].filter(Boolean);
+ pill.textContent=parts.length?parts.join(' · '):'Default NEXUS';
 }
 function optionRows(items,selected,emptyLabel){
  return '<option value="">'+esc(emptyLabel)+'</option>'+items.map(x=>'<option value="'+esc(x.id)+'" '+(String(selected||'')===String(x.id)?'selected':'')+'>'+esc(x.name)+'</option>').join('');
@@ -56,11 +64,7 @@ async function refreshContext(){
    prompt_prefix:String(data.prompt_prefix||'')
  };
  if(!conversationOverride)runtimeContext={...defaultContext};
- const pill=el('agentOsContextPill');
- if(pill){
-   const parts=[runtimeContext.project_name,runtimeContext.agent_name].filter(Boolean);
-   pill.textContent=parts.length?parts.join(' · '):'Default NEXUS';
- }
+ updateContextPill();
  return runtimeContext;
 }
 function renderDefaults(){
@@ -251,9 +255,9 @@ export async function useConversationContext(projectId,agentId){
    skills:Array.isArray(data.skills)?data.skills:[],
    prompt_prefix:String(data.prompt_prefix||'')
  };
- conversationOverride=true;renderDefaults();return runtimeContext;
+ conversationOverride=true;updateContextPill();renderDefaults();return runtimeContext;
 }
-export function clearConversationContext(){conversationOverride=false;runtimeContext={...defaultContext};if(el('agentRuntimeSummary'))renderDefaults()}
+export function clearConversationContext(){conversationOverride=false;runtimeContext={...defaultContext};updateContextPill();if(el('agentRuntimeSummary'))renderDefaults()}
 export function decoratePrompt(text,context=runtimeContext){
  const prefix=String(context?.prompt_prefix||'').trim();
  if(!prefix)return String(text||'');
