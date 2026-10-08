@@ -36,7 +36,7 @@ BEGIN
   SELECT coalesce(jsonb_agg(jsonb_build_object(
     'id',j.id,'conversation_id',j.conversation_id,'kind',j.kind,'level',j.level,
     'status',j.status,'estimated_credits',j.estimated_credits,'charged_credits',j.charged_credits,
-    'input_summary',regexp_replace(coalesce(j.input_summary,''),'^\\[TEXT_TASK (AGENT|WORK|CODE)\\]\\s*','','i'),
+    'input_summary',regexp_replace(coalesce(j.input_summary,''),'^\[TEXT_TASK (AGENT|WORK|CODE)\]\s*','','i'),
     'output_summary',j.output_summary,'error_code',j.error_code,'worker_id',j.worker_id,
     'agent_id',j.agent_id,'execution_metadata',j.execution_metadata,
     'created_at',j.created_at,'completed_at',j.completed_at
