@@ -276,3 +276,8 @@ REVOKE ALL ON FUNCTION public.nexus_owner_notifications_list(integer) FROM PUBLI
 REVOKE ALL ON FUNCTION public.nexus_owner_notifications_unread_count() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.nexus_owner_notifications_mark_read(uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.nexus_owner_notifications_mark_all_read() FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.nexus_owner_notifications_list(integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.nexus_owner_notifications_unread_count() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.nexus_owner_notifications_mark_read(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.nexus_owner_notifications_mark_all_read() TO authenticated;
