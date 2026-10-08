@@ -542,7 +542,7 @@ DECLARE
   v_group uuid;
   v_was_active boolean;
 BEGIN
-  v_user:=coalesce(NEW.user_id,OLD.user_id);
+  IF TG_OP='DELETE' THEN v_user:=OLD.user_id; ELSE v_user:=NEW.user_id; END IF;
   v_old_role:=CASE WHEN TG_OP IN ('UPDATE','DELETE') THEN OLD.role ELSE NULL END;
   v_new_role:=CASE WHEN TG_OP IN ('UPDATE','INSERT') THEN NEW.role ELSE NULL END;
 
@@ -603,7 +603,7 @@ BEGIN
     END IF;
   END IF;
 
-  RETURN coalesce(NEW,OLD);
+  IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
 END
 $function$;
 
