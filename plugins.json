@@ -3,9 +3,9 @@
   "updated_at": "2026-09-29",
   "summary": {
     "total": 60,
-    "active": 1,
+    "active": 3,
     "categories": 13,
-    "policy": "Catalog entries describe intended integrations. Only status=active is available to users.",
+    "policy": "Operational UI shows only verified/connectable connectors by default. Non-operational entries are Preview only.",
     "user_enablement": "account_scoped_neon",
     "connection_state": "separate_from_enablement",
     "live_oauth_connectors": 0,
@@ -13,7 +13,12 @@
     "other_oauth_providers": "require_nexus_provider_registration",
     "google_oauth_status": "custom_nexus_oauth_verification_required",
     "connection_model": "connect_redirect_authorize_callback_enable",
-    "live_mcp_oauth_connectors": 1
+    "live_mcp_oauth_connectors": 1,
+    "backend_required": 57,
+    "connectable_now": 2,
+    "live_custom_connector_types": [
+      "mcp_remote"
+    ]
   },
   "plugins": [
     {
