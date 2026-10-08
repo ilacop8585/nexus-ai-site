@@ -1,6 +1,8 @@
 let ctx=null;
 let state={settings:{},projects:[],agents:[],skills:[]};
 let runtimeContext={project_id:null,project_name:null,agent_id:null,agent_name:null,routing_profile:'local_first',autonomy_level:'supervised',approval_policy:'risk_based',skills:[],prompt_prefix:''};
+let defaultContext={...runtimeContext};
+let conversationOverride=false;
 let activeTab='defaults';
 let editingProject=null,editingAgent=null,editingSkill=null;
 
@@ -42,7 +44,7 @@ async function load(){
 async function refreshContext(){
  if(!user())return runtimeContext;
  const data=scalar(await rpc('nexus_agent_os_context'))||{};
- runtimeContext={
+ defaultContext={
    project_id:data.project_id||null,
    project_name:data.project_name||null,
    agent_id:data.agent_id||null,
@@ -53,6 +55,7 @@ async function refreshContext(){
    skills:Array.isArray(data.skills)?data.skills:[],
    prompt_prefix:String(data.prompt_prefix||'')
  };
+ if(!conversationOverride)runtimeContext={...defaultContext};
  const pill=el('agentOsContextPill');
  if(pill){
    const parts=[runtimeContext.project_name,runtimeContext.agent_name].filter(Boolean);
@@ -71,7 +74,7 @@ function renderDefaults(){
  el('agentLanguage').value=s.language||((navigator.language||'it').split('-')[0]);
  el('agentNotifications').checked=s.notifications_in_app!==false;
  const summary=el('agentRuntimeSummary');
- summary.textContent='Runtime: '+(runtimeContext.project_name||'nessun progetto')+' · '+(runtimeContext.agent_name||'NEXUS base')+' · '+runtimeContext.routing_profile+' · '+runtimeContext.autonomy_level+' · '+runtimeContext.skills.length+' skill attive';
+ summary.textContent='Runtime: '+(runtimeContext.project_name||'nessun progetto')+' · '+(runtimeContext.agent_name||'NEXUS base')+' · '+runtimeContext.routing_profile+' · '+runtimeContext.autonomy_level+' · '+runtimeContext.skills.length+' skill attive'+(conversationOverride?' · contesto fissato dalla chat':'');
 }
 function renderProjects(){
  const box=el('agentProjectsList');box.innerHTML='';
@@ -226,7 +229,7 @@ export async function applySession(){
  if(user()){try{await load()}catch(e){console.warn('Agent OS unavailable',e);showNotice('Agent OS non disponibile: '+(e?.message||String(e)),true)}}
 }
 export function reset(){
- state={settings:{},projects:[],agents:[],skills:[]};runtimeContext={project_id:null,project_name:null,agent_id:null,agent_name:null,routing_profile:'local_first',autonomy_level:'supervised',approval_policy:'risk_based',skills:[],prompt_prefix:''};
+ state={settings:{},projects:[],agents:[],skills:[]};runtimeContext={project_id:null,project_name:null,agent_id:null,agent_name:null,routing_profile:'local_first',autonomy_level:'supervised',approval_policy:'risk_based',skills:[],prompt_prefix:''};defaultContext={...runtimeContext};conversationOverride=false;
  editingProject=editingAgent=editingSkill=null;const b=el('agentOsBtn');if(b)b.hidden=true;updateBadge();
 }
 export async function open(){
@@ -235,6 +238,22 @@ export async function open(){
 }
 export function close(){el('agentOsModal')?.classList.remove('show')}
 export async function getContext(){if(user()&&!runtimeContext?.project_id&&!runtimeContext?.agent_id&&!runtimeContext?.prompt_prefix){try{await refreshContext()}catch{}}return runtimeContext}
+export async function useConversationContext(projectId,agentId){
+ if(!user())return runtimeContext;
+ if(!projectId&&!agentId){conversationOverride=false;runtimeContext={...defaultContext};renderDefaults();return runtimeContext}
+ const data=scalar(await rpc('nexus_agent_os_context_for',{p_project_id:projectId||null,p_agent_id:agentId||null}))||{};
+ runtimeContext={
+   project_id:data.project_id||null,project_name:data.project_name||null,
+   agent_id:data.agent_id||null,agent_name:data.agent_name||null,
+   routing_profile:data.routing_profile||defaultContext.routing_profile,
+   autonomy_level:data.autonomy_level||defaultContext.autonomy_level,
+   approval_policy:data.approval_policy||defaultContext.approval_policy,
+   skills:Array.isArray(data.skills)?data.skills:[],
+   prompt_prefix:String(data.prompt_prefix||'')
+ };
+ conversationOverride=true;renderDefaults();return runtimeContext;
+}
+export function clearConversationContext(){conversationOverride=false;runtimeContext={...defaultContext};if(el('agentRuntimeSummary'))renderDefaults()}
 export function decoratePrompt(text,context=runtimeContext){
  const prefix=String(context?.prompt_prefix||'').trim();
  if(!prefix)return String(text||'');
