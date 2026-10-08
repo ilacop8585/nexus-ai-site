@@ -795,13 +795,16 @@ function decideCompute(value){
   const resolve=computeDecisionResolve;computeDecisionResolve=null;
   if(resolve)resolve(value);
 }
-async function confirmComputeTask({mode,level,credits,reason}){
-  document.getElementById('computeConfirmTitle').textContent='Run as '+LaunchOS.modeLabel(mode)+' task?';
-  document.getElementById('computeConfirmBody').textContent=reason==='explicit_mode'
-    ? 'You selected a compute-backed execution mode.'
-    : 'NEXUS detected that this request goes beyond ordinary conversation and would benefit from a tracked task.';
+async function confirmComputeTask({mode,level,credits,reason,allowBasicChat=true,details=''}) {
+  document.getElementById('computeConfirmTitle').textContent=reason==='attachments'?'Process attached files?':'Run as '+LaunchOS.modeLabel(mode)+' task?';
+  document.getElementById('computeConfirmBody').textContent=reason==='attachments'
+    ? 'File processing requires a NEXUS job. '+details
+    : reason==='explicit_mode'
+      ? 'You selected a compute-backed execution mode.'
+      : 'NEXUS detected that this request goes beyond ordinary conversation and would benefit from a tracked task.';
+  document.getElementById('basicChatInstead').hidden=!allowBasicChat;
   document.getElementById('computeConfirmCost').textContent=currentAccess?.unlimited?'0 credits':String(credits)+' credits';
-  document.getElementById('computeConfirmMode').textContent=LaunchOS.modeLabel(mode)+' · '+(level==='deep'?'Deep':'Smart');
+  document.getElementById('computeConfirmMode').textContent=reason==='attachments'?'File task · '+(level==='deep'?'Deep':level==='smart'?'Smart':'Basic'):LaunchOS.modeLabel(mode)+' · '+(level==='deep'?'Deep':'Smart');
   document.getElementById('computeConfirmModal').classList.add('show');
   return await new Promise(resolve=>{computeDecisionResolve=resolve});
 }
@@ -1173,6 +1176,31 @@ document.getElementById('sendBtn').onclick=async()=>{
  const effectiveLevel=selectedFiles.length
    ? ((agentContext?.routing_profile==='max'&&currentAccess?.unlimited)?'deep':(agentContext?.project_default_level||level))
    : (execution.mode==='chat'?'free':execution.level);
+ let approvedFileCredits=0;
+ if(selectedFiles.length){
+   if(!currentAccess?.unlimited){
+     try{
+       const totalSize=selectedFiles.reduce((sum,f)=>sum+Number(f.size||0),0);
+       const estimate=await client.rpc('nexus_quote_job_credits',{
+         p_kind:detectJobKind(selectedFiles[0]),p_level:effectiveLevel,
+         p_size_bytes:totalSize,p_attachment_count:selectedFiles.length
+       });
+       if(estimate.error)throw estimate.error;
+       approvedFileCredits=Number(Array.isArray(estimate.data)?estimate.data[0]:estimate.data);
+       if(!Number.isSafeInteger(approvedFileCredits)||approvedFileCredits<=0)throw new Error('quote_unavailable');
+     }catch(e){
+       console.warn('File job quote unavailable; no upload or charge',e);
+       alert(UI_IT?'Preventivo dei file non disponibile. Nessun caricamento né addebito effettuato. Riprova.':'File job quote unavailable. No upload or charge was started. Please retry.');
+       return;
+     }
+   }
+   const decision=currentAccess?.unlimited?'run':await confirmComputeTask({
+     mode:'work',level:effectiveLevel,credits:approvedFileCredits,
+     reason:'attachments',allowBasicChat:false,
+     details:selectedFiles.length+' file(s) · '+selectedFiles.map(f=>f.name).join(', ').slice(0,230)
+   });
+   if(decision!=='run')return;
+ }
  const baseRequest=q||('Process '+selectedFiles.map(f=>f.name).join(', '));
  const contextualRequest=AgentOS.decoratePrompt(baseRequest,agentContext).slice(0,11900);
  const runtimeRequest=LaunchOS.decorateChat(contextualRequest).slice(0,11900);
@@ -1221,12 +1249,13 @@ document.getElementById('sendBtn').onclick=async()=>{
        think.textContent='Uploading '+(i+1)+'/'+originalFiles.length+': '+originalFiles[i].name;
        uploaded.push(await uploadOne(originalFiles[i],cid));
      }
-     const job=await client.rpc('nexus_create_job',{
+     const job=await client.rpc('nexus_create_job_checked',{
        p_conversation_id:cid,
        p_kind:jobKind,
        p_level:effectiveLevel,
        p_attachment_ids:uploaded.map(x=>x.attachmentId),
-       p_summary:runtimeRequest
+       p_summary:runtimeRequest,
+       p_approved_credits:currentAccess?.unlimited?0:approvedFileCredits
      });
      if(job.error)throw job.error;
      const jr=Array.isArray(job.data)?job.data[0]:job.data;
