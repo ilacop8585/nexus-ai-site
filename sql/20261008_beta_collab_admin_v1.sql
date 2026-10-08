@@ -2,6 +2,9 @@
 -- DRAFT ONLY: apply on a temporary Neon branch before production.
 -- Separates monitored Beta Workspace from E2EE NEXUS Private.
 
+ALTER TABLE public.nexus_messages
+  ADD COLUMN IF NOT EXISTS actor_user_id uuid NULL REFERENCES neon_auth."user"(id) ON DELETE SET NULL;
+
 CREATE TABLE IF NOT EXISTS public.nexus_beta_observations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   beta_user_id uuid NOT NULL REFERENCES neon_auth."user"(id) ON DELETE CASCADE,
@@ -33,6 +36,7 @@ AS $function$
 DECLARE v_role text; v_owner uuid;
 BEGIN
   IF NEW.role <> 'user' THEN RETURN NEW; END IF;
+  IF coalesce(NEW.metadata->>'actor_type','') IN ('ceo','admin','system','nexus_ai') THEN RETURN NEW; END IF;
   SELECT c.user_id INTO v_owner FROM public.nexus_conversations c WHERE c.id=NEW.conversation_id;
   IF v_owner IS NULL OR v_owner<>NEW.user_id THEN RETURN NEW; END IF;
   SELECT s.role INTO v_role FROM public.nexus_staff_accounts s WHERE s.user_id=v_owner;
@@ -94,7 +98,7 @@ BEGIN
   WHERE c.id=p_conversation_id;
   IF v_beta IS NULL THEN RAISE EXCEPTION 'beta_conversation_not_found'; END IF;
 
-  SELECT coalesce(jsonb_agg(jsonb_build_object('id',m.id,'role',m.role,'content',m.content,'metadata',m.metadata,'created_at',m.created_at,'writer_user_id',m.user_id,'actor_type',coalesce(m.metadata->>'actor_type',CASE WHEN m.role='assistant' THEN 'nexus_ai' WHEN m.role='system' THEN 'system' ELSE 'beta' END),'visible_label',coalesce(m.metadata->>'visible_label',CASE WHEN m.role='assistant' THEN 'NEXUS AI' WHEN m.role='system' THEN 'SYSTEM' ELSE 'BETA' END)) ORDER BY m.created_at,m.id),'[]'::jsonb)
+  SELECT coalesce(jsonb_agg(jsonb_build_object('id',m.id,'role',m.role,'content',m.content,'metadata',m.metadata,'created_at',m.created_at,'writer_user_id',coalesce(m.actor_user_id,m.user_id),'actor_type',coalesce(m.metadata->>'actor_type',CASE WHEN m.role='assistant' THEN 'nexus_ai' WHEN m.role='system' THEN 'system' ELSE 'beta' END),'visible_label',coalesce(m.metadata->>'visible_label',CASE WHEN m.role='assistant' THEN 'NEXUS AI' WHEN m.role='system' THEN 'SYSTEM' ELSE 'BETA' END)) ORDER BY m.created_at,m.id),'[]'::jsonb)
   INTO v_messages FROM public.nexus_messages m WHERE m.conversation_id=p_conversation_id;
 
   SELECT coalesce(jsonb_agg(jsonb_build_object('id',a.id,'filename',a.filename,'mime_type',a.mime_type,'size_bytes',a.size_bytes,'status',a.status,'job_id',a.job_id,'created_at',a.created_at) ORDER BY a.created_at,a.id),'[]'::jsonb)
@@ -121,8 +125,8 @@ BEGIN
   IF length(p_content)>12000 THEN RAISE EXCEPTION 'message_too_large_12000'; END IF;
   SELECT c.user_id,c.level INTO v_beta,v_level FROM public.nexus_conversations c JOIN public.nexus_staff_accounts s ON s.user_id=c.user_id AND s.role='beta_tester' WHERE c.id=p_conversation_id AND NOT c.archived;
   IF v_beta IS NULL THEN RAISE EXCEPTION 'beta_conversation_not_found'; END IF;
-  INSERT INTO public.nexus_messages(conversation_id,user_id,role,content,metadata)
-  VALUES(p_conversation_id,v_admin,'user',left(trim(p_content),12000),jsonb_build_object('actor_type','ceo','visible_label','CEO','admin_intervention',true,'conversation_owner_user_id',v_beta))
+  INSERT INTO public.nexus_messages(conversation_id,user_id,actor_user_id,role,content,metadata)
+  VALUES(p_conversation_id,v_beta,v_admin,'user',left(trim(p_content),12000),jsonb_build_object('actor_type','ceo','visible_label','CEO','admin_intervention',true,'conversation_owner_user_id',v_beta))
   RETURNING id INTO v_message;
   UPDATE public.nexus_conversations SET updated_at=now() WHERE id=p_conversation_id;
   IF coalesce(p_request_ai,true) THEN
