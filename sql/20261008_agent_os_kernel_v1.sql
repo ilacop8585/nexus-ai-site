@@ -117,6 +117,19 @@ CREATE TABLE IF NOT EXISTS public.nexus_user_settings (
 ALTER TABLE public.nexus_user_settings ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE public.nexus_conversations
+  ADD COLUMN IF NOT EXISTS project_id uuid NULL REFERENCES public.nexus_projects(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS agent_id uuid NULL REFERENCES public.nexus_agents(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS nexus_conversations_project_updated_idx
+  ON public.nexus_conversations(project_id,updated_at DESC)
+  WHERE project_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS nexus_conversations_agent_updated_idx
+  ON public.nexus_conversations(agent_id,updated_at DESC)
+  WHERE agent_id IS NOT NULL;
+
+
 ALTER TABLE public.nexus_jobs
   ADD COLUMN IF NOT EXISTS project_id uuid NULL REFERENCES public.nexus_projects(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS agent_id uuid NULL REFERENCES public.nexus_agents(id) ON DELETE SET NULL,
@@ -545,6 +558,144 @@ END
 $function$;
 
 
+CREATE OR REPLACE FUNCTION public.nexus_agent_os_context()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public','pg_temp'
+AS $function$
+DECLARE
+  v_user uuid;
+  v_settings public.nexus_user_settings%ROWTYPE;
+  v_project public.nexus_projects%ROWTYPE;
+  v_agent public.nexus_agents%ROWTYPE;
+  v_skills jsonb;
+  v_prompt text:='';
+BEGIN
+  v_user:=(auth.user_id())::uuid;
+  IF v_user IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
+
+  INSERT INTO public.nexus_user_settings(user_id)
+  VALUES(v_user)
+  ON CONFLICT(user_id) DO NOTHING;
+
+  SELECT * INTO v_settings FROM public.nexus_user_settings WHERE user_id=v_user;
+
+  IF v_settings.default_project_id IS NOT NULL THEN
+    SELECT * INTO v_project
+    FROM public.nexus_projects
+    WHERE id=v_settings.default_project_id AND user_id=v_user AND archived_at IS NULL;
+  END IF;
+
+  IF v_settings.default_agent_id IS NOT NULL THEN
+    SELECT * INTO v_agent
+    FROM public.nexus_agents
+    WHERE id=v_settings.default_agent_id AND user_id=v_user AND archived_at IS NULL;
+  END IF;
+
+  SELECT coalesce(jsonb_agg(jsonb_build_object(
+    'id',s.id,'name',s.name,'version',s.version,'instructions',s.instructions
+  ) ORDER BY s.name),'[]'::jsonb)
+  INTO v_skills
+  FROM public.nexus_skills s
+  WHERE s.owner_user_id=v_user
+    AND s.archived_at IS NULL
+    AND s.enabled
+    AND (
+      s.scope='personal'
+      OR EXISTS(
+        SELECT 1 FROM public.nexus_project_skills ps
+        WHERE ps.skill_id=s.id AND ps.enabled AND ps.project_id=v_project.id
+      )
+      OR EXISTS(
+        SELECT 1 FROM public.nexus_agent_skills ask
+        WHERE ask.skill_id=s.id AND ask.enabled AND ask.agent_id=v_agent.id
+      )
+    );
+
+  IF v_project.id IS NOT NULL AND length(trim(v_project.instructions))>0 THEN
+    v_prompt:=v_prompt||E'PROJECT: '||v_project.name||E'\nPROJECT INSTRUCTIONS:\n'||v_project.instructions||E'\n\n';
+  END IF;
+  IF v_agent.id IS NOT NULL THEN
+    v_prompt:=v_prompt||E'AGENT: '||v_agent.name||E'\n';
+    IF length(trim(v_agent.mission))>0 THEN
+      v_prompt:=v_prompt||E'AGENT MISSION:\n'||v_agent.mission||E'\n';
+    END IF;
+    v_prompt:=v_prompt||E'ROUTING PROFILE: '||v_agent.routing_profile||E'\nAUTONOMY: '||v_agent.autonomy_level||E'\nAPPROVAL POLICY: '||v_agent.approval_policy||E'\n\n';
+  END IF;
+
+  IF jsonb_array_length(v_skills)>0 THEN
+    v_prompt:=v_prompt||E'ACTIVE SKILLS:\n';
+    v_prompt:=v_prompt||(
+      SELECT string_agg(
+        '- '||(x->>'name')||' v'||(x->>'version')||
+        CASE WHEN length(trim(coalesce(x->>'instructions','')))>0 THEN E':\n'||(x->>'instructions') ELSE '' END,
+        E'\n'
+      )
+      FROM jsonb_array_elements(v_skills) x
+    )||E'\n\n';
+  END IF;
+
+  RETURN jsonb_build_object(
+    'project_id',v_project.id,
+    'project_name',v_project.name,
+    'agent_id',v_agent.id,
+    'agent_name',v_agent.name,
+    'routing_profile',coalesce(v_agent.routing_profile,v_settings.routing_profile),
+    'autonomy_level',coalesce(v_agent.autonomy_level,v_settings.autonomy_level),
+    'approval_policy',coalesce(v_agent.approval_policy,v_settings.approval_policy),
+    'skills',v_skills,
+    'prompt_prefix',left(v_prompt,18000)
+  );
+END
+$function$;
+
+
+CREATE OR REPLACE FUNCTION public.nexus_job_bind_context(
+  p_job_id uuid,
+  p_project_id uuid,
+  p_agent_id uuid,
+  p_routing_profile text,
+  p_approval_policy text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public','pg_temp'
+AS $function$
+DECLARE v_user uuid;
+BEGIN
+  v_user:=(auth.user_id())::uuid;
+  IF v_user IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
+
+  IF p_project_id IS NOT NULL AND NOT EXISTS(
+    SELECT 1 FROM public.nexus_projects p
+    WHERE p.id=p_project_id AND p.user_id=v_user AND p.archived_at IS NULL
+  ) THEN RAISE EXCEPTION 'project_not_found'; END IF;
+
+  IF p_agent_id IS NOT NULL AND NOT EXISTS(
+    SELECT 1 FROM public.nexus_agents a
+    WHERE a.id=p_agent_id AND a.user_id=v_user AND a.archived_at IS NULL
+  ) THEN RAISE EXCEPTION 'agent_not_found'; END IF;
+
+  UPDATE public.nexus_jobs
+  SET project_id=p_project_id,
+      agent_id=p_agent_id,
+      routing_profile=CASE WHEN p_routing_profile IN ('local_first','balanced','max') THEN p_routing_profile ELSE routing_profile END,
+      approval_policy=CASE WHEN p_approval_policy IN ('always_confirm','risk_based','trusted_low_risk') THEN p_approval_policy ELSE approval_policy END,
+      execution_metadata=coalesce(execution_metadata,'{}'::jsonb)||jsonb_strip_nulls(jsonb_build_object(
+        'agent_os_project_id',p_project_id,
+        'agent_os_agent_id',p_agent_id,
+        'agent_os_routing_profile',p_routing_profile,
+        'agent_os_approval_policy',p_approval_policy
+      ))
+  WHERE id=p_job_id AND user_id=v_user;
+
+  RETURN FOUND;
+END
+$function$;
+
+
 REVOKE ALL ON TABLE public.nexus_projects FROM PUBLIC;
 REVOKE ALL ON TABLE public.nexus_agents FROM PUBLIC;
 REVOKE ALL ON TABLE public.nexus_skills FROM PUBLIC;
@@ -553,6 +704,8 @@ REVOKE ALL ON TABLE public.nexus_agent_skills FROM PUBLIC;
 REVOKE ALL ON TABLE public.nexus_user_settings FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION public.nexus_workspace_bootstrap() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.nexus_agent_os_context() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.nexus_job_bind_context(uuid,uuid,uuid,text,text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.nexus_project_save(uuid,text,text,text,text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.nexus_project_archive(uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.nexus_agent_save(uuid,uuid,text,text,text,text,text,text) FROM PUBLIC;
@@ -564,6 +717,8 @@ REVOKE ALL ON FUNCTION public.nexus_agent_skill_set(uuid,uuid,boolean) FROM PUBL
 REVOKE ALL ON FUNCTION public.nexus_settings_save(uuid,uuid,text,text,text,text,text,boolean) FROM PUBLIC;
 
 GRANT EXECUTE ON FUNCTION public.nexus_workspace_bootstrap() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.nexus_agent_os_context() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.nexus_job_bind_context(uuid,uuid,uuid,text,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.nexus_project_save(uuid,text,text,text,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.nexus_project_archive(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.nexus_agent_save(uuid,uuid,text,text,text,text,text,text) TO authenticated;
