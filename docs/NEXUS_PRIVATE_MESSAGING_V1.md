@@ -134,3 +134,24 @@ Only after these pass may the UI display **E2EE verified**.
 ## Current repository baseline
 
 This work starts from `fb314c2` (“feat: embed Beta AI triage and Social Publisher”) so it does not overwrite the newer Social Publisher/Beta AI work that landed after the Drive checkpoint.
+
+
+## Security status UI
+
+Every NEXUS Private group/DM must expose a visible **Sicurezza** panel.
+
+Show:
+- E2EE state: not configured / negotiating / verified;
+- protocol: MLS (RFC 9420) only when the actual client engine uses it;
+- group epoch;
+- this device fingerprint;
+- participant/device fingerprints and verification state;
+- last key/membership rotation;
+- warning for newly added or unverified devices.
+
+Do not expose private keys or raw secrets.
+
+The green lock / “E2EE verificata” state is forbidden until an end-to-end test proves:
+sender plaintext -> client encryption -> ciphertext-only relay/storage -> recipient client decryption.
+
+For the monitored Beta Workspace, do not show this E2EE indicator. That surface must instead show that Owner and NEXUS AI may inspect it for QA.
