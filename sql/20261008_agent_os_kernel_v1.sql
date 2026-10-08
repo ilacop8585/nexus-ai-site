@@ -116,6 +116,9 @@ CREATE TABLE IF NOT EXISTS public.nexus_user_settings (
 
 ALTER TABLE public.nexus_user_settings ENABLE ROW LEVEL SECURITY;
 
+ALTER TABLE public.nexus_agents ALTER COLUMN routing_profile SET DEFAULT 'local_first';
+ALTER TABLE public.nexus_user_settings ALTER COLUMN routing_profile SET DEFAULT 'balanced';
+
 
 ALTER TABLE public.nexus_conversations
   ADD COLUMN IF NOT EXISTS project_id uuid NULL REFERENCES public.nexus_projects(id) ON DELETE SET NULL,
