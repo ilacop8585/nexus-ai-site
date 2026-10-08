@@ -1,262 +1,312 @@
-const enc=new TextEncoder(),dec=new TextDecoder();
-let ctx=null,device=null,rooms=[],currentRoom=null,pollTimer=null,localCryptoOk=false;
-const peerVerifiedRooms=new Set();
+import * as M from './nexus-private-crypto.js';
 
-function stable(v){
-  if(Array.isArray(v))return '['+v.map(stable).join(',')+']';
-  if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}';
-  return JSON.stringify(v);
-}
-function b64(bytes){
-  let s='';const a=bytes instanceof Uint8Array?bytes:new Uint8Array(bytes);
-  for(let i=0;i<a.length;i+=0x8000)s+=String.fromCharCode(...a.subarray(i,i+0x8000));
-  return btoa(s);
-}
-function ub64(s){const raw=atob(String(s||'')),a=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)a[i]=raw.charCodeAt(i);return a}
-function hex(bytes){return [...new Uint8Array(bytes)].map(x=>x.toString(16).padStart(2,'0')).join('').toUpperCase()}
-function fmtFp(v){return String(v||'').replace(/[^A-Fa-f0-9]/g,'').match(/.{1,4}/g)?.join(' ')||String(v||'')}
-function trustKey(fp){return 'nexus_private_trust:'+String(fp||'').replace(/[^A-Fa-f0-9]/g,'').toUpperCase()}
-function isTrusted(fp){try{return localStorage.getItem(trustKey(fp))==='1'}catch{return false}}
-function setTrusted(fp,on){try{if(on)localStorage.setItem(trustKey(fp),'1');else localStorage.removeItem(trustKey(fp))}catch{}}
-function aad(roomId,messageId,senderDeviceId,version){return enc.encode(['NEXUS-E2EE-v1',roomId,messageId,senderDeviceId,String(version)].join('|'))}
-function canonical(roomId,messageId,senderDeviceId,version,salt,payloadIv,ciphertext,eph){
-  return enc.encode([roomId,messageId,senderDeviceId,String(version),salt,payloadIv,ciphertext,stable(eph)].join('|'));
-}
+let ctx=null,device=null,rooms=[],currentRoom=null,pollTimer=null,runtimeOk=false;
+const peerAuthenticatedRooms=new Set();
+
+const el=id=>document.getElementById(id);
+const dataOf=r=>Array.isArray(r?.data)?r.data[0]:r?.data;
+const keyDevice=u=>'nexus-private:device:'+u;
+const keyKp=(u,ref)=>'nexus-private:kp:'+u+':'+ref;
+const keyKpRefs=u=>'nexus-private:kprefs:'+u;
+const keyRoom=(u,r)=>'nexus-private:room:'+u+':'+r;
+const keyTranscript=(u,r)=>'nexus-private:transcript:'+u+':'+r;
+const trustKey=fp=>'nexus-private:trust:'+String(fp||'').replace(/[^a-fA-F0-9]/g,'').toUpperCase();
+
+function fmtFp(v){return String(v||'').replace(/[^a-fA-F0-9]/g,'').match(/.{1,4}/g)?.join(' ')||String(v||'')}
+function trusted(fp){try{return localStorage.getItem(trustKey(fp))==='1'}catch{return false}}
+function setTrusted(fp,on){try{on?localStorage.setItem(trustKey(fp),'1'):localStorage.removeItem(trustKey(fp))}catch{}}
 function label(){const p=navigator.userAgentData?.platform||navigator.platform||'Browser';return String(p+' · '+(navigator.userAgentData?.brands?.[0]?.brand||'NEXUS Web')).slice(0,150)}
-
-function dbOpen(){return new Promise((resolve,reject)=>{const r=indexedDB.open('nexus_private_v1',1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains('kv'))r.result.createObjectStore('kv')};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
-async function kvGet(k){const db=await dbOpen();return new Promise((resolve,reject)=>{const tx=db.transaction('kv','readonly'),r=tx.objectStore('kv').get(k);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
-async function kvPut(k,v){const db=await dbOpen();return new Promise((resolve,reject)=>{const tx=db.transaction('kv','readwrite'),r=tx.objectStore('kv').put(v,k);r.onsuccess=()=>resolve(v);r.onerror=()=>reject(r.error)})}
-async function kvDel(k){const db=await dbOpen();return new Promise((resolve,reject)=>{const tx=db.transaction('kv','readwrite'),r=tx.objectStore('kv').delete(k);r.onsuccess=()=>resolve();r.onerror=()=>reject(r.error)})}
-
-async function makePrivatePair(kind){
-  const isEcdh=kind==='ECDH';
-  const alg={name:kind,namedCurve:'P-256'};
-  const pair=await crypto.subtle.generateKey(alg,true,isEcdh?['deriveBits']:['sign','verify']);
-  const publicJwk=await crypto.subtle.exportKey('jwk',pair.publicKey);
-  const privateJwk=await crypto.subtle.exportKey('jwk',pair.privateKey);
-  const privateKey=await crypto.subtle.importKey('jwk',privateJwk,alg,false,isEcdh?['deriveBits']:['sign']);
-  for(const k of Object.keys(privateJwk))delete privateJwk[k];
-  return {privateKey,publicJwk};
-}
-async function freshDevice(user){
-  const ecdh=await makePrivatePair('ECDH'),sign=await makePrivatePair('ECDSA');
-  const digest=await crypto.subtle.digest('SHA-256',enc.encode(stable({ecdh:ecdh.publicJwk,signing:sign.publicJwk})));
-  return {userId:user.id,ecdhPrivate:ecdh.privateKey,signPrivate:sign.privateKey,ecdhPublicJwk:ecdh.publicJwk,signPublicJwk:sign.publicJwk,fingerprint:hex(digest),serverId:null};
-}
-async function ensureDevice(){
-  const user=ctx.getUser();if(!user)throw new Error('Accedi prima a NEXUS');
-  const key='device:'+user.id;
-  let d=await kvGet(key);
-  if(!d||!d.ecdhPrivate||!d.signPrivate||!d.ecdhPublicJwk||!d.signPublicJwk)d=await freshDevice(user);
-  let r=await ctx.client.rpc('nexus_secure_register_device',{
-    p_device_label:label(),p_ecdh_public_jwk:d.ecdhPublicJwk,p_signing_public_jwk:d.signPublicJwk,p_identity_fingerprint:d.fingerprint
-  });
-  if(r.error&&String(r.error.message||r.error).includes('device_revoked')){
-    await kvDel(key);d=await freshDevice(user);
-    r=await ctx.client.rpc('nexus_secure_register_device',{
-      p_device_label:label(),p_ecdh_public_jwk:d.ecdhPublicJwk,p_signing_public_jwk:d.signPublicJwk,p_identity_fingerprint:d.fingerprint
-    });
-  }
-  if(r.error)throw r.error;
-  d.serverId=Array.isArray(r.data)?r.data[0]:r.data;await kvPut(key,d);device=d;return d;
-}
-async function deriveWrap(privateKey,publicJwk,saltBytes,aadBytes){
-  const pub=await crypto.subtle.importKey('jwk',publicJwk,{name:'ECDH',namedCurve:'P-256'},true,[]);
-  const bits=await crypto.subtle.deriveBits({name:'ECDH',public:pub},privateKey,256);
-  const base=await crypto.subtle.importKey('raw',bits,'HKDF',false,['deriveKey']);
-  return crypto.subtle.deriveKey({name:'HKDF',hash:'SHA-256',salt:saltBytes,info:aadBytes},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
-}
-async function cryptoSelfTest(){
-  try{
-    const a=await makePrivatePair('ECDH'),b=await makePrivatePair('ECDH'),sig=await makePrivatePair('ECDSA');
-    const salt=crypto.getRandomValues(new Uint8Array(32)),aadv=enc.encode('NEXUS-E2EE-v1-selftest');
-    const key=await crypto.subtle.generateKey({name:'AES-GCM',length:256},true,['encrypt','decrypt']);
-    const raw=new Uint8Array(await crypto.subtle.exportKey('raw',key)),iv=crypto.getRandomValues(new Uint8Array(12));
-    const cipher=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:aadv},key,enc.encode('NEXUS')));
-    const wk=await deriveWrap(a.privateKey,b.publicJwk,salt,aadv),wiv=crypto.getRandomValues(new Uint8Array(12));
-    const wrapped=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv:wiv,additionalData:aadv},wk,raw));
-    const uw=await deriveWrap(b.privateKey,a.publicJwk,salt,aadv);
-    const raw2=await crypto.subtle.decrypt({name:'AES-GCM',iv:wiv,additionalData:aadv},uw,wrapped);
-    const k2=await crypto.subtle.importKey('raw',raw2,{name:'AES-GCM'},false,['decrypt']);
-    const plain=dec.decode(await crypto.subtle.decrypt({name:'AES-GCM',iv,additionalData:aadv},k2,cipher));
-    const signed=enc.encode('NEXUS-E2EE-v1-signature'),s=await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},sig.privateKey,signed);
-    const sp=await crypto.subtle.importKey('jwk',sig.publicJwk,{name:'ECDSA',namedCurve:'P-256'},true,['verify']);
-    localCryptoOk=plain==='NEXUS'&&await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},sp,s,signed);
-  }catch{localCryptoOk=false}
-  return localCryptoOk;
-}
-
-function isOwner(){return ctx.getAccess()?.staff_role==='owner'}
-function isBeta(){return ctx.getAccess()?.staff_role==='beta_tester'}
-function el(id){return document.getElementById(id)}
+function isOwner(){return ctx?.getAccess?.()?.staff_role==='owner'}
+function isBeta(){return ctx?.getAccess?.()?.staff_role==='beta_tester'}
 function setState(t){const x=el('privateState');if(x)x.textContent=t}
 function clearNode(n){while(n?.firstChild)n.removeChild(n.firstChild)}
 function addText(parent,tag,text,cls){const x=document.createElement(tag);if(cls)x.className=cls;x.textContent=text;parent.appendChild(x);return x}
+function me(){return ctx?.getUser?.()?.id||null}
 
-async function prepareRooms(){
-  if(isOwner()){
-    const g=await ctx.client.rpc('nexus_secure_sync_beta_group',{p_display_name:'Comitiva Beta'});if(g.error)throw g.error;
-    const u=await ctx.client.rpc('nexus_admin_list_users');
-    const sel=el('privateBetaSelect');if(sel){sel.innerHTML='<option value="">Privato con…</option>';for(const x of u.data||[]){if(x.staff_role!=='beta_tester')continue;const o=document.createElement('option');o.value=x.user_id;o.textContent=x.display_name||x.name||x.email||'Beta tester';sel.appendChild(o)}}
-  }else if(isBeta()){
-    const d=await ctx.client.rpc('nexus_secure_open_owner_dm');if(d.error)throw d.error;
+async function validateCredential(identity,publicKeyB64){
+  const r=await ctx.client.rpc('nexus_secure_validate_credential',{p_identity:String(identity),p_signature_public_key:String(publicKeyB64)});
+  if(r.error)return false;
+  return !!dataOf(r);
+}
+
+async function ensureDevice(){
+  const user=ctx.getUser();if(!user)throw new Error('Accedi prima a NEXUS');
+  let d=await M.getSecret(keyDevice(user.id));
+  if(!d?.publicKeyB64||!d?.signKeyB64||d.userId!==String(user.id))d=await M.createDeviceIdentity(user.id);
+  const r=await ctx.client.rpc('nexus_secure_register_device',{
+    p_device_label:label(),p_identity_public_key:d.publicKeyB64,p_identity_fingerprint:d.fingerprint
+  });
+  if(r.error)throw r.error;
+  d.serverId=dataOf(r);await M.putSecret(keyDevice(user.id),d);device=d;return d;
+}
+
+async function processWelcomes(){
+  if(!device)return;
+  const r=await ctx.client.rpc('nexus_secure_fetch_welcomes',{p_device_id:device.serverId});
+  if(r.error)throw r.error;
+  for(const w of r.data||[]){
+    const kp=await M.getSecret(keyKp(me(),w.key_package_ref));
+    if(!kp?.keyPackageB64||!kp?.privatePackage)continue;
+    const joined=await M.joinRoom(w.welcome_ciphertext,kp.keyPackageB64,kp.privatePackage,validateCredential);
+    await M.putSecret(keyRoom(me(),w.room_id),{stateB64:joined.stateB64,pending:null});
+    await M.deleteSecret(keyKp(me(),w.key_package_ref));
+    const done=await ctx.client.rpc('nexus_secure_mark_welcome_consumed',{p_welcome_id:w.id});
+    if(done.error)throw done.error;
   }
 }
-async function loadRooms(){
-  const r=await ctx.client.rpc('nexus_secure_list_rooms');if(r.error)throw r.error;rooms=r.data||[];
-  const box=el('privateRooms');clearNode(box);
-  if(!rooms.length){addText(box,'div','Nessuna stanza disponibile.','notice');return}
-  for(const room of rooms){
-    const b=document.createElement('button');b.type='button';b.className='private-room'+(currentRoom?.id===room.id?' active':'');
-    addText(b,'strong',room.display_name||'NEXUS Private');addText(b,'span',(room.room_type==='beta_group'?'Gruppo':'Privato')+' · '+room.member_count+' membri · '+room.active_device_count+' dispositivi','small');
-    b.onclick=()=>selectRoom(room.id);box.appendChild(b);
+
+async function topUpKeyPackages(target=4){
+  let refs=await M.getSecret(keyKpRefs(me()))||[],available=[];
+  for(const ref of refs){
+    const r=await ctx.client.rpc('nexus_secure_key_package_available',{p_device_id:device.serverId,p_key_package_ref:ref});
+    if(!r.error&&dataOf(r)===true)available.push(ref);
   }
+  while(available.length<target){
+    const kp=await M.generateJoinPackage(me(),device);
+    await M.putSecret(keyKp(me(),kp.keyPackageRef),kp);
+    const r=await ctx.client.rpc('nexus_secure_publish_key_package',{
+      p_device_id:device.serverId,p_key_package_ref:kp.keyPackageRef,p_key_package:kp.keyPackageB64
+    });
+    if(r.error){await M.deleteSecret(keyKp(me(),kp.keyPackageRef));throw r.error}
+    available.push(kp.keyPackageRef);
+  }
+  await M.putSecret(keyKpRefs(me()),available);
+}
+
+async function roomMembers(roomId){
+  const r=await ctx.client.rpc('nexus_secure_list_room_members',{p_room_id:roomId});if(r.error)throw r.error;return r.data||[];
 }
 async function roomDevices(roomId){
   const r=await ctx.client.rpc('nexus_secure_list_member_devices',{p_room_id:roomId});if(r.error)throw r.error;return r.data||[];
 }
-async function fetchMessages(roomId){
-  const r=await ctx.client.rpc('nexus_secure_fetch_messages',{p_room_id:roomId,p_device_id:device.serverId,p_after:null,p_limit:300});if(r.error)throw r.error;return r.data||[];
+async function rawMessages(roomId){
+  const r=await ctx.client.rpc('nexus_secure_fetch_messages',{p_room_id:roomId,p_device_id:device.serverId,p_after:null,p_limit:500});
+  if(r.error)throw r.error;return r.data||[];
+}
+async function transcript(roomId){
+  return await M.getSecret(keyTranscript(me(),roomId))||{seen:[],messages:[]};
+}
+async function saveTranscript(roomId,t){await M.putSecret(keyTranscript(me(),roomId),t)}
+
+async function recoverPending(roomId){
+  const holder=await M.getSecret(keyRoom(me(),roomId));
+  if(!holder?.pending)return holder;
+  const rows=await rawMessages(roomId).catch(()=>[]);
+  const p=holder.pending;
+  const found=rows.some(x=>String(x.client_message_id||'')===String(p.clientMessageId||'')||String(x.ciphertext||'')===String(p.ciphertextB64||''));
+  if(found){
+    holder.pending=null;delete holder.previousStateB64;await M.putSecret(keyRoom(me(),roomId),holder);return holder;
+  }
+  if(p.kind==='application'&&p.rpc){
+    const r=await ctx.client.rpc('nexus_secure_send_ciphertext',p.rpc);
+    if(!r.error){holder.pending=null;delete holder.previousStateB64;await M.putSecret(keyRoom(me(),roomId),holder);return holder}
+  }
+  if(holder.previousStateB64){
+    holder.stateB64=holder.previousStateB64;holder.pending=null;delete holder.previousStateB64;await M.putSecret(keyRoom(me(),roomId),holder);
+  }
+  return holder;
 }
 
-async function decryptRow(room,row){
-  const aadv=aad(room.id,row.client_message_id,row.sender_device_id,row.membership_version);
-  const canon=canonical(room.id,row.client_message_id,row.sender_device_id,row.membership_version,row.salt,row.payload_iv,row.ciphertext,row.ephemeral_public_jwk);
-  const signPub=await crypto.subtle.importKey('jwk',row.sender_signing_public_jwk,{name:'ECDSA',namedCurve:'P-256'},true,['verify']);
-  const sigOk=await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},signPub,ub64(row.signature),canon);
-  if(!sigOk)throw new Error('Firma mittente non valida');
-  const wk=await deriveWrap(device.ecdhPrivate,row.ephemeral_public_jwk,ub64(row.salt),aadv);
-  const raw=await crypto.subtle.decrypt({name:'AES-GCM',iv:ub64(row.wrap_iv),additionalData:aadv},wk,ub64(row.wrapped_key));
-  const ck=await crypto.subtle.importKey('raw',raw,{name:'AES-GCM'},false,['decrypt']);
-  const plain=dec.decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:ub64(row.payload_iv),additionalData:aadv},ck,ub64(row.ciphertext)));
-  if(row.sender_device_id!==device.serverId)peerVerifiedRooms.add(room.id);
-  return {plain,sigOk};
-}
-async function renderSecurity(room,devices){
-  const box=el('privateSecurity');clearNode(box);
-  const peers=devices.filter(d=>d.device_id!==device.serverId);
-  const peerOk=peerVerifiedRooms.has(room.id);
-  const fingerprintsOk=peers.length>0&&peers.every(d=>isTrusted(d.identity_fingerprint));
-  const full=localCryptoOk&&peerOk&&fingerprintsOk;
-  const status=full?'E2EE VERIFICATA · PEER CONFERMATI':!localCryptoOk?'VERIFICA CRITTOGRAFICA FALLITA':!peerOk?'CRITTOGRAFIA OK · ATTESA MESSAGGIO PEER':'CRITTOGRAFIA OK · VERIFICA I FINGERPRINT';
-  addText(box,'strong',status);
-  addText(box,'div','Protocollo: NEXUS-E2EE-v1','small');
-  addText(box,'div','ECDH P-256 · HKDF-SHA-256 · AES-256-GCM · ECDSA P-256/SHA-256','small');
-  addText(box,'div','Versione membri: '+room.membership_version+' · '+room.member_count+' membri · '+devices.length+' dispositivi attivi','small');
-  addText(box,'div','Questo dispositivo: '+fmtFp(device.fingerprint),'small');
-  if(Number(room.member_count)>devices.length)addText(box,'div','Attenzione: almeno un membro non ha ancora registrato un dispositivo NEXUS Private. I messaggi inviati ora non saranno recuperabili retroattivamente da quel futuro dispositivo.','notice');
-  for(const d of devices){
-    const row=document.createElement('div');row.className='private-fingerprint';
-    const mine=d.device_id===device.serverId;
-    const txt=document.createElement('span');txt.textContent=(mine?'Questo dispositivo':'Peer')+' · '+d.device_label+' · '+fmtFp(d.identity_fingerprint)+(mine?'':(isTrusted(d.identity_fingerprint)?' · VERIFICATO':' · NON VERIFICATO'));row.appendChild(txt);
-    if(!mine){
-      const b=document.createElement('button');b.type='button';b.className='iconbtn';b.style.marginLeft='8px';b.style.padding='4px 7px';b.style.fontSize='10px';
-      b.textContent=isTrusted(d.identity_fingerprint)?'Rimuovi verifica':'Segna verificato';
-      b.title='Confronta prima il fingerprint con il beta tramite un canale indipendente.';
-      b.onclick=()=>{setTrusted(d.identity_fingerprint,!isTrusted(d.identity_fingerprint));renderSecurity(room,devices)};
-      row.appendChild(b);
-    }
-    box.appendChild(row);
+async function ensureOwnerState(roomId){
+  let h=await recoverPending(roomId);
+  if(h?.stateB64)return h;
+  const devices=await roomDevices(roomId);
+  const ownerDevices=devices.filter(d=>String(d.user_id)===String(me()));
+  if(ownerDevices.length&&!ownerDevices.some(d=>String(d.device_id)===String(device.serverId))){
+    throw new Error('Questa stanza MLS è associata a un altro dispositivo Owner.');
   }
-  addText(box,'div','Per il lucchetto verde, confronta i fingerprint con l’altra persona tramite un canale indipendente e marca i dispositivi corretti.','small');
-  addText(box,'div','Il server conserva ciphertext e chiavi contenuto avvolte per dispositivo. NEXUS AI non riceve il testo in chiaro.','small');
+  const created=await M.createRoomState(roomId,me(),device,validateCredential);
+  h={stateB64:created.stateB64,pending:null};await M.putSecret(keyRoom(me(),roomId),h);
+  const bind=await ctx.client.rpc('nexus_secure_bind_owner_device',{p_room_id:roomId,p_device_id:device.serverId,p_epoch:created.epoch});
+  if(bind.error){await M.deleteSecret(keyRoom(me(),roomId));throw bind.error}
+  return h;
 }
-async function renderMessages(room,rows){
-  const box=el('privateMessages');clearNode(box);
-  if(!rows.length){addText(box,'div','Nessun messaggio ancora.','notice');return}
+
+async function addOneBetaDevice(roomId,betaUserId){
+  const holder=await ensureOwnerState(roomId);
+  const take=await ctx.client.rpc('nexus_secure_owner_take_beta_key_package',{p_room_id:roomId,p_beta_user_id:betaUserId});
+  if(take.error){
+    if(/no_beta_key_package_available/i.test(String(take.error.message||take.error)))return false;
+    throw take.error;
+  }
+  const k=dataOf(take);if(!k?.key_package)return false;
+  const added=await M.addMember(holder.stateB64,k.key_package,validateCredential);
+  const pending={previousStateB64:holder.stateB64,stateB64:added.stateB64,pending:{kind:'commit',ciphertextB64:added.commitB64}};
+  await M.putSecret(keyRoom(me(),roomId),pending);
+  const fin=await ctx.client.rpc('nexus_secure_owner_finalize_add',{
+    p_room_id:roomId,p_beta_user_id:betaUserId,p_recipient_device_id:k.device_id,p_sender_device_id:device.serverId,
+    p_key_package_ref:k.key_package_ref,p_epoch:added.epoch,p_commit_ciphertext:added.commitB64,p_welcome_ciphertext:added.welcomeB64
+  });
+  if(fin.error){
+    await M.putSecret(keyRoom(me(),roomId),{stateB64:holder.stateB64,pending:null});throw fin.error;
+  }
+  await M.putSecret(keyRoom(me(),roomId),{stateB64:added.stateB64,pending:null});
+  return true;
+}
+
+async function syncAllBetaDevices(roomId,betaUserId){
+  let n=0;
+  for(let i=0;i<12;i++){if(!(await addOneBetaDevice(roomId,betaUserId)))break;n++}
+  return n;
+}
+
+async function loadCandidates(){
+  if(!isOwner())return[];
+  const r=await ctx.client.rpc('nexus_secure_list_beta_candidates');if(r.error)throw r.error;
+  const list=r.data||[],sel=el('privateBetaSelect');
+  if(sel){
+    sel.innerHTML='<option value="">Privato con…</option>';
+    for(const x of list){const o=document.createElement('option');o.value=x.user_id;o.textContent=(x.display_name||'Beta tester')+(Number(x.available_key_package_count||0)?' · pronto':' · deve aprire NEXUS Private');sel.appendChild(o)}
+  }
+  return list;
+}
+
+async function prepareOwnerGroup(){
+  const g=await ctx.client.rpc('nexus_secure_create_beta_group',{p_display_name:'Comitiva Beta'});if(g.error)throw g.error;
+  const roomId=dataOf(g);await ensureOwnerState(roomId);
+  const candidates=await loadCandidates(),members=await roomMembers(roomId),active=new Set(members.map(x=>String(x.user_id)));
+  for(const b of candidates){
+    if(!active.has(String(b.user_id))||Number(b.available_key_package_count||0)>0){
+      try{await syncAllBetaDevices(roomId,b.user_id)}catch(e){console.warn('NEXUS Private beta sync',b.user_id,e)}
+    }
+  }
+  return roomId;
+}
+
+async function loadRooms(){
+  const r=await ctx.client.rpc('nexus_secure_list_rooms');if(r.error)throw r.error;rooms=r.data||[];
+  const box=el('privateRooms');clearNode(box);
+  if(!rooms.length){addText(box,'div',isBeta()?'Nessun invito MLS ancora. Il tuo dispositivo è pronto.':'Nessuna stanza disponibile.','notice');return}
+  for(const room of rooms){
+    const b=document.createElement('button');b.type='button';b.className='private-room'+(currentRoom?.id===room.id?' active':'');
+    addText(b,'strong',room.display_name||'NEXUS Private');
+    addText(b,'span',(room.room_type==='beta_group'?'Gruppo':'Privato')+' · '+room.member_count+' membri · '+(room.enrolled_device_count||0)+' dispositivi MLS','small');
+    b.onclick=()=>selectRoom(room.id);box.appendChild(b);
+  }
+}
+
+async function processRoomRows(room){
+  let holder=await recoverPending(room.id);
+  if(!holder?.stateB64)return {messages:[],state:null};
+  const t=await transcript(room.id),seen=new Set(t.seen||[]),rows=await rawMessages(room.id);
   for(const row of rows){
-    const wrap=document.createElement('div');wrap.className='private-message '+(row.sender_user_id===ctx.getUser()?.id?'mine':'theirs');
+    if(seen.has(String(row.id)))continue;
+    if(String(row.sender_device_id)===String(device.serverId)){seen.add(String(row.id));continue}
+    const info=await M.getStateInfo(holder.stateB64,validateCredential);
+    if(String(row.content_type).includes('mls-commit')&&Number(row.epoch)<=Number(info.epoch)){seen.add(String(row.id));continue}
     try{
-      const d=await decryptRow(room,row);
-      const h=document.createElement('div');h.className='private-message-head';h.textContent=(row.sender_user_id===ctx.getUser()?.id?'Tu':row.sender_device_label)+' · firma verificata · '+new Date(row.created_at).toLocaleString();wrap.appendChild(h);
-      addText(wrap,'div',d.plain);
-    }catch(e){
-      const h=document.createElement('div');h.className='private-message-head';h.textContent='MESSAGGIO NON VERIFICATO';wrap.appendChild(h);addText(wrap,'div',String(e?.message||e),'small');
-    }
-    box.appendChild(wrap);
+      const p=await M.processWire(holder.stateB64,row.ciphertext,validateCredential);holder.stateB64=p.stateB64;
+      await M.putSecret(keyRoom(me(),room.id),holder);seen.add(String(row.id));peerAuthenticatedRooms.add(room.id);
+      if(p.kind==='application')t.messages.push({id:row.id,sender_user_id:row.sender_user_id,text:p.text,created_at:row.created_at});
+    }catch(e){console.warn('MLS row failed',row.id,e)}
   }
+  t.seen=[...seen].slice(-1200);t.messages=(t.messages||[]).slice(-500);await saveTranscript(room.id,t);
+  return {messages:t.messages,state:holder.stateB64};
 }
+
+async function renderSecurity(room){
+  const box=el('privateSecurity');clearNode(box);
+  let holder=await M.getSecret(keyRoom(me(),room.id)),info=null;try{if(holder?.stateB64)info=await M.getStateInfo(holder.stateB64,validateCredential)}catch{}
+  const devices=await roomDevices(room.id).catch(()=>[]),peers=devices.filter(d=>String(d.device_id)!==String(device.serverId));
+  const peerOk=peerAuthenticatedRooms.has(room.id),trustOk=peers.length===0?false:peers.every(d=>trusted(d.identity_fingerprint));
+  const verified=runtimeOk&&!!info&&peerOk&&trustOk;
+  addText(box,'strong',verified?'E2EE MLS VERIFICATA':runtimeOk&&info?'E2EE MLS ATTIVA':'MLS NON INIZIALIZZATA');
+  addText(box,'div','Protocollo: '+M.NEXUS_MLS_PROTOCOL,'small');
+  addText(box,'div','Ciphersuite: '+M.NEXUS_MLS_SUITE,'small');
+  addText(box,'div','Implementazione: '+M.NEXUS_MLS_VERSION+' · runtime self-test '+(runtimeOk?'PASS':'FAIL'),'small');
+  if(info)addText(box,'div','Epoch MLS: '+info.epoch,'small');
+  addText(box,'div','Questo dispositivo: '+fmtFp(device.fingerprint),'small');
+  for(const d of peers){
+    const row=document.createElement('div');row.className='private-fingerprint';
+    const s=document.createElement('span');s.textContent=(d.display_name||d.device_label||'Peer')+' · '+fmtFp(d.identity_fingerprint)+(trusted(d.identity_fingerprint)?' · VERIFICATO':' · NON VERIFICATO');row.appendChild(s);
+    const b=document.createElement('button');b.type='button';b.className='iconbtn';b.style.marginLeft='8px';b.style.padding='4px 7px';b.style.fontSize='10px';
+    b.textContent=trusted(d.identity_fingerprint)?'Rimuovi verifica':'Segna verificato';b.onclick=()=>{setTrusted(d.identity_fingerprint,!trusted(d.identity_fingerprint));renderSecurity(room)};row.appendChild(b);box.appendChild(row);
+  }
+  addText(box,'div','Il server conserva solo messaggi MLS cifrati, Welcome/KeyPackage pubblici e metadati di consegna. Le chiavi private e lo stato MLS restano cifrati sul dispositivo.','small');
+  addText(box,'div','ts-mls 1.6.4 implementa RFC 9420 ma non risulta formalmente auditata: NEXUS non la presenta come Signal Protocol.','small');
+}
+
+async function renderMessages(room,messages){
+  const box=el('privateMessages');clearNode(box);
+  if(!messages.length){addText(box,'div','Nessun messaggio applicativo decifrato su questo dispositivo.','notice');return}
+  const members=await roomMembers(room.id).catch(()=>[]),names=new Map(members.map(x=>[String(x.user_id),x.display_name||'Beta']));
+  for(const m of messages){
+    const mine=String(m.sender_user_id)===String(me()),w=document.createElement('div');w.className='private-message '+(mine?'mine':'theirs');
+    const h=document.createElement('div');h.className='private-message-head';h.textContent=(mine?'Tu':names.get(String(m.sender_user_id))||'Peer')+' · MLS autenticato · '+new Date(m.created_at).toLocaleString();w.appendChild(h);
+    addText(w,'div',m.text);box.appendChild(w);
+  }
+  box.scrollTop=box.scrollHeight;
+}
+
 async function loadCurrent(){
   if(!currentRoom)return;
-  const latest=(await ctx.client.rpc('nexus_secure_list_rooms')).data||[];
-  currentRoom=latest.find(x=>x.id===currentRoom.id)||currentRoom;
-  const [devices,rows]=await Promise.all([roomDevices(currentRoom.id),fetchMessages(currentRoom.id)]);
-  await renderMessages(currentRoom,rows);await renderSecurity(currentRoom,devices);await loadRooms();
+  const rr=await ctx.client.rpc('nexus_secure_list_rooms');if(rr.error)throw rr.error;
+  currentRoom=(rr.data||[]).find(x=>String(x.id)===String(currentRoom.id))||currentRoom;
+  const p=await processRoomRows(currentRoom);await renderMessages(currentRoom,p.messages);await renderSecurity(currentRoom);await loadRooms();
 }
+
 async function selectRoom(id){
-  currentRoom=rooms.find(x=>x.id===id)||null;if(!currentRoom)return;
-  el('privateRoomTitle').textContent=currentRoom.display_name;setState('Decifrazione locale…');
-  try{await loadCurrent();setState('Pronto')}catch(e){setState('Errore: '+(e?.message||String(e)))}
+  currentRoom=rooms.find(x=>String(x.id)===String(id))||null;if(!currentRoom)return;
+  el('privateRoomTitle').textContent=currentRoom.display_name||'NEXUS Private';setState('Sincronizzazione MLS…');
+  try{if(isOwner())await ensureOwnerState(currentRoom.id);await processWelcomes();await loadCurrent();setState('Pronto · '+M.NEXUS_MLS_PROTOCOL)}catch(e){setState('Errore: '+(e?.message||String(e)))}
 }
+
 async function sendCurrent(){
   const ta=el('privateComposer'),text=(ta?.value||'').trim();if(!text||!currentRoom||!device)return;
   if(text.length>12000){setState('Messaggio troppo lungo (max 12.000 caratteri).');return}
-  const send=el('privateSend');send.disabled=true;setState('Cifratura sul dispositivo…');
+  const send=el('privateSend');send.disabled=true;setState('Cifratura MLS sul dispositivo…');
   try{
-    const rr=await ctx.client.rpc('nexus_secure_list_rooms');if(rr.error)throw rr.error;
-    const room=(rr.data||[]).find(x=>x.id===currentRoom.id);if(!room)throw new Error('Stanza non più disponibile');
-    currentRoom=room;
-    const devices=await roomDevices(room.id);if(!devices.length)throw new Error('Nessun dispositivo attivo nella stanza');
-    const messageId=crypto.randomUUID(),aadv=aad(room.id,messageId,device.serverId,room.membership_version);
-    const salt=crypto.getRandomValues(new Uint8Array(32)),payloadIv=crypto.getRandomValues(new Uint8Array(12));
-    const contentKey=await crypto.subtle.generateKey({name:'AES-GCM',length:256},true,['encrypt','decrypt']);
-    const rawContent=new Uint8Array(await crypto.subtle.exportKey('raw',contentKey));
-    const cipher=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv:payloadIv,additionalData:aadv},contentKey,enc.encode(text)));
-    const eph=await crypto.subtle.generateKey({name:'ECDH',namedCurve:'P-256'},true,['deriveBits']);
-    const ephPub=await crypto.subtle.exportKey('jwk',eph.publicKey);
-    const keys=[];
-    for(const d of devices){
-      const wk=await deriveWrap(eph.privateKey,d.ecdh_public_jwk,salt,aadv),wiv=crypto.getRandomValues(new Uint8Array(12));
-      const wrapped=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv:wiv,additionalData:aadv},wk,rawContent));
-      keys.push({device_id:d.device_id,wrap_iv:b64(wiv),wrapped_key:b64(wrapped)});
-    }
-    const salt64=b64(salt),iv64=b64(payloadIv),cipher64=b64(cipher);
-    const canon=canonical(room.id,messageId,device.serverId,room.membership_version,salt64,iv64,cipher64,ephPub);
-    const signature=b64(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},device.signPrivate,canon));
-    const r=await ctx.client.rpc('nexus_secure_send_envelope',{
-      p_room_id:room.id,p_sender_device_id:device.serverId,p_client_message_id:messageId,p_membership_version:room.membership_version,
-      p_payload_iv:iv64,p_salt:salt64,p_ephemeral_public_jwk:ephPub,p_ciphertext:cipher64,p_signature:signature,p_recipient_keys:keys
-    });
-    if(r.error)throw r.error;ta.value='';await loadCurrent();setState('Inviato · ciphertext salvato');
-  }catch(e){setState('Invio fallito: '+(e?.message||String(e)))}finally{send.disabled=false}
+    let holder=await recoverPending(currentRoom.id);if(!holder?.stateB64)throw new Error('Questo dispositivo non è ancora membro MLS della stanza.');
+    const clientMessageId=crypto.randomUUID(),encrypted=await M.encryptMessage(holder.stateB64,text,validateCredential);
+    const rpc={p_room_id:currentRoom.id,p_sender_device_id:device.serverId,p_client_message_id:clientMessageId,p_epoch:encrypted.epoch,p_ciphertext:encrypted.ciphertextB64,p_content_type:'application/vnd.nexus.mls'};
+    await M.putSecret(keyRoom(me(),currentRoom.id),{stateB64:encrypted.stateB64,previousStateB64:holder.stateB64,pending:{kind:'application',clientMessageId,ciphertextB64:encrypted.ciphertextB64,rpc}});
+    let r=await ctx.client.rpc('nexus_secure_send_ciphertext',rpc);if(r.error)r=await ctx.client.rpc('nexus_secure_send_ciphertext',rpc);if(r.error)throw r.error;
+    await M.putSecret(keyRoom(me(),currentRoom.id),{stateB64:encrypted.stateB64,pending:null});
+    const t=await transcript(currentRoom.id),id=String(dataOf(r)||clientMessageId);t.seen=[...(t.seen||[]),id];t.messages=[...(t.messages||[]),{id,sender_user_id:me(),text,created_at:new Date().toISOString()}].slice(-500);await saveTranscript(currentRoom.id,t);
+    ta.value='';await loadCurrent();setState('Inviato · plaintext mai inviato a Neon');
+  }catch(e){setState('Invio sospeso: '+(e?.message||String(e)))}finally{send.disabled=false}
+}
+
+async function createDm(){
+  const betaId=el('privateBetaSelect')?.value;if(!betaId)return;
+  setState('Preparazione DM MLS…');
+  try{
+    const r=await ctx.client.rpc('nexus_secure_create_owner_beta_dm',{p_beta_user_id:betaId});if(r.error)throw r.error;
+    const roomId=dataOf(r);await ensureOwnerState(roomId);const n=await syncAllBetaDevices(roomId,betaId);
+    await loadRooms();await selectRoom(roomId);setState(n?'DM MLS pronto':'DM creato · il beta deve aprire NEXUS Private almeno una volta');
+  }catch(e){setState('Errore DM: '+(e?.message||String(e)))}
+}
+
+async function syncGroup(){
+  setState('Sincronizzazione Comitiva Beta via MLS…');
+  try{
+    const roomId=await prepareOwnerGroup();await loadRooms();await selectRoom(roomId);setState('Comitiva Beta sincronizzata · '+M.NEXUS_MLS_PROTOCOL);
+  }catch(e){setState('Errore gruppo: '+(e?.message||String(e)))}
 }
 
 async function openPrivate(){
   if(!(isOwner()||isBeta()))return;
-  el('privateModal').classList.add('show');setState('Inizializzazione E2EE…');
+  el('privateModal').classList.add('show');setState('Avvio motore MLS…');
   try{
-    await ensureDevice();await cryptoSelfTest();if(!localCryptoOk)throw new Error('Web Crypto self-test fallito');
-    await prepareRooms();await loadRooms();
-    if(isOwner())el('privateOwnerTools').hidden=false;else el('privateOwnerTools').hidden=true;
-    if(!currentRoom&&rooms.length)await selectRoom(rooms[0].id);else if(currentRoom)await loadCurrent();
-    setState('NEXUS Private pronto');
-    clearInterval(pollTimer);pollTimer=setInterval(()=>{if(el('privateModal')?.classList.contains('show')&&currentRoom)loadCurrent().catch(()=>{})},4000);
+    await ensureDevice();runtimeOk=await M.selfTest();if(!runtimeOk)throw new Error('MLS runtime self-test fallito');
+    await processWelcomes();await topUpKeyPackages();if(isOwner()){el('privateOwnerTools').hidden=false;await loadCandidates();await prepareOwnerGroup()}else el('privateOwnerTools').hidden=true;
+    await loadRooms();if(!currentRoom&&rooms.length)await selectRoom(rooms[0].id);else if(currentRoom)await loadCurrent();
+    setState('NEXUS Private pronto · '+M.NEXUS_MLS_PROTOCOL);
+    clearInterval(pollTimer);pollTimer=setInterval(async()=>{if(!el('privateModal')?.classList.contains('show'))return;try{await processWelcomes();if(currentRoom)await loadCurrent()}catch{}},5000);
   }catch(e){setState('NEXUS Private non disponibile: '+(e?.message||String(e)))}
 }
-function closePrivate(){el('privateModal').classList.remove('show');clearInterval(pollTimer);pollTimer=null}
-async function createDm(){
-  const id=el('privateBetaSelect')?.value;if(!id)return;
-  setState('Creazione privato…');const r=await ctx.client.rpc('nexus_secure_create_owner_beta_dm',{p_beta_user_id:id});
-  if(r.error){setState('Errore: '+(r.error.message||r.error));return}await loadRooms();await selectRoom(Array.isArray(r.data)?r.data[0]:r.data);
-}
-async function syncGroup(){
-  setState('Sincronizzazione membri Beta…');const r=await ctx.client.rpc('nexus_secure_sync_beta_group',{p_display_name:'Comitiva Beta'});
-  if(r.error){setState('Errore: '+(r.error.message||r.error));return}await loadRooms();const id=Array.isArray(r.data)?r.data[0]:r.data;await selectRoom(id);
-}
+function closePrivate(){el('privateModal')?.classList.remove('show');clearInterval(pollTimer);pollTimer=null}
 
 export function init(options){
   ctx=options;
-  const btn=el('privateBtn');if(btn)btn.onclick=openPrivate;
-  const close=el('closePrivate');if(close)close.onclick=closePrivate;
-  const send=el('privateSend');if(send)send.onclick=sendCurrent;
-  const sync=el('privateSyncGroup');if(sync)sync.onclick=syncGroup;
-  const dm=el('privateCreateDm');if(dm)dm.onclick=createDm;
-  const refresh=el('privateRefresh');if(refresh)refresh.onclick=()=>loadCurrent().catch(e=>setState('Errore: '+(e?.message||String(e))));
-  const ta=el('privateComposer');if(ta)ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();sendCurrent()}});
-  const modal=el('privateModal');if(modal)modal.onclick=e=>{if(e.target.id==='privateModal')closePrivate()};
+  if(el('privateBtn'))el('privateBtn').onclick=openPrivate;
+  if(el('closePrivate'))el('closePrivate').onclick=closePrivate;
+  if(el('privateSend'))el('privateSend').onclick=sendCurrent;
+  if(el('privateSyncGroup'))el('privateSyncGroup').onclick=syncGroup;
+  if(el('privateCreateDm'))el('privateCreateDm').onclick=createDm;
+  if(el('privateRefresh'))el('privateRefresh').onclick=()=>loadCurrent().catch(e=>setState('Errore: '+(e?.message||String(e))));
+  if(el('privateComposer'))el('privateComposer').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();sendCurrent()}});
+  if(el('privateModal'))el('privateModal').onclick=e=>{if(e.target.id==='privateModal')closePrivate()};
 }
-export function applyAccess(){
-  const a=ctx?.getAccess?.(),btn=el('privateBtn');if(btn)btn.hidden=!(a?.staff_role==='owner'||a?.staff_role==='beta_tester');
-}
-export function reset(){device=null;rooms=[];currentRoom=null;peerVerifiedRooms.clear();clearInterval(pollTimer);pollTimer=null;const btn=el('privateBtn');if(btn)btn.hidden=true}
+export function applyAccess(){const a=ctx?.getAccess?.(),b=el('privateBtn');if(b)b.hidden=!(a?.staff_role==='owner'||a?.staff_role==='beta_tester')}
+export function reset(){device=null;rooms=[];currentRoom=null;peerAuthenticatedRooms.clear();clearInterval(pollTimer);pollTimer=null;const b=el('privateBtn');if(b)b.hidden=true}
