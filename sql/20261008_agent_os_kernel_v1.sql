@@ -629,14 +629,14 @@ BEGIN
   IF p_project_id IS NOT NULL THEN
     SELECT * INTO v_project
     FROM public.nexus_projects
-    WHERE id=p_project_id AND user_id=v_user AND archived_at IS NULL;
+    WHERE id=p_project_id AND user_id=v_user;
     IF v_project.id IS NULL THEN RAISE EXCEPTION 'project_not_found'; END IF;
   END IF;
 
   IF p_agent_id IS NOT NULL THEN
     SELECT * INTO v_agent
     FROM public.nexus_agents
-    WHERE id=p_agent_id AND user_id=v_user AND archived_at IS NULL;
+    WHERE id=p_agent_id AND user_id=v_user;
     IF v_agent.id IS NULL THEN RAISE EXCEPTION 'agent_not_found'; END IF;
   END IF;
 
