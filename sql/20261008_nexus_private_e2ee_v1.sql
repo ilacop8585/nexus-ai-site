@@ -122,7 +122,7 @@ DECLARE v_user uuid; v_id uuid; v_revoked timestamptz;
 BEGIN
   v_user:=(auth.user_id())::uuid;
   IF v_user IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
-  IF NOT public.nexus_beta_has_access(v_user) THEN RAISE EXCEPTION 'secure_messaging_access_required'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.nexus_staff_accounts s WHERE s.user_id=v_user AND s.role IN ('owner','beta_tester')) THEN RAISE EXCEPTION 'secure_messaging_access_required'; END IF;
   IF length(trim(coalesce(p_device_label,'')))<1 THEN RAISE EXCEPTION 'device_label_required'; END IF;
   IF jsonb_typeof(p_ecdh_public_jwk)<>'object' OR jsonb_typeof(p_signing_public_jwk)<>'object'
     THEN RAISE EXCEPTION 'public_key_invalid'; END IF;
@@ -191,9 +191,31 @@ BEGIN
     RETURNING id INTO v_room;
   ELSE
     UPDATE public.nexus_secure_rooms
-       SET display_name=left(coalesce(nullif(trim(p_display_name),''),display_name),160),
-           membership_version=membership_version+1
+       SET display_name=left(coalesce(nullif(trim(p_display_name),''),display_name),160)
      WHERE id=v_room;
+
+    IF EXISTS(
+      SELECT 1
+      FROM (
+        SELECT v_owner AS user_id
+        UNION
+        SELECT s.user_id FROM public.nexus_staff_accounts s WHERE s.role='beta_tester'
+      ) desired
+      WHERE NOT EXISTS(
+        SELECT 1 FROM public.nexus_secure_room_members m
+        WHERE m.room_id=v_room AND m.user_id=desired.user_id AND m.left_at IS NULL
+      )
+    ) OR EXISTS(
+      SELECT 1 FROM public.nexus_secure_room_members m
+      WHERE m.room_id=v_room AND m.left_at IS NULL
+        AND m.user_id<>v_owner
+        AND NOT EXISTS(
+          SELECT 1 FROM public.nexus_staff_accounts s
+          WHERE s.user_id=m.user_id AND s.role='beta_tester'
+        )
+    ) THEN
+      UPDATE public.nexus_secure_rooms SET membership_version=membership_version+1 WHERE id=v_room;
+    END IF;
   END IF;
 
   INSERT INTO public.nexus_secure_room_members(room_id,user_id,member_role,left_at)
@@ -505,3 +527,87 @@ BEGIN
   LIMIT v_limit;
 END
 $function$;
+
+
+CREATE OR REPLACE FUNCTION public.nexus_secure_staff_membership_guard()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public','pg_temp'
+AS $function$
+DECLARE
+  v_user uuid;
+  v_old_role text;
+  v_new_role text;
+  v_group uuid;
+  v_was_active boolean;
+BEGIN
+  v_user:=coalesce(NEW.user_id,OLD.user_id);
+  v_old_role:=CASE WHEN TG_OP IN ('UPDATE','DELETE') THEN OLD.role ELSE NULL END;
+  v_new_role:=CASE WHEN TG_OP IN ('UPDATE','INSERT') THEN NEW.role ELSE NULL END;
+
+  IF v_old_role='beta_tester' AND coalesce(v_new_role,'')<>'beta_tester' THEN
+    SELECT r.id INTO v_group
+    FROM public.nexus_secure_rooms r
+    JOIN public.nexus_secure_room_members m ON m.room_id=r.id
+    WHERE r.room_type='beta_group' AND r.archived_at IS NULL
+      AND m.user_id=v_user AND m.left_at IS NULL
+    LIMIT 1;
+
+    IF v_group IS NOT NULL THEN
+      UPDATE public.nexus_secure_room_members
+         SET left_at=now()
+       WHERE room_id=v_group AND user_id=v_user AND left_at IS NULL;
+      UPDATE public.nexus_secure_rooms
+         SET membership_version=membership_version+1
+       WHERE id=v_group;
+    END IF;
+
+    UPDATE public.nexus_secure_rooms
+       SET archived_at=coalesce(archived_at,now()),
+           membership_version=membership_version+1
+     WHERE room_type='owner_beta_dm'
+       AND dm_beta_user_id=v_user
+       AND archived_at IS NULL;
+
+    UPDATE public.nexus_secure_room_members
+       SET left_at=coalesce(left_at,now())
+     WHERE user_id=v_user AND left_at IS NULL;
+
+    UPDATE public.nexus_secure_devices
+       SET revoked_at=coalesce(revoked_at,now()),last_seen_at=now()
+     WHERE user_id=v_user AND revoked_at IS NULL;
+  END IF;
+
+  IF v_new_role='beta_tester' AND coalesce(v_old_role,'')<>'beta_tester' THEN
+    SELECT id INTO v_group
+    FROM public.nexus_secure_rooms
+    WHERE room_type='beta_group' AND archived_at IS NULL
+    LIMIT 1;
+
+    IF v_group IS NOT NULL THEN
+      SELECT EXISTS(
+        SELECT 1 FROM public.nexus_secure_room_members
+        WHERE room_id=v_group AND user_id=v_user AND left_at IS NULL
+      ) INTO v_was_active;
+
+      INSERT INTO public.nexus_secure_room_members(room_id,user_id,member_role,left_at)
+      VALUES(v_group,v_user,'member',NULL)
+      ON CONFLICT(room_id,user_id) DO UPDATE SET member_role='member',left_at=NULL;
+
+      IF NOT v_was_active THEN
+        UPDATE public.nexus_secure_rooms
+           SET membership_version=membership_version+1
+         WHERE id=v_group;
+      END IF;
+    END IF;
+  END IF;
+
+  RETURN coalesce(NEW,OLD);
+END
+$function$;
+
+DROP TRIGGER IF EXISTS nexus_secure_staff_membership_guard_trg ON public.nexus_staff_accounts;
+CREATE TRIGGER nexus_secure_staff_membership_guard_trg
+AFTER INSERT OR UPDATE OR DELETE ON public.nexus_staff_accounts
+FOR EACH ROW EXECUTE FUNCTION public.nexus_secure_staff_membership_guard();
