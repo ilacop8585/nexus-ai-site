@@ -1,85 +1,90 @@
-# NEXUS Private E2EE V1
+# NEXUS Private — MLS E2EE V1
 
-Status: implementation candidate.
+Status: release candidate.
 
-NEXUS Private is separate from the monitored Beta Workspace.
+## Scope
 
-## Surfaces
+NEXUS Private is the human-to-human secure messenger for the Owner and trusted beta testers.
 
-- **Comitiva Beta**: one E2EE group for Owner + accounts with role beta_tester.
-- **Privati**: one E2EE Owner↔beta room per beta tester.
+- **Comitiva Beta**: shared Owner + beta group.
+- **Privati**: Owner ↔ one beta tester.
+- Separate from the monitored Beta Workspace.
+- NEXUS AI does not receive NEXUS Private plaintext.
 
-## Cryptographic protocol
+## Protocol actually implemented
 
-Protocol label: **NEXUS-E2EE-v1**.
+- Messaging Layer Security **MLS 1.0 / RFC 9420**.
+- Ciphersuite: `MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519`.
+- Client implementation bundled with the site: **ts-mls 1.6.4**.
+- No runtime crypto CDN dependency.
+- MLS application plaintext is encrypted on the client before the Neon relay receives it.
+- MLS group state and private KeyPackage material are stored only in encrypted local IndexedDB storage.
+- Neon stores public device identity keys, KeyPackages, Welcome messages, MLS ciphertext and delivery metadata.
+- The messages table has no plaintext column.
 
-Browser-native Web Crypto primitives:
+The ts-mls project states that its implementation has not undergone a formal security audit. NEXUS therefore identifies the protocol and implementation explicitly and does not market this as Signal Protocol.
 
-- Key agreement: ECDH P-256.
-- KDF: HKDF-SHA-256.
-- Message content: AES-256-GCM.
-- Sender authentication: ECDSA P-256 with SHA-256.
-- One fresh random AES content key per message.
-- One fresh ephemeral ECDH key pair per message.
-- The content key is wrapped separately for every active device in the room.
-- AES-GCM Additional Authenticated Data binds room id, client message id, sender device id and membership version.
+## Visible security panel
 
-Neon receives only:
-- public device keys and fingerprints;
-- encrypted message payload;
-- ephemeral public key;
-- signature;
-- per-device wrapped content keys;
-- delivery metadata.
-
-Neon never receives plaintext or device private keys.
-
-## Security status shown to users
-
-The room Security panel displays:
-- protocol name;
-- key agreement/KDF/cipher/signature algorithms;
+The room displays:
+- protocol and ciphersuite;
+- implementation version;
+- runtime MLS self-test state;
+- current MLS epoch;
 - this-device fingerprint;
-- participating device fingerprints;
-- membership version;
-- local cryptographic self-test;
-- peer verification status after a message from another device has successfully decrypted and verified.
+- enrolled peer-device fingerprints;
+- manual out-of-band fingerprint verification;
+- whether a real peer MLS message/commit has been authenticated.
 
-Do not label this implementation as Signal Protocol.
+The UI may show **E2EE MLS VERIFICATA** only when:
+1. runtime self-test passes;
+2. the local device has a valid MLS room state;
+3. at least one peer MLS message/commit was processed successfully;
+4. all displayed peer fingerprints were manually verified.
 
-NEXUS-E2EE-v1 provides end-to-end confidentiality and sender signature verification. It does **not** currently implement a Signal Double Ratchet or MLS-style post-compromise security. A later audited ratcheting/MLS layer can replace the envelope protocol without changing the product surfaces.
+## Device/bootstrap flow
+
+1. An authorized Owner/beta device creates a stable MLS signing identity locally.
+2. The public signing key + fingerprint are registered with Neon.
+3. The device publishes several one-time MLS KeyPackages.
+4. The Owner creates a group/DM locally and binds the Owner device to it.
+5. For a beta device the Owner atomically consumes one KeyPackage, creates an MLS Add Commit + Welcome locally, and sends only those MLS wire objects to Neon.
+6. The beta device fetches its Welcome, joins locally, and marks the Welcome consumed.
+7. Normal messages use MLS private application messages.
+8. Existing members process later Add Commits to advance group epoch.
+
+## Safety properties enforced by server
+
+- RLS enabled on all secure tables.
+- Browser uses SECURITY DEFINER RPCs only.
+- A device must be cryptographically enrolled in a room to send/fetch room ciphertext.
+- KeyPackages are one-time and consumed atomically.
+- Welcome retrieval is limited to the owning device.
+- Owner→beta membership finalization records the enrolled device and encrypted Commit/Welcome.
+- Client message IDs are idempotent to make retry/recovery safe.
+- Revoked devices are removed from relay access.
 
 ## Privacy split
 
 **NEXUS Private**
-- server and NEXUS AI do not have plaintext access;
-- AI cannot auto-read these conversations;
-- only a user-explicitly selected message can be copied into Beta Live or an AI workflow.
+- E2EE MLS.
+- Server/AI do not receive plaintext.
+- Human can explicitly copy selected content into a QA/AI workflow if desired.
 
 **Beta Workspace**
-- explicitly monitored by Owner + NEXUS AI for QA;
-- automated observation/triage is allowed;
-- never display the E2EE badge there.
+- monitored QA surface;
+- Owner and NEXUS AI can inspect it;
+- automated observation → Beta Live triage is allowed;
+- it must never display the NEXUS Private E2EE badge.
 
-## Device lifecycle
+## Verified engineering gates
 
-- Device private keys live in IndexedDB as non-exportable CryptoKey objects.
-- Public JWKs and fingerprint are registered with Neon.
-- Clearing browser storage creates a new device identity.
-- Revoked devices cannot fetch new key envelopes or send.
-- A user removed from a room receives no key envelope for future messages.
-- Historical ciphertext already delivered to a previously authorized device cannot be retroactively revoked.
+- Node MLS Owner→Beta→Owner roundtrip: PASS.
+- Wire plaintext-presence check: PASS (plaintext absent).
+- Bundled browser-target module roundtrip: PASS.
+- Runtime self-test exported by bundle: PASS.
+- Neon temporary-branch migration: 40 SQL statements PASS in one transaction.
+- Secure schema: 7 tables, 19 RPC/helper functions, RLS enabled.
+- Plaintext message column: absent.
 
-## Acceptance
-
-Required before green E2EE status:
-1. local cryptographic self-test passes;
-2. server schema contains no plaintext message column;
-3. sender encrypts and signs before RPC;
-4. recipient unwraps and decrypts locally;
-5. signature validates against the sender device public key;
-6. wrong device cannot fetch a wrapped content key;
-7. non-member cannot fetch a room;
-8. revoked device cannot send/fetch;
-9. group and Owner↔beta rooms remain isolated;
-10. live site shows protocol and fingerprints without exposing secrets.
+A real authenticated Owner/Beta production peer exchange remains the final live acceptance after deployment.
