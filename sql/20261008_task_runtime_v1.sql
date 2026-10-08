@@ -82,7 +82,7 @@ BEGIN
       'Execution plan',
       'NEXUS created the initial task plan.',
       jsonb_build_object('steps',v_plan,'mode',v_mode),
-      NEW.created_at + interval '1 millisecond'
+      NEW.created_at
     );
 
     RETURN NEW;
@@ -191,7 +191,7 @@ BEGIN
     'detail',e.detail,
     'metadata',e.metadata,
     'created_at',e.created_at
-  ) ORDER BY e.created_at,e.id),'[]'::jsonb)
+  ) ORDER BY e.id),'[]'::jsonb)
   INTO v_events
   FROM public.nexus_task_events e
   WHERE e.job_id=v_job.id AND e.user_id=v_user;
