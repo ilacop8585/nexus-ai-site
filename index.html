@@ -322,7 +322,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <h2 id="computeConfirmTitle">Run as NEXUS task?</h2>
     <p id="computeConfirmBody">This request needs more than basic chat.</p>
     <div class="compute-quote"><div><span>Estimated reservation</span><strong id="computeConfirmCost">—</strong></div><span id="computeConfirmMode">Agent · Smart</span></div>
-    <div class="notice">Credits are reserved only when you confirm. Existing refund rules apply if the job fails or is cancelled.</div>
+    <div class="notice">The exact approved credit estimate is checked again by NEXUS before reserving credits. If it changes, the task will not start. Failed/cancelled tasks follow the existing refund rules.</div>
     <div class="modal-actions">
       <button class="iconbtn" id="cancelComputeTask" type="button">Cancel</button>
       <button class="iconbtn" id="basicChatInstead" type="button">Use basic Chat instead</button>
@@ -1156,7 +1156,16 @@ document.getElementById('sendBtn').onclick=async()=>{
  let execution=LaunchOS.resolve(q,selectedFiles);
  let quotedCredits=0;
  if(!selectedFiles.length&&execution.heavy&&['agent','work','code'].includes(execution.mode)){
-   try{quotedCredits=await LaunchOS.quote(execution.mode,execution.level)}catch(e){console.warn('Could not quote text task',e)}
+   try{
+     quotedCredits=await LaunchOS.quote(execution.mode,execution.level);
+     if(!currentAccess?.unlimited&&(!Number.isSafeInteger(quotedCredits)||quotedCredits<=0))throw new Error('quote_unavailable');
+   }catch(e){
+     console.warn('NEXUS credit quote unavailable; task not started',e);
+     alert(UI_IT
+       ? 'Preventivo crediti temporaneamente non disponibile. Nessun task avviato e nessun credito addebitato. Riprova o seleziona Chat.'
+       : 'Credit estimate temporarily unavailable. No task started and no credits charged. Retry or choose Chat.');
+     return;
+   }
    const decision=currentAccess?.unlimited?'run':await confirmComputeTask({mode:execution.mode,level:execution.level,credits:quotedCredits,reason:execution.reason});
    if(decision==='cancel')return;
    if(decision==='chat')execution={mode:'chat',heavy:false,level:'free',reason:'user_selected_basic_chat'};
@@ -1255,11 +1264,12 @@ document.getElementById('sendBtn').onclick=async()=>{
      think.textContent=UI_IT
        ? 'Creo il task '+LaunchOS.modeLabel(execution.mode)+' e lo metto in esecuzione…'
        : 'Creating the '+LaunchOS.modeLabel(execution.mode)+' task…';
-     const job=await client.rpc('nexus_create_text_task',{
+     const job=await client.rpc('nexus_create_text_task_checked',{
        p_conversation_id:cid,
        p_mode:execution.mode,
        p_level:execution.level,
-       p_prompt:taskPrompt.slice(0,11900)
+       p_prompt:taskPrompt.slice(0,11900),
+       p_approved_credits:currentAccess?.unlimited?0:quotedCredits
      });
      if(job.error)throw job.error;
      const jr=Array.isArray(job.data)?job.data[0]:job.data;
@@ -1330,7 +1340,10 @@ document.getElementById('sendBtn').onclick=async()=>{
    const mediaCapacityUnavailable=e?.code==='MEDIA_CAPACITY_UNAVAILABLE'||errorText==='MEDIA_CAPACITY_UNAVAILABLE';
    const insufficientCredits=errorText.includes('insufficient_credits');
    const jobLimit=errorText.includes('active_job_limit')||errorText.includes('daily_job_limit');
-   const safeFailure=mediaCapacityUnavailable
+   const quoteChanged=errorText.includes('quote_changed_retry')||errorText.includes('quote_unavailable');
+   const safeFailure=quoteChanged
+     ? (UI_IT?'Il prezzo del task non corrisponde al preventivo approvato. Nessun addebito: aggiorna il preventivo e riprova.':'The task price no longer matches the approved quote. No charge was made. Refresh the quote and retry.')
+     : mediaCapacityUnavailable
      ? (UI_IT?'La capacità multimediale NEXUS non è disponibile per questo tipo di file. Il file non è stato caricato e non sono stati riservati crediti.':'NEXUS media compute is not available for this file type. The file was not uploaded and no credits were reserved.')
      : insufficientCredits
        ? (UI_IT?'Crediti insufficienti per avviare questo task. La chat base resta disponibile gratuitamente; puoi acquistare crediti oppure scegliere Chat.':'Not enough credits to start this task. Basic Chat remains included; buy credits or choose Chat.')
