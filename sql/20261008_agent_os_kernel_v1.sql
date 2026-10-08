@@ -558,7 +558,10 @@ END
 $function$;
 
 
-CREATE OR REPLACE FUNCTION public.nexus_agent_os_context()
+CREATE OR REPLACE FUNCTION public.nexus_agent_os_context_for(
+  p_project_id uuid,
+  p_agent_id uuid
+)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -581,16 +584,18 @@ BEGIN
 
   SELECT * INTO v_settings FROM public.nexus_user_settings WHERE user_id=v_user;
 
-  IF v_settings.default_project_id IS NOT NULL THEN
+  IF p_project_id IS NOT NULL THEN
     SELECT * INTO v_project
     FROM public.nexus_projects
-    WHERE id=v_settings.default_project_id AND user_id=v_user AND archived_at IS NULL;
+    WHERE id=p_project_id AND user_id=v_user AND archived_at IS NULL;
+    IF v_project.id IS NULL THEN RAISE EXCEPTION 'project_not_found'; END IF;
   END IF;
 
-  IF v_settings.default_agent_id IS NOT NULL THEN
+  IF p_agent_id IS NOT NULL THEN
     SELECT * INTO v_agent
     FROM public.nexus_agents
-    WHERE id=v_settings.default_agent_id AND user_id=v_user AND archived_at IS NULL;
+    WHERE id=p_agent_id AND user_id=v_user AND archived_at IS NULL;
+    IF v_agent.id IS NULL THEN RAISE EXCEPTION 'agent_not_found'; END IF;
   END IF;
 
   SELECT coalesce(jsonb_agg(jsonb_build_object(
@@ -616,6 +621,7 @@ BEGIN
   IF v_project.id IS NOT NULL AND length(trim(v_project.instructions))>0 THEN
     v_prompt:=v_prompt||E'PROJECT: '||v_project.name||E'\nPROJECT INSTRUCTIONS:\n'||v_project.instructions||E'\n\n';
   END IF;
+
   IF v_agent.id IS NOT NULL THEN
     v_prompt:=v_prompt||E'AGENT: '||v_agent.name||E'\n';
     IF length(trim(v_agent.mission))>0 THEN
@@ -646,6 +652,33 @@ BEGIN
     'approval_policy',coalesce(v_agent.approval_policy,v_settings.approval_policy),
     'skills',v_skills,
     'prompt_prefix',left(v_prompt,18000)
+  );
+END
+$function$;
+
+
+CREATE OR REPLACE FUNCTION public.nexus_agent_os_context()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public','pg_temp'
+AS $function$
+DECLARE
+  v_user uuid;
+  v_settings public.nexus_user_settings%ROWTYPE;
+BEGIN
+  v_user:=(auth.user_id())::uuid;
+  IF v_user IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
+
+  INSERT INTO public.nexus_user_settings(user_id)
+  VALUES(v_user)
+  ON CONFLICT(user_id) DO NOTHING;
+
+  SELECT * INTO v_settings FROM public.nexus_user_settings WHERE user_id=v_user;
+
+  RETURN public.nexus_agent_os_context_for(
+    v_settings.default_project_id,
+    v_settings.default_agent_id
   );
 END
 $function$;
@@ -705,6 +738,7 @@ REVOKE ALL ON TABLE public.nexus_user_settings FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION public.nexus_workspace_bootstrap() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.nexus_agent_os_context() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.nexus_agent_os_context_for(uuid,uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.nexus_job_bind_context(uuid,uuid,uuid,text,text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.nexus_project_save(uuid,text,text,text,text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.nexus_project_archive(uuid) FROM PUBLIC;
@@ -718,6 +752,7 @@ REVOKE ALL ON FUNCTION public.nexus_settings_save(uuid,uuid,text,text,text,text,
 
 GRANT EXECUTE ON FUNCTION public.nexus_workspace_bootstrap() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.nexus_agent_os_context() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.nexus_agent_os_context_for(uuid,uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.nexus_job_bind_context(uuid,uuid,uuid,text,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.nexus_project_save(uuid,text,text,text,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.nexus_project_archive(uuid) TO authenticated;
