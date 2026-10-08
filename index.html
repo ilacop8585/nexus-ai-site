@@ -98,6 +98,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 .beta-help{padding:10px 12px;border-radius:10px;background:rgba(120,140,255,.08);font-size:12px;line-height:1.45}
 .beta-live-card{max-width:980px}.beta-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.beta-tabs button,.beta-ticket-actions button,.beta-thread-actions button{appearance:none;border:1px solid rgba(255,255,255,.14);background:#121824;color:#eef3ff;border-radius:9px;padding:9px 12px;font-weight:750;cursor:pointer}.beta-tabs button.active,.beta-ticket-actions button.primary,.beta-thread-actions button.primary{background:var(--accent);color:#04100b;border-color:var(--accent)}.beta-pane[hidden],#betaTicketDetail[hidden],#adminBetaDetail[hidden]{display:none!important}.beta-ticket-row{cursor:pointer}.beta-ticket-row:hover{border-color:rgba(255,255,255,.24)}.beta-ticket-code{font-size:11px;color:var(--accent);font-weight:800;letter-spacing:.05em}.beta-thread{display:grid;gap:9px;margin-top:12px}.beta-message{padding:10px 12px;border:1px solid rgba(255,255,255,.10);border-radius:10px;background:#0c121b}.beta-message.admin{border-color:rgba(70,220,150,.26)}.beta-message.system{opacity:.78}.beta-message.internal{border-style:dashed}.beta-message-head{display:flex;justify-content:space-between;gap:10px;font-size:10px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}.beta-detail-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}.beta-retest{margin-top:12px;padding:12px;border:1px solid rgba(70,220,150,.28);background:rgba(70,220,150,.07);border-radius:10px}.beta-ticket-actions,.beta-thread-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.beta-message-box{width:100%;box-sizing:border-box;background:#0d111b;color:#eef3ff;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px;min-height:78px;resize:vertical}.beta-tech-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.beta-tech-card{border:1px solid rgba(255,255,255,.09);border-radius:9px;padding:9px;background:#0b1018;font-size:11px;overflow-wrap:anywhere}.beta-timeline{display:grid;gap:6px;margin-top:10px}.beta-event{font-size:11px;color:var(--muted);padding-left:10px;border-left:2px solid rgba(255,255,255,.12)}.beta-admin-controls{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-top:10px}.beta-admin-controls input,.beta-admin-controls select{width:100%;box-sizing:border-box;background:#0d111b;color:#eef3ff;border:1px solid rgba(255,255,255,.12);border-radius:9px;padding:9px}.beta-internal-toggle{display:flex;gap:7px;align-items:center;font-size:11px;color:var(--muted)}.beta-ai-card{margin-top:10px;padding:12px;border:1px solid rgba(124,245,195,.28);background:rgba(124,245,195,.06);border-radius:11px}.beta-ai-card strong{color:var(--accent)}.social-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.social-grid .wide{grid-column:1/-1}.social-grid textarea,.social-grid input,.social-grid select{width:100%;box-sizing:border-box;background:#0d111b;color:#eef3ff;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px}.social-grid textarea{min-height:150px;resize:vertical}.social-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.social-actions button{border:1px solid var(--line);background:#0f1722;color:#d8e5f1;border-radius:9px;padding:9px 11px;cursor:pointer;font-weight:800}.social-actions button.primary{background:var(--accent);color:#04100b;border-color:var(--accent)}@media(max-width:700px){.beta-tech-grid,.beta-admin-controls,.social-grid{grid-template-columns:1fr}.beta-live-card{max-width:96vw}.social-grid .wide{grid-column:auto}}
 @media(max-width:700px){.beta-grid{grid-template-columns:1fr}.beta-grid .wide{grid-column:auto}.admin-user .admin-actions{grid-template-columns:1fr 1fr}.admin-credit-input{grid-column:1/-1}}
+.private-card{width:min(96vw,1040px);max-height:88vh;overflow:auto}.private-layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:12px;margin-top:12px}.private-sidebar{display:flex;flex-direction:column;gap:8px}.private-room{width:100%;text-align:left;border:1px solid var(--line);background:#090f16;color:var(--text);border-radius:11px;padding:10px;cursor:pointer}.private-room strong,.private-room span{display:block}.private-room.active{border-color:var(--accent);background:rgba(124,245,195,.07)}.private-main{min-width:0}.private-security{display:grid;gap:5px;border:1px solid rgba(124,245,195,.24);background:rgba(124,245,195,.055);border-radius:11px;padding:11px;margin-bottom:10px}.private-fingerprint{font:10px ui-monospace,monospace;color:#aebed0;overflow-wrap:anywhere}.private-messages{display:flex;flex-direction:column;gap:9px;min-height:220px;max-height:390px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:10px;background:#070b10}.private-message{max-width:86%;padding:10px 12px;border:1px solid #253447;border-radius:12px;background:#0d151f;white-space:pre-wrap;overflow-wrap:anywhere}.private-message.mine{align-self:flex-end;background:#17372b;border-color:#275641}.private-message.theirs{align-self:flex-start}.private-message-head{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}.private-compose{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:10px}.private-compose textarea{border:1px solid var(--line);background:#080d14;border-radius:11px;padding:10px;min-height:64px}.private-owner-tools{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;margin-top:10px}.private-owner-tools select{min-width:0;background:#0d111b;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:9px}.private-state{margin-top:9px}.private-lock{display:inline-flex;align-items:center;gap:6px;color:var(--accent);font-weight:850}@media(max-width:760px){.private-layout{grid-template-columns:1fr}.private-sidebar{max-height:180px;overflow:auto}.private-owner-tools{grid-template-columns:1fr 1fr}.private-owner-tools select{grid-column:1/-1}.private-message{max-width:94%}}
 </style>
 </head>
 <body>
@@ -111,6 +112,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <button class="navbtn" id="pluginsBtn"><span>Tools</span><span class="small" id="pluginCount">—</span></button>
     <button class="navbtn" id="socialBtn" hidden><span>Social Publisher</span><span class="small">OWNER</span></button>
     <button class="navbtn" id="betaBtn" hidden><span>Centro Beta</span><span class="small" id="betaNavBadge">LIVE</span></button>
+    <button class="navbtn" id="privateBtn" hidden><span>NEXUS Private</span><span class="small">MLS</span></button>
     <button class="navbtn" id="adminBtn" hidden><span>Admin Center</span><span class="small">OWNER</span></button>
   </div>
   <div class="historybox">
@@ -326,6 +328,43 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
   </div>
 </div>
 
+<div class="modal" id="privateModal">
+  <div class="modal-card private-card">
+    <div class="beta-detail-head">
+      <div>
+        <h2>NEXUS Private</h2>
+        <p>Conversazioni cifrate end-to-end con MLS (RFC 9420) tra CEO e beta. NEXUS AI non legge automaticamente questi messaggi.</p>
+      </div>
+      <span class="role-badge">MLS E2EE</span>
+    </div>
+    <div id="privateOwnerTools" class="private-owner-tools" hidden>
+      <select id="privateBetaSelect" aria-label="Scegli beta tester"><option value="">Privato con…</option></select>
+      <button class="iconbtn" id="privateCreateDm" type="button">Crea/Apri privato</button>
+      <button class="iconbtn" id="privateSyncGroup" type="button">Sincronizza Comitiva Beta</button>
+    </div>
+    <div class="private-layout">
+      <aside class="private-sidebar">
+        <strong>Conversazioni</strong>
+        <div id="privateRooms"><div class="small">Caricamento…</div></div>
+      </aside>
+      <section class="private-main">
+        <div class="beta-detail-head">
+          <div><strong id="privateRoomTitle">NEXUS Private</strong><div class="small">MLS cifra e autentica ogni messaggio sul dispositivo prima del relay Neon.</div></div>
+          <button class="iconbtn" id="privateRefresh" type="button">Aggiorna</button>
+        </div>
+        <div class="private-security" id="privateSecurity"><div class="small">Sicurezza non inizializzata.</div></div>
+        <div class="private-messages" id="privateMessages"><div class="notice">Seleziona una conversazione.</div></div>
+        <div class="private-compose">
+          <textarea id="privateComposer" maxlength="12000" placeholder="Messaggio cifrato…"></textarea>
+          <button class="send" id="privateSend" type="button">Invia</button>
+        </div>
+        <div class="notice private-state" id="privateState">NEXUS Private non inizializzato.</div>
+      </section>
+    </div>
+    <div class="modal-actions"><button class="iconbtn" id="closePrivate" type="button">Chiudi</button></div>
+  </div>
+</div>
+
 <div class="modal" id="adminModal">
   <div class="modal-card jobs-card">
     <h2>NEXUS Admin Center</h2>
@@ -369,12 +408,14 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 
 <script type="module">
 import { createClient } from 'https://esm.sh/@neondatabase/neon-js@0.7.0-beta';
+import * as NexusPrivate from './nexus-private.js';
 
 const client = createClient('https://ep-sparkling-forest-b2v7x4ux.c-6.eu-central-1.aws.neon.tech/neondb');
 
 const promptEl=document.getElementById('prompt'), filesEl=document.getElementById('files'), input=document.getElementById('fileInput'), messages=document.getElementById('messages'), intro=document.getElementById('intro');
 let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null, computeCapabilities=new Set(), allConversations=[], historyLimit=50, lastConversationBatchSize=0, retryConversationId=null, retryPrompt='', coreTools=[], pluginCatalog=[], pluginState=new Map(), pluginBusy=new Set(), pluginActionMessage='', showAllPlugins=false, pendingKeyPlugin=null, currentAccess=null, chatGeneration=0, betaMyTickets=[], betaCurrentTicketId=null, adminCurrentBetaTicketId=null, adminBetaTicketsCache=[], adminBetaConversationsCache=[], adminCurrentBetaConversationId=null;
 const betaJobByConversation=new Map();
+NexusPrivate.init({client,getUser:()=>currentUser,getAccess:()=>currentAccess});
 const MAX_FILE_BYTES=250*1024*1024, MAX_FILES_PER_JOB=5, LAST_CHAT_KEY='nexus_last_conversation_id';
 const ROUTER_URL='https://nexus-ai-router.ilario-coppola.workers.dev/chat';
 const FILES_URL='https://br-jolly-scene-b2wyu6gt-nexusfiles.compute.c-6.eu-central-1.aws.neon.tech/';
@@ -1183,7 +1224,8 @@ function setLoggedOutUI(){
  document.getElementById('creditBalance').textContent='—';document.getElementById('creditAllowance').textContent=' / —';document.getElementById('creditBar').style.width='0%';
  document.getElementById('creditStatus').textContent='Sign in to load your real NEXUS balance.';
  const badge=document.getElementById('roleBadge');badge.hidden=true;badge.textContent='';
- document.getElementById('betaBtn').hidden=true;document.getElementById('adminBtn').hidden=true;document.getElementById('socialBtn').hidden=true;
+ document.getElementById('betaBtn').hidden=true;document.getElementById('privateBtn').hidden=true;document.getElementById('adminBtn').hidden=true;document.getElementById('socialBtn').hidden=true;
+ NexusPrivate.reset();
 }
 function applyAccessUI(){
  const a=currentAccess||{},badge=document.getElementById('roleBadge');
@@ -1200,6 +1242,7 @@ function applyAccessUI(){
  const identity=document.getElementById('betaIdentity');
  if(identity)identity.textContent=(a.display_name||currentUser?.name||'Tester')+(a.is_beta?' · BETA TESTER':'')+(a.unlimited?' · Unlimited access':'');
  const monitor=document.getElementById('betaWorkspaceNotice');if(monitor)monitor.hidden=a.staff_role!=='beta_tester';
+ NexusPrivate.applyAccess();
 }
 
 function betaStatusLabel(s){
