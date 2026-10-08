@@ -112,7 +112,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <button class="navbtn" id="pluginsBtn"><span>Tools</span><span class="small" id="pluginCount">—</span></button>
     <button class="navbtn" id="socialBtn" hidden><span>Social Publisher</span><span class="small">OWNER</span></button>
     <button class="navbtn" id="betaBtn" hidden><span>Centro Beta</span><span class="small" id="betaNavBadge">LIVE</span></button>
-    <button class="navbtn" id="privateBtn" hidden><span>NEXUS Private</span><span class="small">E2EE</span></button>
+    <button class="navbtn" id="privateBtn" hidden><span>NEXUS Private</span><span class="small">MLS</span></button>
     <button class="navbtn" id="adminBtn" hidden><span>Admin Center</span><span class="small">OWNER</span></button>
   </div>
   <div class="historybox">
@@ -333,9 +333,9 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <div class="beta-detail-head">
       <div>
         <h2>NEXUS Private</h2>
-        <p>Conversazioni cifrate end-to-end tra CEO e beta. NEXUS AI non legge automaticamente questi messaggi.</p>
+        <p>Conversazioni cifrate end-to-end con MLS (RFC 9420) tra CEO e beta. NEXUS AI non legge automaticamente questi messaggi.</p>
       </div>
-      <span class="role-badge">E2EE</span>
+      <span class="role-badge">MLS E2EE</span>
     </div>
     <div id="privateOwnerTools" class="private-owner-tools" hidden>
       <select id="privateBetaSelect" aria-label="Scegli beta tester"><option value="">Privato con…</option></select>
@@ -349,7 +349,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
       </aside>
       <section class="private-main">
         <div class="beta-detail-head">
-          <div><strong id="privateRoomTitle">NEXUS Private</strong><div class="small">Solo i dispositivi autorizzati ricevono la chiave cifrata del singolo messaggio.</div></div>
+          <div><strong id="privateRoomTitle">NEXUS Private</strong><div class="small">MLS cifra e autentica ogni messaggio sul dispositivo prima del relay Neon.</div></div>
           <button class="iconbtn" id="privateRefresh" type="button">Aggiorna</button>
         </div>
         <div class="private-security" id="privateSecurity"><div class="small">Sicurezza non inizializzata.</div></div>
