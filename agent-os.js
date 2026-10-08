@@ -274,6 +274,11 @@ export async function open(){
  if(!user())return;
  el('agentOsModal').classList.add('show');setTab(activeTab);await load();
 }
+export async function openSection(tab='defaults'){
+ if(!user())return;
+ if(['defaults','projects','agents','skills','connectors'].includes(tab))activeTab=tab;
+ el('agentOsModal').classList.add('show');setTab(activeTab);await load();
+}
 export function close(){el('agentOsModal')?.classList.remove('show')}
 export async function getContext(){if(user()&&!runtimeContext?.project_id&&!runtimeContext?.agent_id&&!runtimeContext?.prompt_prefix){try{await refreshContext()}catch{}}return runtimeContext}
 export async function useConversationContext(projectId,agentId){

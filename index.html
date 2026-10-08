@@ -134,6 +134,9 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 @media(min-width:1101px){body.task-runtime-open .main{padding-right:360px}body.task-runtime-open .composer-wrap{right:360px}.task-runtime-open .stage{max-width:900px}}
 @media(max-width:1100px){.task-runtime-panel{top:36px;width:min(100%,420px);z-index:48}.task-runtime-open .composer-wrap{right:0}}
 
+
+.project-workspace{position:fixed;inset:36px 0 0;z-index:44;background:#080d14;display:flex;flex-direction:column;transform:translateX(102%);transition:transform .22s ease;min-height:0}.project-workspace.open{transform:translateX(0)}.project-ws-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:19px 24px;border-bottom:1px solid var(--line);background:linear-gradient(100deg,#0e1724,#090e16)}.project-ws-title h2{font-size:22px;letter-spacing:-.035em;margin:2px 0 4px}.project-ws-title p{margin:0;color:var(--muted);font-size:12px;line-height:1.5;max-width:700px}.project-ws-ey{font-size:9px;font-weight:900;letter-spacing:.16em;color:var(--accent)}.project-ws-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.project-ws-actions button,.project-ws-toolbar button,.project-sidebar button.project-create{border:1px solid #293c51;background:#0e1824;color:#d6e5f1;padding:9px 12px;border-radius:10px;font-size:11px;font-weight:800;cursor:pointer}.project-ws-actions button:hover,.project-ws-toolbar button:hover,.project-sidebar button:hover{border-color:#44617d}.project-ws-actions .project-close{background:#18202b;font-size:18px;padding:5px 12px}.project-ws-body{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:0;flex:1}.project-sidebar{padding:17px 13px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:10px;min-height:0;background:#080e16}.project-sidebar h3{font-size:10px;color:#8297ac;text-transform:uppercase;letter-spacing:.12em;margin:2px 0 7px}.project-sidebar .project-create{width:100%;text-align:center}.project-list{display:grid;align-content:start;gap:6px;min-height:0;overflow:auto;flex:1}.project-nav-item{display:grid;gap:5px;text-align:left;border:1px solid #1b2b3b;background:#0d151e;border-radius:11px;padding:11px;color:#dce8f4;cursor:pointer}.project-nav-item.active{border-color:#4b8a76;background:#0e211d}.project-nav-item strong{font-size:12px}.project-nav-item span{color:#8ea3b7;font-size:10px}.project-ws-main{display:flex;flex-direction:column;min-height:0;padding:16px 20px;min-width:0}.project-ws-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.project-ws-toolbar button.primary{background:var(--accent);border-color:var(--accent);color:#05140d}.project-ws-toolbar .project-level{margin-left:auto;border:1px solid #30465f;border-radius:999px;padding:6px 9px;color:#cde0f3;font-size:10px;font-weight:900}.project-ws-tabs{display:flex;gap:6px;overflow-x:auto;border-bottom:1px solid #26374b;padding-top:15px;flex:0 0 auto}.project-ws-tabs button{padding:10px 13px;white-space:nowrap;border:0;border-bottom:2px solid transparent;background:transparent;color:#94a9bf;font-size:11px;font-weight:800;cursor:pointer}.project-ws-tabs button.active{border-color:var(--accent);color:#eef8f3}.project-ws-content{overflow:auto;flex:1;min-height:0;padding:16px 2px 40px}.project-ws-notice{color:#b9c9d8;font-size:11px;line-height:1.5;min-height:18px}.project-ws-notice.danger{color:var(--danger)}.project-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:0 0 15px}.project-kpi{border:1px solid #24354a;border-radius:12px;background:linear-gradient(180deg,#101a26,#0a121b);padding:14px}.project-kpi strong{font-size:23px;display:block}.project-kpi span{display:block;color:#91a5b9;font-size:10px;margin-top:4px}.project-overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.project-card{background:#0b141e;border:1px solid #26374a;border-radius:12px;padding:16px;min-width:0}.project-card h4{margin:0 0 9px;font-size:13px}.project-card p{margin:0;font-size:12px;line-height:1.65;color:#aec1d3;white-space:pre-wrap;overflow-wrap:anywhere}.project-item{padding:13px;margin-bottom:9px;border:1px solid #233248;border-radius:11px;background:#0c151f}.project-item.clickable{cursor:pointer}.project-item.clickable:hover{border-color:#5b8d83}.project-item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.project-item-head strong{font-size:12px;overflow-wrap:anywhere}.project-item-head span{font-size:10px;color:#8ca0b5;text-align:right;flex-shrink:0}.project-item-body{white-space:pre-wrap;line-height:1.5;color:#a6bbce;font-size:11px;margin-top:7px;overflow-wrap:anywhere}.project-item-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.project-item-actions button{background:#102235;border:1px solid #36516a;color:#dce9f4;border-radius:8px;padding:7px 10px;font-size:10px;cursor:pointer}.project-empty{border:1px dashed #34475d;border-radius:12px;padding:24px;color:#8ea5bb;font-size:12px;text-align:center}.project-ws-content [hidden]{display:none!important}@media(max-width:850px){.project-ws-body{grid-template-columns:1fr}.project-sidebar{border-right:0;border-bottom:1px solid var(--line);padding:8px 12px;flex:0 0 98px}.project-sidebar h3{display:none}.project-list{display:flex;gap:7px;overflow:auto;flex:1}.project-nav-item{flex:0 0 170px;padding:8px}.project-sidebar button.project-create{align-self:flex-end;width:auto}.project-ws-main{padding:11px 13px}.project-kpis{grid-template-columns:repeat(3,1fr)}.project-overview-grid{grid-template-columns:1fr}.project-ws-head{padding:11px 13px}.project-ws-title h2{font-size:18px}.project-ws-actions button{padding:7px 9px}.project-ws-toolbar{gap:6px}.project-ws-toolbar button{padding:7px 9px}.project-item-head{flex-direction:column;gap:3px}.project-item-head span{text-align:left}.project-ws-tabs button{padding:9px}}@media(max-width:480px){.project-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.project-ws-title p{display:none}.project-ws-actions button#projectRefresh{display:none}}
+
 </style>
 </head>
 <body>
@@ -146,6 +149,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
   <div class="navgroup">
     <div class="navlabel">Work</div>
     <div class="snav">
+      <button class="navbtn" id="projectsBtn"><span>Projects</span><span class="small">WORKSPACE</span></button>
       <button class="navbtn" id="jobsBtn"><span>Tasks & jobs</span><span class="small">0</span></button>
       <button class="navbtn" id="libraryBtn"><span>Library</span><span class="small" id="libraryCount">Files</span></button>
     </div>
@@ -230,6 +234,41 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
   </section>
 </main>
 </div>
+
+<section class="project-workspace" id="projectWorkspace" aria-label="NEXUS Project Workspace">
+  <header class="project-ws-head">
+    <div class="project-ws-title"><span class="project-ws-ey">NEXUS WORD · PROJECT WORKSPACE</span><h2 id="projectWorkspaceTitle">Projects</h2><p id="projectWorkspaceSubtitle">Organize chats, tasks, files and agents with persistent context.</p></div>
+    <div class="project-ws-actions"><button id="projectRefresh" type="button">Refresh</button><button id="closeProjectWorkspace" class="project-close" type="button" aria-label="Close Projects">×</button></div>
+  </header>
+  <div class="project-ws-body">
+    <aside class="project-sidebar"><h3>Your Projects</h3><div class="project-list" id="projectWorkspaceList"><div class="project-empty">Loading Projects…</div></div><button id="projectCreate" class="project-create" type="button">＋ Create Project</button></aside>
+    <main class="project-ws-main">
+      <div class="project-ws-toolbar">
+        <button id="projectNewChat" class="primary" type="button">＋ New chat in Project</button>
+        <button id="projectEdit" type="button">Project settings</button>
+        <button id="projectOpenLibrary" type="button">Library</button>
+        <span class="project-level" id="projectWorkspaceLevel">—</span>
+      </div>
+      <nav class="project-ws-tabs" aria-label="Project sections">
+        <button type="button" data-project-tab="overview" class="active">Overview</button>
+        <button type="button" data-project-tab="chats">Chats</button>
+        <button type="button" data-project-tab="tasks">Tasks</button>
+        <button type="button" data-project-tab="files">Files</button>
+        <button type="button" data-project-tab="agents">Agents</button>
+        <button type="button" data-project-tab="skills">Skills</button>
+      </nav>
+      <div class="project-ws-content">
+        <div class="project-ws-notice" id="projectWorkspaceNotice"></div>
+        <div id="projectPaneOverview" data-project-pane="overview"></div>
+        <div id="projectPaneChats" data-project-pane="chats" hidden></div>
+        <div id="projectPaneTasks" data-project-pane="tasks" hidden></div>
+        <div id="projectPaneFiles" data-project-pane="files" hidden></div>
+        <div id="projectPaneAgents" data-project-pane="agents" hidden></div>
+        <div id="projectPaneSkills" data-project-pane="skills" hidden></div>
+      </div>
+    </main>
+  </div>
+</section>
 
 <aside class="task-runtime-panel" id="taskRuntimePanel" aria-label="Task runtime">
   <div class="runtime-head">
@@ -683,6 +722,7 @@ import * as NexusPrivate from './nexus-private.js';
 import * as AgentOS from './agent-os.js';
 import * as LaunchOS from './launch-os.js';
 import * as TaskRuntime from './task-runtime.js';
+import * as ProjectWorkspace from './project-workspace.js';
 
 const client = createClient('https://ep-sparkling-forest-b2v7x4ux.c-6.eu-central-1.aws.neon.tech/neondb');
 
@@ -693,6 +733,16 @@ NexusPrivate.init({client,getUser:()=>currentUser,getAccess:()=>currentAccess});
 AgentOS.init({client,getUser:()=>currentUser,openPlugins});
 LaunchOS.init({client,getUser:()=>currentUser,getAccess:()=>currentAccess});
 TaskRuntime.init({client,getUser:()=>currentUser});
+ProjectWorkspace.init({
+ client,getUser:()=>currentUser,
+ requestSignIn:(notice)=>{setAuthNotice(notice);openAuth()},
+ openChat:(id,lev)=>loadConversation(id,lev),
+ openTask:(id)=>TaskRuntime.open(id),
+ closeTask:()=>TaskRuntime.close(),
+ openLibrary:()=>openLibrary(),
+ openProjectSettings:()=>AgentOS.openSection('projects'),
+ startProjectChat:async(projectId)=>{resetChat();const context=await AgentOS.useConversationContext(projectId,null);setLevel(context?.project_default_level||'free');promptEl.focus()}
+});
 window.addEventListener('nexus-agentos-settings',e=>{
  if(currentAccess?.staff_role!=='owner')return;
  if(e.detail?.notifications_in_app===false){stopOwnerNotificationPolling();updateNotificationBadge(0)}
@@ -1508,7 +1558,8 @@ async function loadSession(){
 }
 async function loadConversation(id,conversationLevel='free'){
  if(!currentUser)return;
- const conv=allConversations.find(x=>String(x.id)===String(id));
+ let conv=allConversations.find(x=>String(x.id)===String(id));
+ if(!conv){const record=await client.from('nexus_conversations').select('id,project_id,agent_id,level,title,updated_at').eq('id',id).maybeSingle();if(record.error)throw record.error;conv=record.data;if(conv){allConversations=[conv,...allConversations];}}
  try{await AgentOS.useConversationContext(conv?.project_id||null,conv?.agent_id||null)}catch(e){console.warn('Could not restore Agent OS conversation context',e)}
  const {data,error}=await client.from('nexus_messages').select('role,content,metadata,created_at').eq('conversation_id',id).order('created_at',{ascending:true});
  if(error){alert(error.message);return}
@@ -1613,6 +1664,7 @@ function setLoggedOutUI(){
  AgentOS.reset();
  LaunchOS.reset();
  TaskRuntime.reset();
+ ProjectWorkspace.reset();
  updateRoleNavGroups();
 }
 function updateRoleNavGroups(){
