@@ -396,8 +396,13 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 
 <div class="modal" id="pluginsModal">
   <div class="modal-card jobs-card">
-    <h2>Tools & connectors</h2>
-    <p>NEXUS Core Tools are native agent capabilities. Connectors link external accounts and stay unavailable until their OAuth/MCP path is actually ready.</p>
+    <h2>Connectors</h2>
+    <p>Connect real external tools to NEXUS. Operational connectors are shown first; future integrations stay separated as Preview.</p>
+    <div class="notice" style="margin:12px 0">
+      <strong>Connect anything with MCP — available now.</strong><br>
+      If a service exposes a compatible HTTPS MCP server, you do not need to wait for a dedicated NEXUS integration.
+      <div class="plugin-actions" style="margin-top:9px"><button class="enable" id="addCustomMcp" type="button">＋ Add custom MCP server</button></div>
+    </div>
     <h3>Core tools</h3>
     <div class="small" id="coreToolsSummary">Loading NEXUS capabilities…</div>
     <div class="joblist" id="coreToolsList"><div class="small">Loading…</div></div>
@@ -2169,8 +2174,9 @@ function renderPlugins(){
    return !!state?.enabled&&pluginConnectionRequired(p)&&state?.connection_status!=='connected';
  }).length;
  const availableNow=connectors.filter(p=>p.connectable||pluginState.get(p.id)?.connection_status==='connected').length;
- document.getElementById('pluginSummary').textContent=items.length+' shown · '+availableNow+' available now · '+connectors.length+' catalogued · '+readyCount+' connected'+(showAllPlugins&&pendingCount?' · '+pendingCount+' legacy selections not connected':'')+(pluginActionMessage?' · '+pluginActionMessage:'');
- const toggle=document.getElementById('pluginCatalogToggle');if(toggle)toggle.textContent=showAllPlugins?'Show available connectors':'Show planned connectors';
+ const previewCount=connectors.filter(p=>!p.connectable&&pluginState.get(p.id)?.connection_status!=='connected').length;
+ document.getElementById('pluginSummary').textContent=availableNow+' connectable now · '+readyCount+' connected'+(showAllPlugins?' · '+previewCount+' preview only':'')+(pluginActionMessage?' · '+pluginActionMessage:'');
+ const toggle=document.getElementById('pluginCatalogToggle');if(toggle)toggle.textContent=showAllPlugins?'Back to available connectors':'Preview future connectors';
  box.innerHTML='';
  if(!items.length){box.innerHTML='<div class="notice">No connectors match this search.</div>';return}
  items.forEach(p=>{
@@ -2181,7 +2187,7 @@ function renderPlugins(){
    const title=document.createElement('strong');title.textContent=p.name||p.id||'Plugin';
    const status=document.createElement('span');
    status.className='jobstatus '+(ready?'completed':'');
-   status.textContent=p.core?'built-in':connected?(enabled?'connected':'connected · off'):needsConnection&&!p.connectable?'setup required':enabled?'selected':'available';
+   status.textContent=p.core?'built-in':connected?(enabled?'connected':'connected · off'):needsConnection&&!p.connectable?'preview · not operational':enabled?'selected':'available';
    head.append(title,status);row.appendChild(head);
    const cat=document.createElement('div');cat.className='plugin-category';cat.textContent=(p.category||'Other')+' · '+(p.integration_path||p.type||'connector');
    row.appendChild(cat);
@@ -2191,7 +2197,7 @@ function renderPlugins(){
    if(p.core)stateLine.textContent='Always available in NEXUS.';
    else if(connected)stateLine.textContent=enabled?'Connected and enabled for your account.':'Connected, but currently disabled for your account.';
    else if(p.connectable&&needsConnection)stateLine.textContent=p.connection_mode==='api_key_project_scoped'?'Connect one project with a scoped credential to enable this connector.':'Connect your '+(p.name||'provider')+' account to enable this connector.';
-   else if(needsConnection&&!p.connectable)stateLine.textContent=enabled?'Selected previously, but not usable until NEXUS completes provider setup.':'Not available yet: NEXUS provider setup is still required.';
+   else if(needsConnection&&!p.connectable)stateLine.textContent='Preview only — this connector is not operational yet and is not counted as available.';
    else if(enabled)stateLine.textContent='Enabled for your account.';
    else stateLine.textContent='Not enabled for your account.';
    row.appendChild(stateLine);
@@ -2249,6 +2255,12 @@ async function loadPlugins(){
 document.getElementById('pluginSearch').addEventListener('input',renderPlugins);
 document.getElementById('pluginCategory').addEventListener('change',renderPlugins);
 document.getElementById('pluginCatalogToggle').addEventListener('click',()=>{showAllPlugins=!showAllPlugins;renderPlugins()});
+document.getElementById('addCustomMcp').addEventListener('click',async()=>{
+  if(!pluginCatalog.length)await loadPlugins();
+  const p=pluginCatalog.find(x=>x.id==='mcp');
+  if(!p){pluginActionMessage='Custom MCP connector is unavailable in this build.';renderPlugins();return}
+  await connectPlugin(p);
+});
 document.getElementById('cancelConnectorKey').addEventListener('click',closeKeyConnector);
 document.getElementById('verifyConnectorKey').addEventListener('click',verifyAndStoreKeyConnector);
 function openLibrary(){libraryModal.classList.add('show');loadLibrary()}
