@@ -1011,7 +1011,7 @@ document.getElementById('markAllNotificationsRead').onclick=async()=>{
  if(r.error){alert(r.error.message);return}
  updateNotificationBadge(0);await loadOwnerNotifications();
 };
-notificationsModal.onclick=e=>{if(e.target.id==='notificationsModal')notificationsModal.classList.remove('show')};
+document.getElementById('notificationsModal').onclick=e=>{if(e.target.id==='notificationsModal')document.getElementById('notificationsModal').classList.remove('show')};
 
 document.getElementById('newChat').onclick=resetChat;
 document.getElementById('topNewChat').onclick=resetChat;
