@@ -23,9 +23,15 @@ function updateBadge(){
  if(el('agentOsSkillsKpi'))el('agentOsSkillsKpi').textContent=String(state.skills?.length||0);
 }
 function updateContextPill(){
- const pill=el('agentOsContextPill');if(!pill)return;
  const parts=[runtimeContext.project_name,runtimeContext.agent_name].filter(Boolean);
- pill.textContent=parts.length?parts.join(' · '):'Default NEXUS';
+ const label=parts.length?parts.join(' · '):'Default NEXUS';
+ const pill=el('agentOsContextPill');if(pill)pill.textContent=label;
+ const top=el('agentRuntimeTop');
+ if(top){
+   top.hidden=!parts.length;
+   const span=top.querySelector('span');if(span)span.textContent=label;
+   top.title='Agent OS runtime · '+runtimeContext.routing_profile+' · '+runtimeContext.autonomy_level;
+ }
 }
 function optionRows(items,selected,emptyLabel){
  return '<option value="">'+esc(emptyLabel)+'</option>'+items.map(x=>'<option value="'+esc(x.id)+'" '+(String(selected||'')===String(x.id)?'selected':'')+'>'+esc(x.name)+'</option>').join('');
@@ -240,7 +246,7 @@ export async function applySession(){
  if(user()){try{await load()}catch(e){console.warn('Agent OS unavailable',e);showNotice('Agent OS non disponibile: '+(e?.message||String(e)),true)}}
 }
 export function reset(){
- state={settings:{},projects:[],agents:[],skills:[]};runtimeContext={project_id:null,project_name:null,agent_id:null,agent_name:null,routing_profile:'local_first',autonomy_level:'supervised',approval_policy:'risk_based',skills:[],prompt_prefix:''};defaultContext={...runtimeContext};conversationOverride=false;
+ state={settings:{},projects:[],agents:[],skills:[]};runtimeContext={project_id:null,project_name:null,project_default_level:'free',agent_id:null,agent_name:null,routing_profile:'local_first',autonomy_level:'supervised',approval_policy:'risk_based',language:'it',timezone:'UTC',notifications_in_app:true,skills:[],prompt_prefix:''};defaultContext={...runtimeContext};conversationOverride=false;
  editingProject=editingAgent=editingSkill=null;const b=el('agentOsBtn');if(b)b.hidden=true;updateBadge();
 }
 export async function open(){
@@ -251,7 +257,7 @@ export function close(){el('agentOsModal')?.classList.remove('show')}
 export async function getContext(){if(user()&&!runtimeContext?.project_id&&!runtimeContext?.agent_id&&!runtimeContext?.prompt_prefix){try{await refreshContext()}catch{}}return runtimeContext}
 export async function useConversationContext(projectId,agentId){
  if(!user())return runtimeContext;
- if(!projectId&&!agentId){conversationOverride=false;runtimeContext={...defaultContext};renderDefaults();return runtimeContext}
+ if(!projectId&&!agentId){conversationOverride=false;runtimeContext={...defaultContext};updateContextPill();renderDefaults();return runtimeContext}
  const data=scalar(await rpc('nexus_agent_os_context_for',{p_project_id:projectId||null,p_agent_id:agentId||null}))||{};
  runtimeContext={
    project_id:data.project_id||null,project_name:data.project_name||null,project_default_level:data.project_default_level||'free',
