@@ -1,6 +1,6 @@
 let ctx=null;
 let state={settings:{},projects:[],agents:[],skills:[]};
-let runtimeContext={project_id:null,project_name:null,agent_id:null,agent_name:null,routing_profile:'local_first',autonomy_level:'supervised',approval_policy:'risk_based',skills:[],prompt_prefix:''};
+let runtimeContext={project_id:null,project_name:null,project_default_level:'free',agent_id:null,agent_name:null,routing_profile:'local_first',autonomy_level:'supervised',approval_policy:'risk_based',language:'it',timezone:'UTC',notifications_in_app:true,skills:[],prompt_prefix:''};
 let defaultContext={...runtimeContext};
 let conversationOverride=false;
 let activeTab='defaults';
@@ -48,6 +48,7 @@ async function load(){
  await refreshContext();
  render();
  showNotice('Agent OS sincronizzato.');
+ window.dispatchEvent(new CustomEvent('nexus-agentos-settings',{detail:{notifications_in_app:state.settings?.notifications_in_app!==false}}));
 }
 async function refreshContext(){
  if(!user())return runtimeContext;
@@ -55,11 +56,15 @@ async function refreshContext(){
  defaultContext={
    project_id:data.project_id||null,
    project_name:data.project_name||null,
+   project_default_level:data.project_default_level||'free',
    agent_id:data.agent_id||null,
    agent_name:data.agent_name||null,
    routing_profile:data.routing_profile||state.settings?.routing_profile||'local_first',
    autonomy_level:data.autonomy_level||state.settings?.autonomy_level||'supervised',
    approval_policy:data.approval_policy||state.settings?.approval_policy||'risk_based',
+   language:data.language||state.settings?.language||'it',
+   timezone:data.timezone||state.settings?.timezone||'UTC',
+   notifications_in_app:data.notifications_in_app!==false,
    skills:Array.isArray(data.skills)?data.skills:[],
    prompt_prefix:String(data.prompt_prefix||'')
  };
@@ -174,7 +179,9 @@ async function saveDefaults(){
   p_notifications_in_app:el('agentNotifications').checked
  };
  state.settings=scalar(await rpc('nexus_settings_save',args))||state.settings;
- await refreshContext();renderDefaults();showNotice('Impostazioni Agent OS salvate.');
+ await refreshContext();renderDefaults();
+ window.dispatchEvent(new CustomEvent('nexus-agentos-settings',{detail:{notifications_in_app:state.settings?.notifications_in_app!==false}}));
+ showNotice('Impostazioni Agent OS salvate.');
 }
 async function saveProject(){
  const args={p_id:editingProject?.id||null,p_name:el('projectName').value.trim(),p_description:el('projectDescription').value,p_instructions:el('projectInstructions').value,p_default_level:el('projectDefaultLevel').value};
@@ -247,11 +254,14 @@ export async function useConversationContext(projectId,agentId){
  if(!projectId&&!agentId){conversationOverride=false;runtimeContext={...defaultContext};renderDefaults();return runtimeContext}
  const data=scalar(await rpc('nexus_agent_os_context_for',{p_project_id:projectId||null,p_agent_id:agentId||null}))||{};
  runtimeContext={
-   project_id:data.project_id||null,project_name:data.project_name||null,
+   project_id:data.project_id||null,project_name:data.project_name||null,project_default_level:data.project_default_level||'free',
    agent_id:data.agent_id||null,agent_name:data.agent_name||null,
    routing_profile:data.routing_profile||defaultContext.routing_profile,
    autonomy_level:data.autonomy_level||defaultContext.autonomy_level,
    approval_policy:data.approval_policy||defaultContext.approval_policy,
+   language:data.language||defaultContext.language,
+   timezone:data.timezone||defaultContext.timezone,
+   notifications_in_app:data.notifications_in_app!==false,
    skills:Array.isArray(data.skills)?data.skills:[],
    prompt_prefix:String(data.prompt_prefix||'')
  };
@@ -259,10 +269,14 @@ export async function useConversationContext(projectId,agentId){
 }
 export function clearConversationContext(){conversationOverride=false;runtimeContext={...defaultContext};updateContextPill();if(el('agentRuntimeSummary'))renderDefaults()}
 export function decoratePrompt(text,context=runtimeContext){
+ const request=String(text||'').slice(0,8000);
  const prefix=String(context?.prompt_prefix||'').trim();
- if(!prefix)return String(text||'');
- return (prefix+'\nUSER REQUEST:\n'+String(text||'')).slice(0,24000);
+ if(!prefix)return request;
+ const marker='\nUSER REQUEST:\n';
+ const budget=Math.max(0,11900-request.length-marker.length);
+ return prefix.slice(0,budget)+marker+request;
 }
+export function notificationsEnabled(){return state.settings?.notifications_in_app!==false}
 export async function bindJob(jobId,context=runtimeContext){
  if(!jobId||!user())return false;
  const r=await ctx.client.rpc('nexus_job_bind_context',{
