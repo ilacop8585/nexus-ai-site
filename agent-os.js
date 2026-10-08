@@ -1,5 +1,5 @@
 let ctx=null;
-let state={settings:{},projects:[],agents:[],skills:[]};
+let state={settings:{},execution:{default_mode:'auto',agent_effort:'smart',work_effort:'smart',code_effort:'smart',auto_escalate:true,response_style:'balanced'},projects:[],agents:[],skills:[]};
 let runtimeContext={project_id:null,project_name:null,project_default_level:'free',agent_id:null,agent_name:null,routing_profile:'balanced',autonomy_level:'supervised',approval_policy:'risk_based',language:'it',timezone:'UTC',notifications_in_app:true,skills:[],prompt_prefix:''};
 let defaultContext={...runtimeContext};
 let conversationOverride=false;
@@ -49,12 +49,17 @@ async function rpc(name,args={}){
 async function load(){
  if(!user())return;
  showNotice('Caricamento Agent OS…');
- const data=scalar(await rpc('nexus_workspace_bootstrap'))||{};
- state={settings:data.settings||{},projects:data.projects||[],agents:data.agents||[],skills:data.skills||[]};
+ const [workspaceData,executionData]=await Promise.all([
+   rpc('nexus_workspace_bootstrap'),
+   rpc('nexus_execution_settings_get')
+ ]);
+ const data=scalar(workspaceData)||{};
+ const execution=scalar(executionData)||{};
+ state={settings:data.settings||{},execution:{...state.execution,...execution},projects:data.projects||[],agents:data.agents||[],skills:data.skills||[]};
  await refreshContext();
  render();
  showNotice('Agent OS sincronizzato.');
- window.dispatchEvent(new CustomEvent('nexus-agentos-settings',{detail:{notifications_in_app:state.settings?.notifications_in_app!==false}}));
+ window.dispatchEvent(new CustomEvent('nexus-agentos-settings',{detail:{notifications_in_app:state.settings?.notifications_in_app!==false,execution:{...state.execution}}}));
 }
 async function refreshContext(){
  if(!user())return runtimeContext;
@@ -88,6 +93,13 @@ function renderDefaults(){
  el('agentTimezone').value=s.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
  el('agentLanguage').value=s.language||((navigator.language||'it').split('-')[0]);
  el('agentNotifications').checked=s.notifications_in_app!==false;
+ const x=state.execution||{};
+ if(el('defaultWorkMode'))el('defaultWorkMode').value=x.default_mode||'auto';
+ if(el('agentEffort'))el('agentEffort').value=x.agent_effort||'smart';
+ if(el('workEffort'))el('workEffort').value=x.work_effort||'smart';
+ if(el('codeEffort'))el('codeEffort').value=x.code_effort||'smart';
+ if(el('autoEscalate'))el('autoEscalate').checked=x.auto_escalate!==false;
+ if(el('responseStyle'))el('responseStyle').value=x.response_style||'balanced';
  const summary=el('agentRuntimeSummary');
  summary.textContent='Runtime: '+(runtimeContext.project_name||'nessun progetto')+' · '+(runtimeContext.agent_name||'NEXUS base')+' · '+runtimeContext.routing_profile+' · '+runtimeContext.autonomy_level+' · '+runtimeContext.skills.length+' skill attive'+(conversationOverride?' · contesto fissato dalla chat':'');
 }
@@ -185,8 +197,17 @@ async function saveDefaults(){
   p_notifications_in_app:el('agentNotifications').checked
  };
  state.settings=scalar(await rpc('nexus_settings_save',args))||state.settings;
+ const execArgs={
+   p_default_mode:el('defaultWorkMode')?.value||'auto',
+   p_agent_effort:el('agentEffort')?.value||'smart',
+   p_work_effort:el('workEffort')?.value||'smart',
+   p_code_effort:el('codeEffort')?.value||'smart',
+   p_auto_escalate:el('autoEscalate')?.checked!==false,
+   p_response_style:el('responseStyle')?.value||'balanced'
+ };
+ state.execution={...state.execution,...(scalar(await rpc('nexus_execution_settings_save',execArgs))||{})};
  await refreshContext();renderDefaults();
- window.dispatchEvent(new CustomEvent('nexus-agentos-settings',{detail:{notifications_in_app:state.settings?.notifications_in_app!==false}}));
+ window.dispatchEvent(new CustomEvent('nexus-agentos-settings',{detail:{notifications_in_app:state.settings?.notifications_in_app!==false,execution:{...state.execution}}}));
  showNotice('Impostazioni Agent OS salvate.');
 }
 async function saveProject(){
@@ -246,7 +267,7 @@ export async function applySession(){
  if(user()){try{await load()}catch(e){console.warn('Agent OS unavailable',e);showNotice('Agent OS non disponibile: '+(e?.message||String(e)),true)}}
 }
 export function reset(){
- state={settings:{},projects:[],agents:[],skills:[]};runtimeContext={project_id:null,project_name:null,project_default_level:'free',agent_id:null,agent_name:null,routing_profile:'balanced',autonomy_level:'supervised',approval_policy:'risk_based',language:'it',timezone:'UTC',notifications_in_app:true,skills:[],prompt_prefix:''};defaultContext={...runtimeContext};conversationOverride=false;
+ state={settings:{},execution:{default_mode:'auto',agent_effort:'smart',work_effort:'smart',code_effort:'smart',auto_escalate:true,response_style:'balanced'},projects:[],agents:[],skills:[]};runtimeContext={project_id:null,project_name:null,project_default_level:'free',agent_id:null,agent_name:null,routing_profile:'balanced',autonomy_level:'supervised',approval_policy:'risk_based',language:'it',timezone:'UTC',notifications_in_app:true,skills:[],prompt_prefix:''};defaultContext={...runtimeContext};conversationOverride=false;
  editingProject=editingAgent=editingSkill=null;const b=el('agentOsBtn');if(b)b.hidden=true;updateBadge();
 }
 export async function open(){
@@ -283,6 +304,7 @@ export function decoratePrompt(text,context=runtimeContext){
  return prefix.slice(0,budget)+marker+request;
 }
 export function notificationsEnabled(){return state.settings?.notifications_in_app!==false}
+export function getExecutionSettings(){return {...state.execution}}
 export async function bindJob(jobId,context=runtimeContext){
  if(!jobId||!user())return false;
  const r=await ctx.client.rpc('nexus_job_bind_context',{
