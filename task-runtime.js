@@ -17,41 +17,30 @@ function statusLabel(s){
   return ({queued:'Queued',claimed:'Worker assigned',running:'Running',qa:'Quality check',completed:'Completed',failed:'Failed',cancelled:'Cancelled'})[s]||String(s||'Task');
 }
 function stepState(key,status){
-  if(status==='completed')return 'done';
-  if(['failed','cancelled'].includes(status)){
-    if(key==='understand')return 'done';
-    if(key==='execute')return 'error';
-    return 'pending';
+  const active=['claimed','running'].includes(status);
+  if(key==='created')return 'done';
+  if(key==='execute'){
+    if(status==='completed'||status==='qa')return 'done';
+    if(['failed','cancelled'].includes(status))return 'error';
+    return active?'active':'pending';
   }
-  if(status==='qa'){
-    if(['understand','execute'].includes(key))return 'done';
-    if(key==='quality')return 'active';
-    return 'pending';
-  }
-  if(status==='running'){
-    if(key==='understand')return 'done';
-    if(key==='execute')return 'active';
-    return 'pending';
-  }
-  if(['queued','claimed'].includes(status)){
-    if(key==='understand')return 'active';
-    return 'pending';
-  }
+  if(key==='quality')return status==='qa'?'active':status==='completed'?'done':'pending';
+  if(key==='deliver')return status==='completed'?'done':'pending';
   return 'pending';
 }
-function defaultPlan(job){
-  const mode=job?.execution_metadata?.execution_mode||(/code/.test(job?.kind||'')?'code':'task');
-  return [
-    {key:'understand',title:'Understand request'},
-    {key:'execute',title:mode==='code'?'Implement / analyse code':mode==='work'?'Execute multi-step work':mode==='agent'?'Execute agent task':'Process task'},
-    {key:'quality',title:'Quality check'},
-    {key:'deliver',title:'Deliver result'}
-  ];
-}
+// Show only real job phases. Do not claim that an agent performed a QA stage
+// or multi-step plan unless the event stream confirms it actually happened.
 function derivePlan(payload){
-  const event=(payload.events||[]).find(e=>e.event_type==='plan_created');
-  const raw=event?.metadata?.steps;
-  return Array.isArray(raw)&&raw.length?raw:defaultPlan(payload.job);
+  const job=payload.job||{};
+  const events=payload.events||[];
+  const qaOccurred=job.status==='qa'||events.some(e=>e.event_type==='task_qa');
+  const stages=[
+    {key:'created',title:'Task accepted'},
+    {key:'execute',title:'Worker execution'}
+  ];
+  if(qaOccurred)stages.push({key:'quality',title:'Quality check'});
+  stages.push({key:'deliver',title:'Result delivered'});
+  return stages;
 }
 function renderPlan(payload){
   const box=el('taskRuntimePlan');box.innerHTML='';
@@ -61,7 +50,7 @@ function renderPlan(payload){
     const row=document.createElement('div');row.className='runtime-step '+state;
     const dot=document.createElement('span');dot.className='runtime-step-dot';dot.textContent=state==='done'?'✓':state==='error'?'!':String(i+1);
     const copy=document.createElement('div');const strong=document.createElement('strong');strong.textContent=s.title||s.key;
-    const small=document.createElement('small');small.textContent=state==='done'?'Done':state==='active'?'In progress':state==='error'?'Stopped':'Pending';
+    const small=document.createElement('small');small.textContent=state==='done'?'Confirmed':state==='active'?'Running':state==='error'?'Stopped':'Pending';
     copy.append(strong,small);row.append(dot,copy);box.appendChild(row);
   });
 }
@@ -88,11 +77,14 @@ function render(payload){
   el('taskRuntimeTitle').textContent=(job.execution_metadata?.execution_mode?String(job.execution_metadata.execution_mode).toUpperCase():'NEXUS')+' TASK · '+String(job.id||'').slice(0,8);
   const badge=el('taskRuntimeStatus');badge.textContent=statusLabel(job.status);badge.className='runtime-status '+String(job.status||'');
   el('taskRuntimeRequest').textContent=cleanSummary(job.input_summary)||'NEXUS task';
-  const cost=Number(job.charged_credits||job.estimated_credits||0);
+  const charged=Number(job.charged_credits??0);
+  const billing=job.status==='failed'||job.status==='cancelled'
+    ? (charged===0?'0 credits retained':'Credit reconciliation pending')
+    : (charged===0?'0 credits charged':charged+' credits '+(job.status==='completed'?'used':'reserved'));
   el('taskRuntimeMeta').textContent=[
     job.level?String(job.level).toUpperCase():null,
     job.worker_id?'Worker '+job.worker_id:null,
-    cost?cost+' credits':null
+    billing
   ].filter(Boolean).join(' · ');
   renderPlan(payload);renderEvents(payload);
   const result=el('taskRuntimeResult');
@@ -109,6 +101,7 @@ async function load(jobId=currentJobId){
   const r=await ctx.client.rpc('nexus_task_timeline',{p_job_id:jobId});
   if(r.error)throw r.error;
   const payload=scalar(r.data)||{};
+  if(String(jobId)!==String(currentJobId))return null;
   render(payload);
   const status=payload.job?.status;
   if(activeStatuses.has(status))startPolling();else stopPolling();
