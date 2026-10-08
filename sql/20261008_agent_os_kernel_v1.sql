@@ -151,6 +151,42 @@ CREATE INDEX IF NOT EXISTS nexus_jobs_agent_created_idx
   WHERE agent_id IS NOT NULL;
 
 
+CREATE OR REPLACE FUNCTION public.nexus_validate_agent_os_owner_refs()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public','pg_temp'
+AS $function$
+BEGIN
+  IF NEW.project_id IS NOT NULL AND NOT EXISTS(
+    SELECT 1 FROM public.nexus_projects p
+    WHERE p.id=NEW.project_id AND p.user_id=NEW.user_id AND p.archived_at IS NULL
+  ) THEN
+    RAISE EXCEPTION 'project_not_owned';
+  END IF;
+
+  IF NEW.agent_id IS NOT NULL AND NOT EXISTS(
+    SELECT 1 FROM public.nexus_agents a
+    WHERE a.id=NEW.agent_id AND a.user_id=NEW.user_id AND a.archived_at IS NULL
+  ) THEN
+    RAISE EXCEPTION 'agent_not_owned';
+  END IF;
+
+  RETURN NEW;
+END
+$function$;
+
+DROP TRIGGER IF EXISTS nexus_conversations_agent_os_owner_trg ON public.nexus_conversations;
+CREATE TRIGGER nexus_conversations_agent_os_owner_trg
+BEFORE INSERT OR UPDATE OF user_id,project_id,agent_id ON public.nexus_conversations
+FOR EACH ROW EXECUTE FUNCTION public.nexus_validate_agent_os_owner_refs();
+
+DROP TRIGGER IF EXISTS nexus_jobs_agent_os_owner_trg ON public.nexus_jobs;
+CREATE TRIGGER nexus_jobs_agent_os_owner_trg
+BEFORE INSERT OR UPDATE OF user_id,project_id,agent_id ON public.nexus_jobs
+FOR EACH ROW EXECUTE FUNCTION public.nexus_validate_agent_os_owner_refs();
+
+
 CREATE OR REPLACE FUNCTION public.nexus_workspace_bootstrap()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -303,6 +339,9 @@ BEGIN
   UPDATE public.nexus_projects SET archived_at=now(),updated_at=now()
   WHERE id=p_id AND user_id=v_user AND archived_at IS NULL;
   IF FOUND THEN
+    UPDATE public.nexus_agents
+      SET project_id=NULL,updated_at=now()
+      WHERE user_id=v_user AND project_id=p_id AND archived_at IS NULL;
     UPDATE public.nexus_user_settings
       SET default_project_id=NULL,updated_at=now()
       WHERE user_id=v_user AND default_project_id=p_id;
