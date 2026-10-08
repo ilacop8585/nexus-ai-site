@@ -3,6 +3,7 @@ let state={settings:{},execution:{default_mode:'auto',agent_effort:'smart',work_
 let runtimeContext={project_id:null,project_name:null,project_default_level:'free',agent_id:null,agent_name:null,routing_profile:'balanced',autonomy_level:'supervised',approval_policy:'risk_based',language:'it',timezone:'UTC',notifications_in_app:true,skills:[],prompt_prefix:''};
 let defaultContext={...runtimeContext};
 let conversationOverride=false;
+let lastContextRefresh=0;
 let activeTab='defaults';
 let editingProject=null,editingAgent=null,editingSkill=null;
 
@@ -80,6 +81,7 @@ async function refreshContext(){
    prompt_prefix:String(data.prompt_prefix||'')
  };
  if(!conversationOverride)runtimeContext={...defaultContext};
+ lastContextRefresh=Date.now();
  updateContextPill();
  return runtimeContext;
 }
@@ -267,7 +269,7 @@ export async function applySession(){
  if(user()){try{await load()}catch(e){console.warn('Agent OS unavailable',e);showNotice('Agent OS non disponibile: '+(e?.message||String(e)),true)}}
 }
 export function reset(){
- state={settings:{},execution:{default_mode:'auto',agent_effort:'smart',work_effort:'smart',code_effort:'smart',auto_escalate:true,response_style:'balanced'},projects:[],agents:[],skills:[]};runtimeContext={project_id:null,project_name:null,project_default_level:'free',agent_id:null,agent_name:null,routing_profile:'balanced',autonomy_level:'supervised',approval_policy:'risk_based',language:'it',timezone:'UTC',notifications_in_app:true,skills:[],prompt_prefix:''};defaultContext={...runtimeContext};conversationOverride=false;
+ state={settings:{},execution:{default_mode:'auto',agent_effort:'smart',work_effort:'smart',code_effort:'smart',auto_escalate:true,response_style:'balanced'},projects:[],agents:[],skills:[]};runtimeContext={project_id:null,project_name:null,project_default_level:'free',agent_id:null,agent_name:null,routing_profile:'balanced',autonomy_level:'supervised',approval_policy:'risk_based',language:'it',timezone:'UTC',notifications_in_app:true,skills:[],prompt_prefix:''};defaultContext={...runtimeContext};conversationOverride=false;lastContextRefresh=0;
  editingProject=editingAgent=editingSkill=null;const b=el('agentOsBtn');if(b)b.hidden=true;updateBadge();
 }
 export async function open(){
@@ -280,7 +282,14 @@ export async function openSection(tab='defaults'){
  el('agentOsModal').classList.add('show');setTab(activeTab);await load();
 }
 export function close(){el('agentOsModal')?.classList.remove('show')}
-export async function getContext(){if(user()&&!runtimeContext?.project_id&&!runtimeContext?.agent_id&&!runtimeContext?.prompt_prefix){try{await refreshContext()}catch{}}return runtimeContext}
+export async function getContext(){
+ // A valid default context can have zero projects, agents and skills.
+ // Do not call Neon on every message just because those fields are empty.
+ if(user()&&(!lastContextRefresh||Date.now()-lastContextRefresh>120000)){
+   try{await refreshContext()}catch(e){console.warn('Could not refresh Agent OS context',e)}
+ }
+ return runtimeContext;
+}
 export async function useConversationContext(projectId,agentId){
  if(!user())return runtimeContext;
  if(!projectId&&!agentId){conversationOverride=false;runtimeContext={...defaultContext};updateContextPill();renderDefaults();return runtimeContext}
