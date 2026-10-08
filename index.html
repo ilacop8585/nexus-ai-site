@@ -738,6 +738,7 @@ ProjectWorkspace.init({
  requestSignIn:(notice)=>{setAuthNotice(notice);openAuth()},
  openChat:(id,lev)=>loadConversation(id,lev),
  openTask:(id)=>TaskRuntime.open(id),
+ closeTask:()=>TaskRuntime.close(),
  openLibrary:()=>openLibrary(),
  openProjectSettings:()=>AgentOS.openSection('projects'),
  startProjectChat:async(projectId)=>{resetChat();const context=await AgentOS.useConversationContext(projectId,null);setLevel(context?.project_default_level||'free');promptEl.focus()}
