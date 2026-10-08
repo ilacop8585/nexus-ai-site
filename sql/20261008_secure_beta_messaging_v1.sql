@@ -439,3 +439,112 @@ BEGIN
   ORDER BY w.created_at,w.id;
 END
 $function$;
+
+
+CREATE OR REPLACE FUNCTION public.nexus_secure_list_member_devices(p_room_id uuid)
+RETURNS TABLE(
+  device_id uuid,
+  user_id uuid,
+  device_label text,
+  identity_public_key text,
+  identity_fingerprint text,
+  created_at timestamptz
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public','pg_temp'
+AS $function$
+DECLARE v_user uuid;
+BEGIN
+  v_user:=(auth.user_id())::uuid;
+  IF v_user IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
+  IF NOT public.nexus_secure_has_room_access(p_room_id,v_user) THEN RAISE EXCEPTION 'room_access_denied'; END IF;
+
+  RETURN QUERY
+  SELECT d.id,d.user_id,d.device_label,d.identity_public_key,d.identity_fingerprint,d.created_at
+  FROM public.nexus_secure_devices d
+  JOIN public.nexus_secure_room_members m ON m.user_id=d.user_id
+  WHERE m.room_id=p_room_id AND m.left_at IS NULL AND d.revoked_at IS NULL
+  ORDER BY d.user_id,d.created_at,d.id;
+END
+$function$;
+
+CREATE OR REPLACE FUNCTION public.nexus_secure_take_key_package(
+  p_room_id uuid,
+  p_device_id uuid
+)
+RETURNS TABLE(
+  key_package_id uuid,
+  key_package_ref text,
+  key_package text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public','pg_temp'
+AS $function$
+DECLARE v_user uuid; v_target_user uuid; v_id uuid; v_ref text; v_package text;
+BEGIN
+  v_user:=(auth.user_id())::uuid;
+  IF v_user IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
+  IF NOT public.nexus_secure_has_room_access(p_room_id,v_user) THEN RAISE EXCEPTION 'room_access_denied'; END IF;
+
+  SELECT d.user_id INTO v_target_user
+  FROM public.nexus_secure_devices d
+  WHERE d.id=p_device_id AND d.revoked_at IS NULL;
+  IF v_target_user IS NULL OR NOT public.nexus_secure_has_room_access(p_room_id,v_target_user)
+    THEN RAISE EXCEPTION 'target_device_not_in_room'; END IF;
+
+  SELECT k.id,k.key_package_ref,k.key_package
+    INTO v_id,v_ref,v_package
+  FROM public.nexus_secure_key_packages k
+  WHERE k.device_id=p_device_id AND k.consumed_at IS NULL
+  ORDER BY k.created_at,k.id
+  FOR UPDATE SKIP LOCKED
+  LIMIT 1;
+
+  IF v_id IS NULL THEN RAISE EXCEPTION 'no_key_package_available'; END IF;
+
+  UPDATE public.nexus_secure_key_packages SET consumed_at=now() WHERE id=v_id;
+  RETURN QUERY SELECT v_id,v_ref,v_package;
+END
+$function$;
+
+CREATE OR REPLACE FUNCTION public.nexus_secure_mark_welcome_consumed(p_welcome_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public','pg_temp'
+AS $function$
+DECLARE v_user uuid;
+BEGIN
+  v_user:=(auth.user_id())::uuid;
+  IF v_user IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
+
+  UPDATE public.nexus_secure_welcomes w
+     SET consumed_at=coalesce(w.consumed_at,now())
+   WHERE w.id=p_welcome_id
+     AND EXISTS(
+       SELECT 1 FROM public.nexus_secure_devices d
+       WHERE d.id=w.recipient_device_id AND d.user_id=v_user AND d.revoked_at IS NULL
+     );
+  RETURN FOUND;
+END
+$function$;
+
+CREATE OR REPLACE FUNCTION public.nexus_secure_revoke_device(p_device_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public','pg_temp'
+AS $function$
+DECLARE v_user uuid;
+BEGIN
+  v_user:=(auth.user_id())::uuid;
+  IF v_user IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
+
+  UPDATE public.nexus_secure_devices
+     SET revoked_at=coalesce(revoked_at,now()),last_seen_at=now()
+   WHERE id=p_device_id AND user_id=v_user;
+  RETURN FOUND;
+END
+$function$;
