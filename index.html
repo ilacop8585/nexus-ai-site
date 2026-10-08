@@ -153,6 +153,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 <main class="main">
   <header class="top">
     <div class="auto-mode" title="NEXUS automatically routes each request to the safest available path"><i></i><span>NEXUS Auto</span></div>
+    <span class="compute-pill internal-status" id="agentRuntimeTop" hidden><i></i><span>Default NEXUS</span></span>
     <div class="account">
       <span class="compute-pill internal-status" id="computeStatus" aria-hidden="true"><i></i><span>Checking…</span></span>
       <button class="mobile-only" id="mobileChatsBtn" type="button">Chats</button>
@@ -577,6 +578,11 @@ let selectedFiles=[], level='free', currentUser=null, currentConversationId=null
 const betaJobByConversation=new Map();
 NexusPrivate.init({client,getUser:()=>currentUser,getAccess:()=>currentAccess});
 AgentOS.init({client,getUser:()=>currentUser,openPlugins});
+window.addEventListener('nexus-agentos-settings',e=>{
+ if(currentAccess?.staff_role!=='owner')return;
+ if(e.detail?.notifications_in_app===false){stopOwnerNotificationPolling();updateNotificationBadge(0)}
+ else startOwnerNotificationPolling();
+});
 const MAX_FILE_BYTES=250*1024*1024, MAX_FILES_PER_JOB=5, LAST_CHAT_KEY='nexus_last_conversation_id';
 const ROUTER_URL='https://nexus-ai-router.ilario-coppola.workers.dev/chat';
 const FILES_URL='https://br-jolly-scene-b2wyu6gt-nexusfiles.compute.c-6.eu-central-1.aws.neon.tech/';
@@ -645,13 +651,15 @@ async function callNexus(payload){
   }finally{clearTimeout(timer)}
 }
 async function callPcChatFallback(conversationId,message,history=[],agentContext=null){
-  const context=(history||[]).slice(-8).map(m=>(m.role==='assistant'?'ASSISTENTE':'UTENTE')+': '+String(m.content||'').slice(0,1200)).join('\n');
-  const prompt=[
+  const request=String(message||'').slice(0,8000);
+  const context=(history||[]).slice(-6).map(m=>(m.role==='assistant'?'ASSISTENTE':'UTENTE')+': '+String(m.content||'').slice(0,850)).join('\n');
+  const head=[
     'Sei NEXUS AI. Rispondi nella stessa lingua dell utente; se scrive in italiano, usa italiano naturale.',
     'Dai una risposta completa e concreta. Non inventare azioni non eseguite.',
-    context?'CONTESTO RECENTE:\n'+context:'',
-    'RICHIESTA UTENTE:\n'+String(message||'')
-  ].filter(Boolean).join('\n\n').slice(0,11900);
+    context?'CONTESTO RECENTE:\n'+context:''
+  ].filter(Boolean).join('\n\n');
+  const marker='\n\nRICHIESTA UTENTE:\n';
+  const prompt=head.slice(0,Math.max(0,11900-request.length-marker.length))+marker+request;
   const created=await client.rpc('nexus_create_chat_local_job',{
     p_conversation_id:conversationId,
     p_prompt:prompt
@@ -748,7 +756,7 @@ async function generateSocialCopy(){
     notice.textContent='Generazione IA temporaneamente non disponibile. Puoi comunque scrivere il post e condividerlo subito.';
   }finally{btn.disabled=false;btn.textContent='Genera con NEXUS AI'}
 }
-function setLevel(){level='free';document.getElementById('levelHint').textContent='Chat included · jobs use credits · up to 250 MB each · 5 files per job'}
+function setLevel(next='free'){level=['free','smart','deep'].includes(next)?next:'free';document.getElementById('levelHint').textContent='Chat '+level+' · jobs use credits · up to 250 MB each · 5 files per job'}
 document.getElementById('attachBtn').onclick=()=>{
   if(!currentUser){
     sessionStorage.setItem('nexus_pending_attach','1');
@@ -923,10 +931,12 @@ async function ensureConversation(firstText,requestGeneration=chatGeneration,age
   if(!currentUser) return null;
   const title=(firstText||'New chat').replace(/\s+/g,' ').slice(0,72) || 'New chat';
   const context=agentContext||await AgentOS.getContext();
-  const {data,error}=await client.from('nexus_conversations').insert({title,level,project_id:context?.project_id||null,agent_id:context?.agent_id||null}).select('id').single();
+  const conversationLevel=context?.project_default_level||level;
+  const {data,error}=await client.from('nexus_conversations').insert({title,level:conversationLevel,project_id:context?.project_id||null,agent_id:context?.agent_id||null}).select('id').single();
   if(error) throw error;
   const createdId=data.id;
-  allConversations=[{id:createdId,title,level,project_id:context?.project_id||null,agent_id:context?.agent_id||null,updated_at:new Date().toISOString()},...allConversations.filter(x=>x.id!==createdId)];
+  level=conversationLevel;
+  allConversations=[{id:createdId,title,level:conversationLevel,project_id:context?.project_id||null,agent_id:context?.agent_id||null,updated_at:new Date().toISOString()},...allConversations.filter(x=>x.id!==createdId)];
   renderHistory(allConversations);
   if(requestGeneration===chatGeneration){
     currentConversationId=createdId;
@@ -949,6 +959,7 @@ document.getElementById('sendBtn').onclick=async()=>{
 
  const sendGeneration=chatGeneration;
  const agentContext=await AgentOS.getContext();
+ const effectiveLevel=(agentContext?.routing_profile==='max'&&currentAccess?.unlimited)?'deep':(agentContext?.project_default_level||level);
  const runtimeRequest=AgentOS.decoratePrompt(q||('Process '+selectedFiles.map(f=>f.name).join(', ')),agentContext).slice(0,11900);
  let requestConversationId=null;
  intro.style.display='none';messages.classList.add('has');
@@ -975,7 +986,7 @@ document.getElementById('sendBtn').onclick=async()=>{
    const cid=await ensureConversation(q||userTurnText,sendGeneration,agentContext);
    requestConversationId=cid;
    if(userTurnText&&!retryingSame){
-     const {error}=await client.from('nexus_messages').insert({conversation_id:cid,role:'user',content:userTurnText,metadata:{level,attachment_count:selectedFiles.length,project_id:agentContext?.project_id||null,agent_id:agentContext?.agent_id||null}});
+     const {error}=await client.from('nexus_messages').insert({conversation_id:cid,role:'user',content:userTurnText,metadata:{level:effectiveLevel,attachment_count:selectedFiles.length,project_id:agentContext?.project_id||null,agent_id:agentContext?.agent_id||null}});
      if(error) throw error;
    }
 
@@ -998,7 +1009,7 @@ document.getElementById('sendBtn').onclick=async()=>{
      const job=await client.rpc('nexus_create_job',{
        p_conversation_id:cid,
        p_kind:jobKind,
-       p_level:level,
+       p_level:effectiveLevel,
        p_attachment_ids:uploaded.map(x=>x.attachmentId),
        p_summary:runtimeRequest
      });
@@ -1033,7 +1044,8 @@ document.getElementById('sendBtn').onclick=async()=>{
      sendSucceeded=true;retryConversationId=null;retryPrompt='';
    } else {
      const pcOnline=computeCapabilities.has('local-chat');
-     const preferPc=!!currentAccess?.unlimited&&pcOnline;
+     const routeProfile=agentContext?.routing_profile||'local_first';
+     const preferPc=pcOnline&&(routeProfile==='local_first'||(routeProfile==='balanced'&&!!currentAccess?.unlimited));
      let data;
      if(preferPc){
        if(sendGeneration===chatGeneration&&currentConversationId===cid)think.textContent=UI_IT?'NEXUS sta usando la flotta IA del PC…':'NEXUS is using the PC AI fleet…';
@@ -1042,11 +1054,11 @@ document.getElementById('sendBtn').onclick=async()=>{
        }catch(pcError){
          console.warn('NEXUS PC route unavailable, falling back to cloud',pcError?.message||String(pcError));
          if(sendGeneration===chatGeneration&&currentConversationId===cid)think.textContent=UI_IT?'NEXUS sta provando il cloud…':'NEXUS is trying cloud…';
-         data=await callNexus({message:runtimeRequest,level,history:historyForRouter});
+         data=await callNexus({message:runtimeRequest,level:effectiveLevel,history:historyForRouter});
        }
      }else{
        try{
-         data=await callNexus({message:runtimeRequest,level,history:historyForRouter});
+         data=await callNexus({message:runtimeRequest,level:effectiveLevel,history:historyForRouter});
        }catch(cloudError){
          if(!pcOnline)throw cloudError;
          if(sendGeneration===chatGeneration&&currentConversationId===cid)think.textContent=UI_IT?'Cloud occupato: passo alla flotta IA del PC…':'Cloud busy: switching to the PC AI fleet…';
@@ -1471,7 +1483,7 @@ function stopOwnerNotificationPolling(){
  clearInterval(notificationPoll);notificationPoll=null;notificationPollingReady=false;
 }
 function startOwnerNotificationPolling(){
- if(currentAccess?.staff_role!=='owner'){stopOwnerNotificationPolling();return}
+ if(currentAccess?.staff_role!=='owner'||AgentOS.notificationsEnabled()===false){stopOwnerNotificationPolling();return}
  if(!notificationPoll)notificationPoll=setInterval(()=>refreshOwnerNotificationBadge(true),12000);
  refreshOwnerNotificationBadge(false);
 }
