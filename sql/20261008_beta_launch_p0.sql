@@ -197,8 +197,10 @@ $function$;
 REVOKE ALL ON TABLE public.nexus_user_execution_settings FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.nexus_execution_settings_get() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.nexus_execution_settings_save(text,text,text,text,boolean,text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.nexus_quote_text_task_credits(text,text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.nexus_create_text_task(uuid,text,text,text) FROM PUBLIC;
 
 GRANT EXECUTE ON FUNCTION public.nexus_execution_settings_get() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.nexus_execution_settings_save(text,text,text,text,boolean,text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.nexus_quote_text_task_credits(text,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.nexus_create_text_task(uuid,text,text,text) TO authenticated;
