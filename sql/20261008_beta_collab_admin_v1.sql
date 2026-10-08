@@ -43,7 +43,7 @@ BEGIN
   IF v_role IS DISTINCT FROM 'beta_tester' THEN RETURN NEW; END IF;
   INSERT INTO public.nexus_beta_observations(beta_user_id,conversation_id,source_message_id,metadata)
   VALUES(v_owner,NEW.conversation_id,NEW.id,jsonb_build_object('source','beta_workspace_chat','content_length',length(coalesce(NEW.content,'')),'has_message',length(trim(coalesce(NEW.content,'')))>0))
-  ON CONFLICT(source_message_id) DO NOTHING;
+  ON CONFLICT DO NOTHING;
   RETURN NEW;
 END
 $function$;
