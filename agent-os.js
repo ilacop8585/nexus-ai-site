@@ -1,6 +1,6 @@
 let ctx=null;
 let state={settings:{},projects:[],agents:[],skills:[]};
-let runtimeContext={project_id:null,project_name:null,project_default_level:'free',agent_id:null,agent_name:null,routing_profile:'local_first',autonomy_level:'supervised',approval_policy:'risk_based',language:'it',timezone:'UTC',notifications_in_app:true,skills:[],prompt_prefix:''};
+let runtimeContext={project_id:null,project_name:null,project_default_level:'free',agent_id:null,agent_name:null,routing_profile:'balanced',autonomy_level:'supervised',approval_policy:'risk_based',language:'it',timezone:'UTC',notifications_in_app:true,skills:[],prompt_prefix:''};
 let defaultContext={...runtimeContext};
 let conversationOverride=false;
 let activeTab='defaults';
@@ -65,7 +65,7 @@ async function refreshContext(){
    project_default_level:data.project_default_level||'free',
    agent_id:data.agent_id||null,
    agent_name:data.agent_name||null,
-   routing_profile:data.routing_profile||state.settings?.routing_profile||'local_first',
+   routing_profile:data.routing_profile||state.settings?.routing_profile||'balanced',
    autonomy_level:data.autonomy_level||state.settings?.autonomy_level||'supervised',
    approval_policy:data.approval_policy||state.settings?.approval_policy||'risk_based',
    language:data.language||state.settings?.language||'it',
@@ -246,7 +246,7 @@ export async function applySession(){
  if(user()){try{await load()}catch(e){console.warn('Agent OS unavailable',e);showNotice('Agent OS non disponibile: '+(e?.message||String(e)),true)}}
 }
 export function reset(){
- state={settings:{},projects:[],agents:[],skills:[]};runtimeContext={project_id:null,project_name:null,project_default_level:'free',agent_id:null,agent_name:null,routing_profile:'local_first',autonomy_level:'supervised',approval_policy:'risk_based',language:'it',timezone:'UTC',notifications_in_app:true,skills:[],prompt_prefix:''};defaultContext={...runtimeContext};conversationOverride=false;
+ state={settings:{},projects:[],agents:[],skills:[]};runtimeContext={project_id:null,project_name:null,project_default_level:'free',agent_id:null,agent_name:null,routing_profile:'balanced',autonomy_level:'supervised',approval_policy:'risk_based',language:'it',timezone:'UTC',notifications_in_app:true,skills:[],prompt_prefix:''};defaultContext={...runtimeContext};conversationOverride=false;
  editingProject=editingAgent=editingSkill=null;const b=el('agentOsBtn');if(b)b.hidden=true;updateBadge();
 }
 export async function open(){
