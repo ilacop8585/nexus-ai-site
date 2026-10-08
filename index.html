@@ -39,7 +39,7 @@
 .account{display:flex;gap:9px;align-items:center}.account button,.account a{border:1px solid var(--line);background:#0b1118;border-radius:10px;padding:8px 11px;color:var(--text);cursor:pointer}
 .stage{flex:1;display:flex;flex-direction:column;width:min(100%,980px);margin:auto;padding:34px 24px 130px}.intro{text-align:center;margin:auto 0}.ey{font:700 11px ui-monospace,monospace;letter-spacing:.14em;color:var(--accent);text-transform:uppercase}.intro h1{font-size:clamp(42px,6vw,74px);letter-spacing:-.055em;line-height:.96;margin:16px auto 18px;max-width:860px;background:linear-gradient(135deg,#ffffff 16%,#cadcff 54%,#8ff5d2);-webkit-background-clip:text;background-clip:text;color:transparent}.intro p{color:#b9c8d9;line-height:1.65;max-width:720px;margin:0 auto}
 .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:28px auto 0;max-width:850px}.quick button{border:1px solid #202d3d;background:linear-gradient(180deg,#0d141e,#091018);color:#d4e0ec;padding:14px;border-radius:14px;cursor:pointer;text-align:left;transition:.18s ease}.quick button:hover{transform:translateY(-2px);border-color:#3c536d;background:#101a27}
-.messages{display:none;flex-direction:column;gap:14px;margin-top:10px}.messages.has{display:flex}.msg{max-width:82%;padding:12px 14px;border-radius:14px;line-height:1.55;white-space:pre-wrap}.me{align-self:flex-end;background:#17372b;border:1px solid #275641}.ai{align-self:flex-start;background:#0d151f;border:1px solid #203047}.thinking{opacity:.8}.thinking::after{content:' ···';animation:blink 1.1s steps(3,end) infinite}@keyframes blink{0%,20%{opacity:.25}50%{opacity:1}100%{opacity:.25}}
+.messages{display:none;flex-direction:column;gap:14px;margin-top:10px}.messages.has{display:flex}.msg{max-width:82%;padding:12px 14px;border-radius:14px;line-height:1.55;white-space:pre-wrap}.me{align-self:flex-end;background:#17372b;border:1px solid #275641}.ai{align-self:flex-start;background:#0d151f;border:1px solid #203047}.ceo{align-self:flex-end;background:#241c3d;border:1px solid #7256b8}.msg-label{display:block;font-size:9px;line-height:1.2;letter-spacing:.12em;text-transform:uppercase;font-weight:900;opacity:.82;margin-bottom:5px}.ceo .msg-label{color:#d9caff}.thinking{opacity:.8}.thinking::after{content:' ···';animation:blink 1.1s steps(3,end) infinite}@keyframes blink{0%,20%{opacity:.25}50%{opacity:1}100%{opacity:.25}}
 .composer-wrap{position:fixed;left:270px;right:0;bottom:0;padding:16px 20px 22px;background:linear-gradient(180deg,transparent,#05070b 28%);z-index:20}.composer{width:min(100%,940px);margin:auto;border:1px solid #2a3a50;background:rgba(11,17,24,.96);border-radius:20px;padding:12px;box-shadow:0 24px 70px rgba(0,0,0,.38),0 0 0 1px rgba(124,245,195,.025);backdrop-filter:blur(18px)}
 .files{display:none;gap:8px;flex-wrap:wrap;margin-bottom:9px}.files.has{display:flex}.filechip{border:1px solid #2a3b4f;border-radius:10px;padding:7px 9px;color:#c0cedc;font-size:12px;background:#0f1722}
 textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:transparent;border:0;outline:0;color:var(--text);padding:6px 4px;font-size:16px}.compose-actions{display:flex;justify-content:space-between;align-items:center;gap:10px}.left-actions{display:flex;gap:8px;align-items:center}
@@ -161,6 +161,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 <div class="composer-wrap">
   <div class="composer">
     <div class="files" id="files"></div>
+    <div class="notice" id="betaWorkspaceNotice" hidden style="margin-bottom:9px">Workspace Beta monitorato da NEXUS AI e Owner per finalità QA. Le chat di lavoro Beta non sono NEXUS Private E2EE.</div>
     <textarea id="prompt" aria-label="NEXUS message" placeholder="Ask NEXUS or describe what you want done…" rows="2"></textarea>
     <div class="compose-actions">
       <div class="left-actions">
@@ -339,6 +340,10 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     </div>
     <div class="joblist" id="adminFeedback"><div class="small">Caricamento ticket…</div></div>
     <div id="adminBetaDetail" hidden></div>
+    <h3 style="margin-top:18px">Beta Workspace · conversazioni</h3>
+    <div class="notice">Area QA monitorata: qui l’Owner può leggere le chat Beta, vedere gli allegati collegati e intervenire nel thread con identità CEO esplicita.</div>
+    <div class="joblist" id="adminBetaConversations"><div class="small">Caricamento conversazioni beta…</div></div>
+    <div id="adminBetaConversationDetail" hidden></div>
     <div class="modal-actions">
       <button class="iconbtn" id="refreshAdmin" type="button">Refresh</button>
       <button class="iconbtn" id="closeAdmin" type="button">Close</button>
@@ -368,7 +373,7 @@ import { createClient } from 'https://esm.sh/@neondatabase/neon-js@0.7.0-beta';
 const client = createClient('https://ep-sparkling-forest-b2v7x4ux.c-6.eu-central-1.aws.neon.tech/neondb');
 
 const promptEl=document.getElementById('prompt'), filesEl=document.getElementById('files'), input=document.getElementById('fileInput'), messages=document.getElementById('messages'), intro=document.getElementById('intro');
-let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null, computeCapabilities=new Set(), allConversations=[], historyLimit=50, lastConversationBatchSize=0, retryConversationId=null, retryPrompt='', coreTools=[], pluginCatalog=[], pluginState=new Map(), pluginBusy=new Set(), pluginActionMessage='', showAllPlugins=false, pendingKeyPlugin=null, currentAccess=null, chatGeneration=0, betaMyTickets=[], betaCurrentTicketId=null, adminCurrentBetaTicketId=null, adminBetaTicketsCache=[];
+let selectedFiles=[], level='free', currentUser=null, currentConversationId=null, isSignUp=false, chatHistory=[], currentBalance=0, jobsPoll=null, computeCapabilities=new Set(), allConversations=[], historyLimit=50, lastConversationBatchSize=0, retryConversationId=null, retryPrompt='', coreTools=[], pluginCatalog=[], pluginState=new Map(), pluginBusy=new Set(), pluginActionMessage='', showAllPlugins=false, pendingKeyPlugin=null, currentAccess=null, chatGeneration=0, betaMyTickets=[], betaCurrentTicketId=null, adminCurrentBetaTicketId=null, adminBetaTicketsCache=[], adminBetaConversationsCache=[], adminCurrentBetaConversationId=null;
 const betaJobByConversation=new Map();
 const MAX_FILE_BYTES=250*1024*1024, MAX_FILES_PER_JOB=5, LAST_CHAT_KEY='nexus_last_conversation_id';
 const ROUTER_URL='https://nexus-ai-router.ilario-coppola.workers.dev/chat';
@@ -1094,11 +1099,12 @@ async function loadConversation(id,conversationLevel='free'){
  let lastUserMessage='';
  (data||[]).forEach(m=>{
    if(m?.metadata?.job_id)betaJobByConversation.set(id,String(m.metadata.job_id));
-   const cls=m.role==='user'?'me':'ai';
-   addMsg(m.content,cls);
+   const isCeo=m?.metadata?.actor_type==='ceo';
+   const cls=isCeo?'ceo':(m.role==='user'?'me':'ai');
+   addMsg(m.content,cls,isCeo?'CEO':'');
    if(m.role==='user'){
      lastUserMessage=m.content;
-     chatHistory.push({role:'user',content:m.content});
+     chatHistory.push({role:'user',content:isCeo?('[CEO] '+m.content):m.content});
    }else if(m.role==='assistant'&&!m.metadata?.retryable){
      chatHistory.push({role:'assistant',content:m.content});
    }
@@ -1193,6 +1199,7 @@ function applyAccessUI(){
  if(currentUser)document.getElementById('loginBtn').textContent=(a.display_name||currentUser.name||currentUser.email||'Account').slice(0,28);
  const identity=document.getElementById('betaIdentity');
  if(identity)identity.textContent=(a.display_name||currentUser?.name||'Tester')+(a.is_beta?' · BETA TESTER':'')+(a.unlimited?' · Unlimited access':'');
+ const monitor=document.getElementById('betaWorkspaceNotice');if(monitor)monitor.hidden=a.staff_role!=='beta_tester';
 }
 
 function betaStatusLabel(s){
@@ -1394,6 +1401,47 @@ async function openAdminBetaTicket(id){
  box.innerHTML='';box.append(body,actions,msg,internal,send,fix);
  document.getElementById('adminLinkFix').onclick=async()=>{const ref=document.getElementById('adminFixRef').value.trim();if(!ref)return;const x=await client.rpc('nexus_beta_admin_link_fix',{p_ticket_id:id,p_fix_type:document.getElementById('adminFixType').value,p_reference:ref,p_environment:document.getElementById('adminFixEnv').value||'production',p_metadata:{source:'admin_center'}});if(x.error)alert(x.error.message);else await openAdminBetaTicket(id)};
 }
+function renderAdminBetaConversations(rows){
+ const box=document.getElementById('adminBetaConversations');box.innerHTML='';
+ const list=rows||[];
+ if(!list.length){box.innerHTML='<div class="notice">Nessuna conversazione Beta disponibile.</div>';return}
+ list.forEach(x=>{
+   const row=document.createElement('div');row.className='jobrow beta-ticket-row';
+   const h=document.createElement('div');h.className='jobhead';
+   const t=document.createElement('div');const name=document.createElement('strong');name.textContent=x.title||'Chat Beta';
+   const who=document.createElement('div');who.className='small';who.textContent=x.beta_name||x.beta_email||'Beta tester';t.append(name,who);
+   const badge=document.createElement('span');badge.className='jobstatus';badge.textContent=(x.open_observation_count||0)+' QA';
+   h.append(t,badge);row.appendChild(h);
+   const meta=document.createElement('div');meta.className='jobmeta';meta.textContent=[(x.message_count||0)+' messaggi',(x.attachment_count||0)+' allegati',fmtDate(x.updated_at)].join(' · ');row.appendChild(meta);
+   if(x.last_message_preview){const p=document.createElement('div');p.className='jobsummary';p.textContent=x.last_message_preview;row.appendChild(p)}
+   row.onclick=()=>openAdminBetaConversation(x.conversation_id);box.appendChild(row);
+ });
+}
+async function openAdminBetaConversation(id){
+ adminCurrentBetaConversationId=id;
+ const list=document.getElementById('adminBetaConversations'),detail=document.getElementById('adminBetaConversationDetail');
+ detail.hidden=false;list.style.display='none';detail.innerHTML='<div class="small">Caricamento conversazione…</div>';
+ const r=await client.rpc('nexus_beta_admin_get_conversation',{p_conversation_id:id});
+ if(r.error){detail.innerHTML='<div class="notice">'+escapeHtml(String(r.error.message||r.error))+'</div>';return}
+ const d=r.data||{},conv=d.conversation||{},rows=d.messages||[],attachments=d.attachments||[],obs=d.observations||[];
+ detail.innerHTML='';
+ const back=document.createElement('button');back.className='iconbtn';back.type='button';back.textContent='← Conversazioni Beta';back.onclick=()=>{adminCurrentBetaConversationId=null;detail.hidden=true;detail.innerHTML='';list.style.display=''};
+ const head=document.createElement('div');head.className='beta-detail-head';head.style.marginTop='10px';
+ const title=document.createElement('div');title.innerHTML='<strong>'+escapeHtml(String(conv.title||'Chat Beta'))+'</strong><div class="small">'+escapeHtml(String(conv.beta_name||conv.beta_email||'Beta tester'))+'</div>';
+ const badge=document.createElement('span');badge.className='role-badge';badge.textContent='QA MONITORATO';head.append(title,badge);
+ const notice=document.createElement('div');notice.className='notice';notice.style.marginTop='10px';notice.textContent=conv.privacy_notice||'Workspace Beta monitorato da NEXUS AI e Owner per finalità QA.';
+ const thread=document.createElement('div');thread.className='beta-thread';
+ rows.forEach(m=>{const box=document.createElement('div');const actor=String(m.actor_type||'').toLowerCase();box.className='beta-message '+(actor==='ceo'?'admin':actor==='system'?'system':'');const mh=document.createElement('div');mh.className='beta-message-head';mh.innerHTML='<span>'+escapeHtml(String(m.visible_label||actor||m.role||''))+'</span><span>'+escapeHtml(fmtDate(m.created_at))+'</span>';const body=document.createElement('div');body.textContent=m.content||'';box.append(mh,body);thread.appendChild(box)});
+ const files=document.createElement('div');files.style.marginTop='12px';const fh=document.createElement('strong');fh.textContent='Allegati · '+attachments.length;files.appendChild(fh);
+ if(!attachments.length){const p=document.createElement('div');p.className='small';p.textContent='Nessun allegato collegato.';files.appendChild(p)}
+ attachments.forEach(a=>{const row=document.createElement('div');row.className='jobrow';const n=document.createElement('strong');n.textContent=a.filename||'File';const m=document.createElement('div');m.className='jobmeta';m.textContent=[a.mime_type,formatBytes(Number(a.size_bytes||0)),a.status,fmtDate(a.created_at)].filter(Boolean).join(' · ');row.append(n,m);files.appendChild(row)});
+ const qa=document.createElement('div');qa.style.marginTop='12px';qa.innerHTML='<strong>Osservazioni QA · '+obs.length+'</strong>';
+ obs.slice().reverse().forEach(o=>{const x=document.createElement('div');x.className='beta-event';x.textContent=[o.observation_type,o.status,o.summary].filter(Boolean).join(' · ');qa.appendChild(x)});
+ const ta=document.createElement('textarea');ta.className='beta-message-box';ta.placeholder='Scrivi nel thread come CEO…';ta.style.marginTop='12px';
+ const opts=document.createElement('label');opts.className='beta-internal-toggle';const ck=document.createElement('input');ck.type='checkbox';ck.checked=true;opts.append(ck,document.createTextNode(' Chiedi anche a NEXUS AI di rispondere nel thread'));
+ const send=document.createElement('button');send.className='iconbtn enable';send.type='button';send.textContent='Invia come CEO';send.onclick=async()=>{const v=ta.value.trim();if(!v)return;send.disabled=true;const x=await client.rpc('nexus_beta_admin_intervene',{p_conversation_id:id,p_content:v,p_request_ai:ck.checked});send.disabled=false;if(x.error){alert(x.error.message);return}ta.value='';await openAdminBetaConversation(id);setTimeout(()=>{if(adminCurrentBetaConversationId===id)openAdminBetaConversation(id)},2200)};
+ detail.append(back,head,notice,thread,files,qa,ta,opts,send);
+}
 function renderAdminBetaTickets(rows){
  const box=document.getElementById('adminFeedback'),filter=document.getElementById('adminBetaStatusFilter')?.value||'',list=(rows||[]).filter(x=>!filter||x.status===filter);
  box.innerHTML='';if(!list.length){box.innerHTML='<div class="notice">Nessun ticket per questo filtro.</div>';return}
@@ -1407,14 +1455,16 @@ function renderAdminBetaTickets(rows){
  });
 }
 async function loadAdmin(){
- const usersBox=document.getElementById('adminUsers'),feedbackBox=document.getElementById('adminFeedback'),summary=document.getElementById('adminSummary');
- usersBox.innerHTML='<div class="small">Loading users…</div>';feedbackBox.innerHTML='<div class="small">Loading Beta Live…</div>';
- const [users,tickets]=await Promise.all([client.rpc('nexus_admin_list_users'),client.rpc('nexus_beta_admin_list_tickets')]);
+ const usersBox=document.getElementById('adminUsers'),feedbackBox=document.getElementById('adminFeedback'),convBox=document.getElementById('adminBetaConversations'),summary=document.getElementById('adminSummary');
+ usersBox.innerHTML='<div class="small">Loading users…</div>';feedbackBox.innerHTML='<div class="small">Loading Beta Live…</div>';convBox.innerHTML='<div class="small">Caricamento conversazioni beta…</div>';
+ const [users,tickets,convos]=await Promise.all([client.rpc('nexus_admin_list_users'),client.rpc('nexus_beta_admin_list_tickets'),client.rpc('nexus_beta_admin_list_conversations',{p_limit:100})]);
  if(users.error){usersBox.innerHTML='<div class="notice">'+escapeHtml(String(users.error.message||users.error))+'</div>';return}
  usersBox.innerHTML='';(users.data||[]).forEach(u=>usersBox.appendChild(adminUserRow(u)));
  summary.textContent=(users.data||[]).length+' users · '+(users.data||[]).filter(x=>x.unlimited).length+' unlimited · '+(users.data||[]).filter(x=>x.staff_role==='beta_tester').length+' beta tester';
  if(tickets.error){feedbackBox.innerHTML='<div class="notice">'+escapeHtml(String(tickets.error.message||tickets.error))+'</div>';return}
  adminBetaTicketsCache=tickets.data||[];renderAdminBetaTickets(adminBetaTicketsCache);
+ if(convos.error){convBox.innerHTML='<div class="notice">Beta Workspace non disponibile: '+escapeHtml(String(convos.error.message||convos.error))+'</div>';return}
+ adminBetaConversationsCache=convos.data||[];renderAdminBetaConversations(adminBetaConversationsCache);
 }
 async function openBeta(){if(!(currentAccess?.is_beta||currentAccess?.is_admin))return;applyAccessUI();document.getElementById('betaModal').classList.add('show');setBetaPane('new');await loadMyBetaTickets()}
 async function openAdmin(){if(!currentAccess?.is_admin)return;document.getElementById('adminModal').classList.add('show');await loadAdmin()}
@@ -1900,7 +1950,7 @@ document.getElementById('refreshPlugins').onclick=loadPlugins;
 document.getElementById('closePlugins').onclick=()=>pluginsModal.classList.remove('show');
 function openAuth(){modal.classList.add('show');document.getElementById('authEmail').focus()}
 function setAuthNotice(t){document.getElementById('authNotice').textContent=t}
-function addMsg(t,c){const d=document.createElement('div');d.className='msg '+c;d.textContent=t;messages.appendChild(d);d.scrollIntoView({behavior:'smooth',block:'end'});return d}
+function addMsg(t,c,label=''){const d=document.createElement('div');d.className='msg '+c;if(label){const l=document.createElement('span');l.className='msg-label';l.textContent=label;d.appendChild(l);const body=document.createElement('span');body.textContent=t;d.appendChild(body)}else d.textContent=t;messages.appendChild(d);d.scrollIntoView({behavior:'smooth',block:'end'});return d}
 function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function formatBytes(n){if(n<1024)return n+' B';if(n<1048576)return (n/1024).toFixed(1)+' KB';return (n/1048576).toFixed(1)+' MB'}
 promptEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();document.getElementById('sendBtn').click()}});
