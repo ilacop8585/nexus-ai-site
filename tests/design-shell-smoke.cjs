@@ -28,6 +28,10 @@ const server=http.createServer((req,res)=>{
    await page.goto(url,{waitUntil:'networkidle2',timeout:35000});
    await page.waitForSelector('#mobileModeSelect',{timeout:8000});
    await page.evaluate(()=>{const m=document.querySelector('#betaWelcomeModal');if(m)m.classList.remove('show')});
+   if(process.env.NEXUS_SCREENSHOT_DIR){
+    fs.mkdirSync(process.env.NEXUS_SCREENSHOT_DIR,{recursive:true});
+    await page.screenshot({path:path.join(process.env.NEXUS_SCREENSHOT_DIR,'nexus-shell-'+width+'.png')});
+   }
    const initial=await page.evaluate(()=>{
     const box=sel=>{const e=document.querySelector(sel);if(!e)return null;const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {visible:r.width>0&&r.height>0&&s.display!=='none',x:r.x,right:r.right,height:r.height}};
     return{viewport:innerWidth,scrollWidth:document.documentElement.scrollWidth,brand:box('.mobile-brand'),menu:box('#mobileChatsBtn'),mode:box('#mobileModeSelect'),logo:!!document.querySelector('.brand img'),language:document.querySelector('#nexusLanguage')?.value};
