@@ -41,6 +41,17 @@ const server=http.createServer((req,res)=>{
     await page.evaluate(()=>document.getElementById('betaWelcomeModal')?.classList.remove('show'));
     await page.screenshot({path:path.join(process.env.NEXUS_SCREENSHOT_DIR,'aether-'+width+'.png')});
   }
+  const firstVisit=await page.evaluate(()=>{
+    const stage=document.querySelector('.stage').getBoundingClientRect();
+    const composer=document.querySelector('.composer-wrap').getBoundingClientRect();
+    const top=document.querySelector('.top').getBoundingClientRect();
+    const buttons=[...document.querySelectorAll('.top button')].filter(b=>getComputedStyle(b).display!=='none');
+    const overflowed=buttons.filter(b=>{let r=b.getBoundingClientRect();return r.right>innerWidth+1||r.left<0}).map(b=>b.id||b.textContent.trim());
+    return{stageBottom:stage.bottom,composerTop:composer.top,composerPosition:getComputedStyle(document.querySelector('.composer-wrap')).position,topBottom:top.bottom,overflowed};
+  });
+  assert.equal(firstVisit.composerPosition,'relative','first visit composer must not overlay landing at '+width);checks++;
+  assert.ok(firstVisit.composerTop>=firstVisit.stageBottom-2,'first visit compose overlaps content '+width+': '+JSON.stringify(firstVisit));checks++;
+  assert.deepEqual(firstVisit.overflowed,[],'top buttons clipped '+width);checks++;
   await page.evaluate(()=>document.getElementById('betaWelcomeModal')?.classList.remove('show'));
   await page.click('#aetherStartChat');
   assert.equal(await page.evaluate(()=>document.activeElement?.id),'prompt','CTA focus '+width);checks++;
