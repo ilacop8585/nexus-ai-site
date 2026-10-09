@@ -163,6 +163,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 .language-switch{display:inline-flex;align-items:center;gap:7px;margin-left:auto;flex:0 0 auto;color:#bfcfe0;font-size:10px;font-weight:800}.language-switch select{min-width:120px;max-width:145px;border:1px solid #40546b;border-radius:7px;padding:4px 7px;background:#111d29;color:#f4f7fa;font:700 11px system-ui;cursor:pointer;outline-offset:2px}.language-switch select:focus-visible{outline:2px solid #78f4bd}.beta-release-strip{justify-content:flex-start}.beta-release-strip>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.beta-release-strip>button{white-space:nowrap}@media(max-width:640px){.beta-release-strip{gap:5px;padding:0 8px}.beta-release-strip>span{display:none}.beta-release-strip>button{font-size:10px;padding:4px}.language-switch{gap:4px}.language-switch>span{display:none}.language-switch select{min-width:118px;padding:5px 5px;font-size:11px}}@media(max-width:360px){.beta-release-strip>strong{font-size:9px}.language-switch select{min-width:103px}}
 </style>
 <link rel="stylesheet" href="./nexus-design-v2.css">
+<link rel="stylesheet" href="./nexus-aether-v3.css">
 </head>
 <body>
 <div class="beta-release-strip" id="betaReleaseStrip"><strong>BETA · IN SVILUPPO</strong><span>NEXUS Word è online: stiamo ampliando agenti, connettori e applicazioni.</span><button id="openBetaWelcome" type="button">Cosa significa</button><label class="language-switch" for="nexusLanguage"><span>Lingua</span><select id="nexusLanguage" aria-label="Seleziona la lingua dell'interfaccia"><option value="it">🇮🇹 Italiano</option><option value="en">🇬🇧 English</option></select></label></div>
@@ -246,16 +247,42 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
   </header>
   <section class="stage">
     <div class="intro" id="intro">
-      <div class="ey">NEXUS WORD · BETA PUBBLICA</div>
-      <h1>Chat immediata. Affida a NEXUS i lavori complessi.</h1>
-      <p>Le conversazioni semplici sono rapide e incluse. Ricerche, programmazione, file e lavori complessi diventano attività tracciabili, con costi in crediti espliciti.</p>
-      <div class="launch-status"><span class="live">● Chat attiva</span><span class="live">● Progetti e agenti attivi</span><span class="live">● Area Beta attiva</span><span class="beta">Connettori in ampliamento</span><span class="beta">App native in sviluppo</span></div>
+      <div class="aether-hero">
+        <div class="aether-story">
+          <span class="aether-eyebrow">NEXUS WORD · BETA PUBBLICA</span>
+          <h1>Le tue idee.<span class="aether-gradient">Un universo di intelligenza.</span></h1>
+          <p>Dalla prima domanda ai progetti più ambiziosi. Conversa con NEXUS, lavora con gli agenti IA e organizza le attività in un unico spazio, progettato per crescere con te.</p>
+          <div class="aether-actions">
+            <button type="button" class="aether-action primary" id="aetherStartChat">Inizia a creare <span aria-hidden="true">↗</span></button>
+            <button type="button" class="aether-action" id="aetherExploreProjects">Esplora i progetti <span aria-hidden="true">→</span></button>
+          </div>
+          <div class="aether-pledges"><span>Chat testuale inclusa</span><span>Preventivo crediti prima dei lavori</span><span>Italiano e inglese</span></div>
+        </div>
+        <div class="aether-showcase">
+          <div class="aether-orbit" aria-hidden="true"></div>
+          <div class="aether-window" aria-label="Anteprima illustrativa del workspace NEXUS">
+            <div class="aether-window-top"><span class="aether-window-dots" aria-hidden="true"><i></i><i></i><i></i></span><strong>NEXUS WORD</strong><em>● BETA</em></div>
+            <div class="aether-window-body">
+              <div class="aether-window-nav" aria-hidden="true"><b>WORKSPACE</b><span class="selected">◉ Chat</span><span>◇ Agent</span><span>▣ Progetti</span><span>◷ Attività</span><span>⌘ Connettori</span></div>
+              <div class="aether-window-dialog">
+                <div class="aether-bubble user">Puoi aiutarmi a sviluppare un progetto?</div>
+                <div class="aether-bubble"><b>NEXUS</b>Possiamo partire dalla tua idea, organizzare i materiali e preparare il lavoro da svolgere.</div>
+                <div class="aether-chips"><span>Chat</span><span>Agent</span><span>Progetti</span><span>Attività</span></div>
+                <div class="aether-window-input"><span>Scrivi il tuo prossimo progetto…</span><i aria-hidden="true">↗</i></div>
+              </div>
+            </div>
+          </div>
+          <span class="aether-demo-label">Anteprima illustrativa · non una chat attiva</span>
+        </div>
+      </div>
+      <div class="aether-section-heading"><small>CREA · ESPLORA · COSTRUISCI</small><h2>Molto più di una chat. Un modo nuovo di creare.</h2></div>
       <div class="quick">
         <button data-mode="work" data-prompt="Analyse this document and tell me the important points." data-prompt-it="Analizza questo documento e dimmi i punti più importanti.">📄 Analizza un documento</button>
         <button data-mode="work" data-prompt="I want to work with an image. I will attach it and describe what I need." data-prompt-it="Voglio lavorare su un'immagine. La allegherò e spiegherò cosa mi serve.">🖼️ Lavora su un'immagine</button>
         <button data-mode="code" data-prompt="I need help modifying a software project or source file." data-prompt-it="Ho bisogno di modificare un progetto software o un file di codice.">💻 Lavora sul codice</button>
         <button data-mode="agent" data-prompt="I want to hand off a longer task to NEXUS." data-prompt-it="Voglio affidare a NEXUS un'attività più complessa.">⚙️ Avvia un'attività Agent</button>
       </div>
+      <div class="aether-footer-note"><span>Chat disponibile</span><span>Agent, Work e Code con preventivo crediti</span><span>Connettori e app native in evoluzione</span></div>
     </div>
     <div class="messages" id="messages"></div>
   </section>
@@ -2702,4 +2729,5 @@ async function resumePendingIntents(){
 loadSession().then(async()=>{await loadPlugins();await resumePendingIntents();await pollCreditTopup()});
 </script>
 <script type="module" src="./nexus-design-v2.js"></script>
+<script defer src="./nexus-aether-v3.js"></script>
 </body></html>
