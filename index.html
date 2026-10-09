@@ -1,18 +1,18 @@
 <!doctype html>
-<html lang="en">
+<html lang="it">
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://esm.sh; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; img-src 'self' data: blob: https:; connect-src 'self' https:; frame-src 'self' https:; form-action 'self' https:; upgrade-insecure-requests">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NEXUS Word Beta — AI Chat, Agents & Task Workspace</title>
-<meta name="description" content="NEXUS Word is a public-beta AI workspace: fast included chat plus credit-based Agent, Work, Code and file tasks with persistent Projects and job tracking.">
+<title>NEXUS Word Beta — Chat IA, agenti e progetti</title>
+<meta name="description" content="NEXUS Word è una piattaforma IA in beta pubblica: chat inclusa, agenti, programmazione, progetti e lavori con crediti dichiarati prima dell’esecuzione.">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <link rel="canonical" href="https://nexusword.it/">
-<meta property="og:type" content="website"><meta property="og:site_name" content="NEXUS Word"><meta property="og:title" content="NEXUS Word Beta — AI Chat, Agents & Task Workspace"><meta property="og:description" content="Public-beta AI workspace with fast chat and explicit credit-based Agent, Work, Code and file tasks."><meta property="og:url" content="https://nexusword.it/">
+<meta property="og:type" content="website"><meta property="og:site_name" content="NEXUS Word"><meta property="og:title" content="NEXUS Word Beta — Chat IA, agenti e progetti"><meta property="og:description" content="Piattaforma IA in beta pubblica con chat inclusa e attività Agent, Work, Code e file a crediti trasparenti."><meta property="og:url" content="https://nexusword.it/">
 <meta name="theme-color" content="#05070b">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%23080b12%27/%3E%3Cpath d=%27M17 47V17h8l14 19V17h8v30h-8L25 28v19z%27 fill=%27%2378f4bd%27/%3E%3C/svg%3E">
-<link rel="alternate" hreflang="en" href="https://nexusword.it/">
+<link rel="alternate" hreflang="it" href="https://nexusword.it/"><link rel="alternate" hreflang="en" href="https://nexusword.it/?lang=en">
 <link rel="alternate" hreflang="x-default" href="https://nexusword.it/">
 <script type="application/ld+json">
 {
@@ -160,59 +160,60 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
   .mode-switch button,.mode-switch button[data-nexus-mode="work"]{min-width:0;flex:1 1 0;padding:8px 5px;font-size:11px}
 }
 
+.language-switch{display:inline-flex;align-items:center;gap:7px;margin-left:auto;flex:0 0 auto;color:#bfcfe0;font-size:10px;font-weight:800}.language-switch select{min-width:120px;max-width:145px;border:1px solid #40546b;border-radius:7px;padding:4px 7px;background:#111d29;color:#f4f7fa;font:700 11px system-ui;cursor:pointer;outline-offset:2px}.language-switch select:focus-visible{outline:2px solid #78f4bd}.beta-release-strip{justify-content:flex-start}.beta-release-strip>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.beta-release-strip>button{white-space:nowrap}@media(max-width:640px){.beta-release-strip{gap:5px;padding:0 8px}.beta-release-strip>span{display:none}.beta-release-strip>button{font-size:10px;padding:4px}.language-switch{gap:4px}.language-switch>span{display:none}.language-switch select{min-width:118px;padding:5px 5px;font-size:11px}}@media(max-width:360px){.beta-release-strip>strong{font-size:9px}.language-switch select{min-width:103px}}
 </style>
 </head>
 <body>
-<div class="beta-release-strip" id="betaReleaseStrip"><strong>BETA · ACTIVE DEVELOPMENT</strong><span>NEXUS Word is live while we expand agents, connectors and apps.</span><button id="openBetaWelcome" type="button">What this means</button></div>
+<div class="beta-release-strip" id="betaReleaseStrip"><strong>BETA · IN SVILUPPO</strong><span>NEXUS Word è online: stiamo ampliando agenti, connettori e applicazioni.</span><button id="openBetaWelcome" type="button">Cosa significa</button><label class="language-switch" for="nexusLanguage"><span>Lingua</span><select id="nexusLanguage" aria-label="Seleziona la lingua dell'interfaccia"><option value="it">🇮🇹 Italiano</option><option value="en">🇬🇧 English</option></select></label></div>
 <div class="app">
 <aside class="side">
-  <div class="brand"><span class="mark">N</span><span class="brand-copy"><span>NEXUS WORD</span><small>PUBLIC BETA</small></span></div>
-  <button class="newchat" id="newChat">＋ New chat</button>
+  <div class="brand"><span class="mark">N</span><span class="brand-copy"><span>NEXUS WORD</span><small>BETA PUBBLICA</small></span></div>
+  <button class="newchat" id="newChat">＋ Nuova chat</button>
 
   <div class="navgroup">
-    <div class="navlabel">Work</div>
+    <div class="navlabel">Lavoro</div>
     <div class="snav">
-      <button class="navbtn" id="projectsBtn"><span>Projects</span><span class="small">WORKSPACE</span></button>
-      <button class="navbtn" id="jobsBtn"><span>Tasks & jobs</span><span class="small">0</span></button>
-      <button class="navbtn" id="libraryBtn"><span>Library</span><span class="small" id="libraryCount">Files</span></button>
+      <button class="navbtn" id="projectsBtn"><span>Progetti</span><span class="small">AREA DI LAVORO</span></button>
+      <button class="navbtn" id="jobsBtn"><span>Attività e lavori</span><span class="small">0</span></button>
+      <button class="navbtn" id="libraryBtn"><span>Libreria</span><span class="small" id="libraryCount">File</span></button>
     </div>
   </div>
 
   <div class="navgroup">
-    <div class="navlabel">Platform</div>
+    <div class="navlabel">Piattaforma</div>
     <div class="snav">
-      <button class="navbtn" id="agentOsBtn" hidden><span>Workspace & settings</span><span class="small" id="agentOsBadge">OS</span></button>
-      <button class="navbtn" id="pluginsBtn"><span>Connectors</span><span class="small" id="pluginCount">—</span></button>
+      <button class="navbtn" id="agentOsBtn" hidden><span>Area di lavoro e impostazioni</span><span class="small" id="agentOsBadge">OS</span></button>
+      <button class="navbtn" id="pluginsBtn"><span>Connettori</span><span class="small" id="pluginCount">—</span></button>
     </div>
   </div>
 
   <div class="navgroup" id="collaborationNav">
-    <div class="navlabel">Collaboration</div>
+    <div class="navlabel">Collaborazione</div>
     <div class="snav">
-      <button class="navbtn" id="socialBtn" hidden><span>Social Publisher</span><span class="small">OWNER</span></button>
-      <button class="navbtn" id="betaBtn" hidden><span>Beta Workspace</span><span class="small" id="betaNavBadge">LIVE</span></button>
+      <button class="navbtn" id="socialBtn" hidden><span>Pubblicazione social</span><span class="small">OWNER</span></button>
+      <button class="navbtn" id="betaBtn" hidden><span>Area Beta</span><span class="small" id="betaNavBadge">LIVE</span></button>
       <button class="navbtn" id="privateBtn" hidden><span>NEXUS Private</span><span class="small">MLS</span></button>
     </div>
   </div>
 
   <div class="navgroup" id="ownerNav">
-    <div class="navlabel">Owner</div>
+    <div class="navlabel">Titolare</div>
     <div class="snav">
-      <button class="navbtn" id="adminBtn" hidden><span>Admin Center</span><span class="small">OWNER</span></button>
+      <button class="navbtn" id="adminBtn" hidden><span>Centro amministrazione</span><span class="small">OWNER</span></button>
     </div>
   </div>
   <div class="historybox">
-    <div class="historytitle">Your chats</div>
+    <div class="historytitle">Le tue chat</div>
     <input class="historysearch" id="historySearch" type="search" placeholder="Search chats" autocomplete="off" aria-label="Search chats">
-    <div class="historylist" id="historyList"><div class="small">Sign in to load chats.</div></div>
-    <button class="navbtn historymore" id="loadMoreChats" type="button" hidden>Load more chats</button>
+    <div class="historylist" id="historyList"><div class="small">Accedi per caricare le chat.</div></div>
+    <button class="navbtn historymore" id="loadMoreChats" type="button" hidden>Carica altre chat</button>
   </div>
   <div class="credit">
-    <div class="small">Credits</div>
+    <div class="small">Crediti</div>
     <strong id="creditBalance">—</strong><span class="small" id="creditAllowance"> / —</span>
     <div class="creditbar"><i id="creditBar" style="width:0%"></i></div>
-    <div class="small" id="creditStatus">Sign in to load your real NEXUS balance.</div>
-    <button class="buycredit" id="buyCreditsBtn" type="button">＋ Buy credits</button>
+    <div class="small" id="creditStatus">Accedi per vedere il saldo crediti NEXUS.</div>
+    <button class="buycredit" id="buyCreditsBtn" type="button">＋ Acquista crediti</button>
   </div>
 </aside>
 <div class="side-backdrop" id="sideBackdrop" aria-hidden="true"></div>
@@ -223,34 +224,34 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
         <button type="button" data-nexus-mode="auto" aria-pressed="true">Auto</button>
         <button type="button" data-nexus-mode="chat" aria-pressed="false">Chat</button>
         <button type="button" data-nexus-mode="agent" aria-pressed="false">Agent</button>
-        <button type="button" data-nexus-mode="work" aria-pressed="false">Work</button>
+        <button type="button" data-nexus-mode="work" aria-pressed="false">Lavoro</button>
         <button type="button" data-nexus-mode="code" aria-pressed="false">Code</button>
       </div>
-      <span class="mode-hint" id="modeHintTop">Auto · simple chat stays included; heavier work becomes a task</span>
-      <span class="compute-pill internal-status" id="agentRuntimeTop" hidden><i></i><span>Default NEXUS</span></span>
+      <span class="mode-hint" id="modeHintTop">Auto · chat semplice inclusa; i lavori complessi diventano attività</span>
+      <span class="compute-pill internal-status" id="agentRuntimeTop" hidden><i></i><span>NEXUS predefinito</span></span>
     </div>
     <div class="account">
-      <span class="compute-pill internal-status" id="computeStatus" aria-hidden="true"><i></i><span>Checking…</span></span>
-      <button class="mobile-only" id="mobileChatsBtn" type="button">Chats</button>
-      <button id="topNewChat" type="button">New chat</button>
-      <button id="topJobsBtn" type="button">Jobs</button>
-      <button id="topBuyCredits" type="button">Buy credits</button>
+      <span class="compute-pill internal-status" id="computeStatus" aria-hidden="true"><i></i><span>Verifica in corso…</span></span>
+      <button class="mobile-only" id="mobileChatsBtn" type="button">Chat</button>
+      <button id="topNewChat" type="button">Nuova chat</button>
+      <button id="topJobsBtn" type="button">Lavori</button>
+      <button id="topBuyCredits" type="button">Acquista crediti</button>
       <button class="notification-btn" id="notificationsBtn" type="button" hidden aria-label="Notifiche Owner">🔔 <span class="notification-count" id="notificationCount" hidden>0</span></button>
       <span class="role-badge" id="roleBadge" hidden></span>
-      <button id="loginBtn">Sign in</button>
+      <button id="loginBtn">Accedi</button>
     </div>
   </header>
   <section class="stage">
     <div class="intro" id="intro">
-      <div class="ey">NEXUS WORD · PUBLIC BETA</div>
-      <h1>Chat fast. Hand off real work.</h1>
-      <p>Simple conversation stays fast and included. Research, coding, files and multi-step execution become trackable NEXUS tasks with explicit compute and credit usage.</p>
-      <div class="launch-status"><span class="live">● Chat live</span><span class="live">● Projects & Agents live</span><span class="live">● Beta workspace live</span><span class="beta">Connectors expanding</span><span class="beta">Native apps in development</span></div>
+      <div class="ey">NEXUS WORD · BETA PUBBLICA</div>
+      <h1>Chat immediata. Affida a NEXUS i lavori complessi.</h1>
+      <p>Le conversazioni semplici sono rapide e incluse. Ricerche, programmazione, file e lavori complessi diventano attività tracciabili, con costi in crediti espliciti.</p>
+      <div class="launch-status"><span class="live">● Chat attiva</span><span class="live">● Progetti e agenti attivi</span><span class="live">● Area Beta attiva</span><span class="beta">Connettori in ampliamento</span><span class="beta">App native in sviluppo</span></div>
       <div class="quick">
-        <button data-mode="work" data-prompt="Analyse this document and tell me the important points.">📄 Analyse a document</button>
-        <button data-mode="work" data-prompt="I want to work with an image. I will attach it and describe what I need.">🖼️ Work with an image</button>
-        <button data-mode="code" data-prompt="I need help modifying a software project or source file.">💻 Work on code</button>
-        <button data-mode="agent" data-prompt="I want to hand off a longer task to NEXUS.">⚙️ Run an agent task</button>
+        <button data-mode="work" data-prompt="Analyse this document and tell me the important points.">📄 Analizza un documento</button>
+        <button data-mode="work" data-prompt="I want to work with an image. I will attach it and describe what I need.">🖼️ Lavora su un'immagine</button>
+        <button data-mode="code" data-prompt="I need help modifying a software project or source file.">💻 Lavora sul codice</button>
+        <button data-mode="agent" data-prompt="I want to hand off a longer task to NEXUS.">⚙️ Avvia un'attività Agent</button>
       </div>
     </div>
     <div class="messages" id="messages"></div>
@@ -260,25 +261,25 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 
 <section class="project-workspace" id="projectWorkspace" aria-label="NEXUS Project Workspace">
   <header class="project-ws-head">
-    <div class="project-ws-title"><span class="project-ws-ey">NEXUS WORD · PROJECT WORKSPACE</span><h2 id="projectWorkspaceTitle">Projects</h2><p id="projectWorkspaceSubtitle">Organize chats, tasks, files and agents with persistent context.</p></div>
-    <div class="project-ws-actions"><button id="projectRefresh" type="button">Refresh</button><button id="closeProjectWorkspace" class="project-close" type="button" aria-label="Close Projects">×</button></div>
+    <div class="project-ws-title"><span class="project-ws-ey">NEXUS WORD · AREA PROGETTI</span><h2 id="projectWorkspaceTitle">Progetti</h2><p id="projectWorkspaceSubtitle">Organizza chat, attività, file e agenti con un contesto persistente.</p></div>
+    <div class="project-ws-actions"><button id="projectRefresh" type="button">Aggiorna</button><button id="closeProjectWorkspace" class="project-close" type="button" aria-label="Close Projects">×</button></div>
   </header>
   <div class="project-ws-body">
-    <aside class="project-sidebar"><h3>Your Projects</h3><div class="project-list" id="projectWorkspaceList"><div class="project-empty">Loading Projects…</div></div><button id="projectCreate" class="project-create" type="button">＋ Create Project</button></aside>
+    <aside class="project-sidebar"><h3>I tuoi progetti</h3><div class="project-list" id="projectWorkspaceList"><div class="project-empty">Caricamento progetti…</div></div><button id="projectCreate" class="project-create" type="button">＋ Crea progetto</button></aside>
     <main class="project-ws-main">
       <div class="project-ws-toolbar">
-        <button id="projectNewChat" class="primary" type="button">＋ New chat in Project</button>
-        <button id="projectEdit" type="button">Project settings</button>
-        <button id="projectOpenLibrary" type="button">Library</button>
+        <button id="projectNewChat" class="primary" type="button">＋ Nuova chat nel progetto</button>
+        <button id="projectEdit" type="button">Impostazioni progetto</button>
+        <button id="projectOpenLibrary" type="button">Libreria</button>
         <span class="project-level" id="projectWorkspaceLevel">—</span>
       </div>
       <nav class="project-ws-tabs" aria-label="Project sections">
-        <button type="button" data-project-tab="overview" class="active">Overview</button>
-        <button type="button" data-project-tab="chats">Chats</button>
-        <button type="button" data-project-tab="tasks">Tasks</button>
-        <button type="button" data-project-tab="files">Files</button>
-        <button type="button" data-project-tab="agents">Agents</button>
-        <button type="button" data-project-tab="skills">Skills</button>
+        <button type="button" data-project-tab="overview" class="active">Panoramica</button>
+        <button type="button" data-project-tab="chats">Chat</button>
+        <button type="button" data-project-tab="tasks">Attività</button>
+        <button type="button" data-project-tab="files">File</button>
+        <button type="button" data-project-tab="agents">Agenti</button>
+        <button type="button" data-project-tab="skills">Competenze</button>
       </nav>
       <div class="project-ws-content">
         <div class="project-ws-notice" id="projectWorkspaceNotice"></div>
@@ -295,107 +296,107 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 
 <aside class="task-runtime-panel" id="taskRuntimePanel" aria-label="Task runtime">
   <div class="runtime-head">
-    <div><h3 id="taskRuntimeTitle">NEXUS Task</h3><div class="small"><span class="runtime-status" id="taskRuntimeStatus">Task</span></div></div>
+    <div><h3 id="taskRuntimeTitle">Attività NEXUS</h3><div class="small"><span class="runtime-status" id="taskRuntimeStatus">Attività</span></div></div>
     <div class="runtime-head-actions"><button id="refreshTaskRuntime" type="button" title="Refresh">↻</button><button id="closeTaskRuntime" type="button" title="Close">×</button></div>
   </div>
   <div class="runtime-scroll">
-    <div class="runtime-request" id="taskRuntimeRequest">No task selected.</div>
+    <div class="runtime-request" id="taskRuntimeRequest">Nessuna attività selezionata.</div>
     <div class="runtime-meta" id="taskRuntimeMeta"></div>
-    <div class="runtime-section-title">Plan</div>
+    <div class="runtime-section-title">Piano</div>
     <div class="runtime-plan" id="taskRuntimePlan"></div>
-    <div class="runtime-section-title">Timeline</div>
+    <div class="runtime-section-title">Cronologia</div>
     <div class="runtime-events" id="taskRuntimeEvents"></div>
-    <div class="runtime-section-title">Result</div>
+    <div class="runtime-section-title">Risultato</div>
     <div class="runtime-result" id="taskRuntimeResult" hidden></div>
   </div>
 </aside>
 
 <div class="composer-wrap">
   <div class="composer">
-    <div class="composer-mode-line"><span class="mode-current">Execution mode</span><span class="mode-cost" id="modeHintComposer">Auto · simple chat stays included; heavier work becomes a task</span></div>
+    <div class="composer-mode-line"><span class="mode-current">Modalità di esecuzione</span><span class="mode-cost" id="modeHintComposer">Auto · chat semplice inclusa; i lavori complessi diventano attività</span></div>
     <div class="files" id="files"></div>
     <div class="notice" id="betaWorkspaceNotice" hidden style="margin-bottom:9px">Workspace Beta monitorato da NEXUS AI e Owner per finalità QA. Le chat di lavoro Beta non sono NEXUS Private E2EE.</div>
     <textarea id="prompt" aria-label="NEXUS message" placeholder="Ask NEXUS or describe what you want done…" rows="2"></textarea>
     <div class="compose-actions">
       <div class="left-actions">
-        <button class="iconbtn" id="attachBtn" type="button" aria-label="Attach files">＋ Attach</button>
+        <button class="iconbtn" id="attachBtn" type="button" aria-label="Attach files">＋ Allega</button>
         <input id="fileInput" type="file" multiple hidden>
-        <span class="beta" id="levelHint">Any file type · up to 250 MB each · 5 files per job</span>
+        <span class="beta" id="levelHint">Qualsiasi tipo di file · fino a 250 MB ciascuno · 5 file per attività</span>
       </div>
-      <button class="send" id="sendBtn" type="button" aria-label="Send message">Send</button>
+      <button class="send" id="sendBtn" type="button" aria-label="Send message">Invia</button>
     </div>
   </div>
 </div>
 
 <div class="modal" id="betaWelcomeModal">
   <div class="modal-card beta-welcome-card">
-    <div class="beta-detail-head"><div><h2 style="margin:0">NEXUS Word is in Public Beta</h2><p style="margin:6px 0 0">The service is live and usable while the platform, connectors and native apps continue to evolve.</p></div><span class="role-badge">BETA</span></div>
+    <div class="beta-detail-head"><div><h2 style="margin:0">NEXUS Word è in beta pubblica</h2><p style="margin:6px 0 0">Il servizio è online e utilizzabile mentre continuiamo a sviluppare la piattaforma, i connettori e le app native.</p></div><span class="role-badge">BETA</span></div>
     <div class="beta-welcome-list">
-      <div><strong>What is live</strong><span>Accounts, persistent chats, file jobs, Projects, Agents, Skills, Beta Workspace, Owner notifications and NEXUS Private are already online.</span></div>
-      <div><strong>What is still expanding</strong><span>The connector ecosystem, agent execution surfaces, native applications and some advanced automation paths are under active development.</span></div>
-      <div><strong>Billing rule</strong><span>Ordinary text chat is included. NEXUS shows a credit estimate before compute-heavy Agent, Work or Code tasks are reserved.</span></div>
+      <div><strong>Cosa è già attivo</strong><span>Account, chat persistenti, lavori sui file, progetti, agenti, competenze, area Beta, notifiche del titolare e NEXUS Private sono già online.</span></div>
+      <div><strong>Cosa è ancora in sviluppo</strong><span>L'ecosistema dei connettori, le funzioni avanzate degli agenti, le applicazioni native e alcune automazioni sono in sviluppo.</span></div>
+      <div><strong>Regola sui crediti</strong><span>La chat testuale ordinaria è inclusa. NEXUS mostra il preventivo crediti prima di avviare attività Agent, Work o Code più impegnative.</span></div>
     </div>
-    <div class="notice">Beta means features can change and occasional defects may occur. We prefer stating that clearly rather than presenting unfinished capabilities as finished.</div>
-    <div class="modal-actions"><button class="iconbtn enable" id="acceptBetaWelcome" type="button">Continue to NEXUS</button></div>
+    <div class="notice">Essendo una beta, le funzioni possono cambiare e possono verificarsi errori. Preferiamo dichiararlo chiaramente, senza presentare come finite le parti ancora in sviluppo.</div>
+    <div class="modal-actions"><button class="iconbtn enable" id="acceptBetaWelcome" type="button">Entra in NEXUS</button></div>
   </div>
 </div>
 
 <div class="modal" id="computeConfirmModal">
   <div class="modal-card compute-confirm-card">
-    <h2 id="computeConfirmTitle">Run as NEXUS task?</h2>
-    <p id="computeConfirmBody">This request needs more than basic chat.</p>
-    <div class="compute-quote"><div><span>Estimated reservation</span><strong id="computeConfirmCost">—</strong></div><span id="computeConfirmMode">Agent · Smart</span></div>
+    <h2 id="computeConfirmTitle">Avviare come attività NEXUS?</h2>
+    <p id="computeConfirmBody">Questa richiesta va oltre la chat di base.</p>
+    <div class="compute-quote"><div><span>Crediti previsti</span><strong id="computeConfirmCost">—</strong></div><span id="computeConfirmMode">Agent · Smart</span></div>
     <div class="notice">The exact approved credit estimate is checked again by NEXUS before reserving credits. If it changes, the task will not start. Failed/cancelled tasks follow the existing refund rules.</div>
     <div class="modal-actions">
-      <button class="iconbtn" id="cancelComputeTask" type="button">Cancel</button>
-      <button class="iconbtn" id="basicChatInstead" type="button">Use basic Chat instead</button>
-      <button class="iconbtn enable" id="confirmComputeTask" type="button">Run task</button>
+      <button class="iconbtn" id="cancelComputeTask" type="button">Annulla</button>
+      <button class="iconbtn" id="basicChatInstead" type="button">Usa invece la chat base</button>
+      <button class="iconbtn enable" id="confirmComputeTask" type="button">Avvia attività</button>
     </div>
   </div>
 </div>
 
 <div class="modal" id="loginModal">
   <div class="modal-card">
-    <h2 id="authTitle">Sign in to NEXUS</h2>
-    <p>Your account preserves chats, credits and jobs. Files and private content remain tied to your account.</p>
+    <h2 id="authTitle">Accedi a NEXUS</h2>
+    <p>Il tuo account conserva chat, crediti e attività. File e contenuti privati restano associati al tuo account.</p>
     <form id="authForm">
       <input id="authName" type="text" placeholder="Name" autocomplete="name" style="display:none">
       <input id="authEmail" type="email" placeholder="Email" autocomplete="email" required>
       <input id="authPassword" type="password" placeholder="Password" autocomplete="current-password" minlength="8" required>
-      <button class="send" id="authSubmit" type="submit">Sign in</button>
+      <button class="send" id="authSubmit" type="submit">Accedi</button>
     </form>
     <div class="modal-actions">
-      <button class="iconbtn" id="googleLogin" type="button">Continue with Google</button>
-      <button class="iconbtn" id="toggleAuth" type="button">Create account</button>
+      <button class="iconbtn" id="googleLogin" type="button">Continua con Google</button>
+      <button class="iconbtn" id="toggleAuth" type="button">Crea account</button>
       <button class="iconbtn" id="forgotPassword" type="button">Password dimenticata?</button>
-      <button class="iconbtn" id="closeLogin" type="button">Close</button>
+      <button class="iconbtn" id="closeLogin" type="button">Chiudi</button>
     </div>
-    <div class="notice" id="authNotice">NEXUS accounts are powered by Neon Auth. Passwords are handled by the authentication service, not stored in the page.</div>
+    <div class="notice" id="authNotice">Gli account NEXUS usano Neon Auth. Le password sono gestite dal servizio di autenticazione, non dalla pagina.</div>
   </div>
 </div>
 
 <div class="modal" id="creditModal">
   <div class="modal-card">
-    <h2>Buy NEXUS credits</h2>
-    <p>One-time credit packs for compute-heavy jobs, files and media. Ordinary text chat is included.</p>
+    <h2>Acquista crediti NEXUS</h2>
+    <p>Pacchetti crediti una tantum per lavori complessi, file e contenuti multimediali. La chat testuale ordinaria è inclusa.</p>
     <div class="packs">
-      <div class="pack"><div><strong>500 credits</strong><small>€4.99 · starter top-up</small></div><a data-credit-link="500" href="https://buy.stripe.com/28E6oH9Lp1SY8JcgaIdby03">Buy</a></div>
-      <div class="pack"><div><strong>1,500 credits</strong><small>€9.99 · better value</small></div><a data-credit-link="1500" href="https://buy.stripe.com/7sYfZhe1FapuaRk8Igdby04">Buy</a></div>
-      <div class="pack"><div><strong>4,000 credits</strong><small>€19.99 · heavy use</small></div><a data-credit-link="4000" href="https://buy.stripe.com/7sY7sLe1FgNS7F87Ecdby05">Buy</a></div>
+      <div class="pack"><div><strong>500 crediti</strong><small>4,99 € · pacchetto iniziale</small></div><a data-credit-link="500" href="https://buy.stripe.com/28E6oH9Lp1SY8JcgaIdby03">Buy</a></div>
+      <div class="pack"><div><strong>1.500 crediti</strong><small>9,99 € · più conveniente</small></div><a data-credit-link="1500" href="https://buy.stripe.com/7sYfZhe1FapuaRk8Igdby04">Buy</a></div>
+      <div class="pack"><div><strong>4.000 crediti</strong><small>19,99 € · uso intensivo</small></div><a data-credit-link="4000" href="https://buy.stripe.com/7sY7sLe1FgNS7F87Ecdby05">Buy</a></div>
     </div>
-    <div class="notice" style="margin-top:12px"><strong>Text chat is included.</strong> Credits are used only when NEXUS runs compute-heavy jobs or other work with measurable execution cost. No automatic top-up or hidden charge.</div>
-    <div class="modal-actions"><button class="iconbtn" id="closeCredits" type="button">Close</button></div>
+    <div class="notice" style="margin-top:12px"><strong>La chat testuale è inclusa.</strong> Credits are used only when NEXUS runs compute-heavy jobs or other work with measurable execution cost. No automatic top-up or hidden charge.</div>
+    <div class="modal-actions"><button class="iconbtn" id="closeCredits" type="button">Chiudi</button></div>
   </div>
 </div>
 
 <div class="modal" id="jobsModal">
   <div class="modal-card jobs-card">
-    <h2>My NEXUS jobs</h2>
-    <p>Real queued and completed work tied to your account.</p>
-    <div class="joblist" id="jobsList"><div class="small">Loading…</div></div>
+    <h2>Le mie attività NEXUS</h2>
+    <p>Attività reali in coda e completate, collegate al tuo account.</p>
+    <div class="joblist" id="jobsList"><div class="small">Caricamento…</div></div>
     <div class="modal-actions">
-      <button class="iconbtn" id="refreshJobs" type="button">Refresh</button>
-      <button class="iconbtn" id="closeJobs" type="button">Close</button>
+      <button class="iconbtn" id="refreshJobs" type="button">Aggiorna</button>
+      <button class="iconbtn" id="closeJobs" type="button">Chiudi</button>
     </div>
   </div>
 </div>
@@ -422,12 +423,12 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 
 <div class="modal" id="libraryModal">
   <div class="modal-card jobs-card">
-    <h2>Library</h2>
-    <p>Your private NEXUS files. Files stay tied to your account and can reopen the chat they belong to.</p>
-    <div class="joblist" id="libraryList"><div class="small">Loading…</div></div>
+    <h2>Libreria</h2>
+    <p>I tuoi file privati NEXUS. Restano collegati all'account e permettono di riaprire la chat di origine.</p>
+    <div class="joblist" id="libraryList"><div class="small">Caricamento…</div></div>
     <div class="modal-actions">
-      <button class="iconbtn" id="refreshLibrary" type="button">Refresh</button>
-      <button class="iconbtn" id="closeLibrary" type="button">Close</button>
+      <button class="iconbtn" id="refreshLibrary" type="button">Aggiorna</button>
+      <button class="iconbtn" id="closeLibrary" type="button">Chiudi</button>
     </div>
   </div>
 </div>
@@ -436,44 +437,44 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
   <div class="modal-card agentos-card">
     <div class="agentos-head">
       <div>
-        <h2>NEXUS Agent OS · Settings</h2>
+        <h2>NEXUS Agent OS · Impostazioni</h2>
         <p>Projects, agenti persistenti, skill e policy operative. Solo impostazioni realmente collegate al runtime.</p>
       </div>
-      <span class="agentos-context" id="agentOsContextPill">Default NEXUS</span>
+      <span class="agentos-context" id="agentOsContextPill">NEXUS predefinito</span>
     </div>
     <div class="agentos-tabs">
-      <button type="button" class="active" data-agentos-tab="defaults">Defaults</button>
-      <button type="button" data-agentos-tab="projects">Projects</button>
-      <button type="button" data-agentos-tab="agents">Agents</button>
-      <button type="button" data-agentos-tab="skills">Skills</button>
-      <button type="button" data-agentos-tab="connectors">Connectors</button>
+      <button type="button" class="active" data-agentos-tab="defaults">Impostazioni predefinite</button>
+      <button type="button" data-agentos-tab="projects">Progetti</button>
+      <button type="button" data-agentos-tab="agents">Agenti</button>
+      <button type="button" data-agentos-tab="skills">Competenze</button>
+      <button type="button" data-agentos-tab="connectors">Connettori</button>
     </div>
     <div class="notice" id="agentOsNotice">Agent OS non ancora caricato.</div>
 
     <section class="agentos-pane" data-agentos-pane="defaults">
       <div class="agentos-kpi">
-        <div><strong id="agentOsProjectsKpi">—</strong><span>Projects</span></div>
-        <div><strong id="agentOsAgentsKpi">—</strong><span>Agents</span></div>
-        <div><strong id="agentOsSkillsKpi">—</strong><span>Skills</span></div>
+        <div><strong id="agentOsProjectsKpi">—</strong><span>Progetti</span></div>
+        <div><strong id="agentOsAgentsKpi">—</strong><span>Agenti</span></div>
+        <div><strong id="agentOsSkillsKpi">—</strong><span>Competenze</span></div>
       </div>
       <div class="agentos-panel">
-        <h3>Runtime defaults</h3>
+        <h3>Impostazioni di esecuzione</h3>
         <div class="small" id="agentRuntimeSummary">Caricamento runtime…</div>
         <div class="agentos-defaults" style="margin-top:12px">
           <label>Project predefinito<select id="agentDefaultProject"></select></label>
           <label>Agent predefinito<select id="agentDefaultAgent"></select></label>
-          <label>Routing<select id="agentRoutingProfile"><option value="local_first">Local first</option><option value="balanced">Balanced</option><option value="max">Max</option></select></label>
-          <label>Autonomia<select id="agentAutonomyLevel"><option value="assist">Assist</option><option value="supervised">Supervised</option><option value="autonomous">Autonomous</option></select></label>
-          <label>Conferme<select id="agentApprovalPolicy"><option value="always_confirm">Always confirm</option><option value="risk_based">Risk based</option><option value="trusted_low_risk">Trusted low risk</option></select></label>
+          <label>Routing<select id="agentRoutingProfile"><option value="local_first">Prima locale</option><option value="balanced">Bilanciato</option><option value="max">Massimo</option></select></label>
+          <label>Autonomia<select id="agentAutonomyLevel"><option value="assist">Assistenza</option><option value="supervised">Supervisionato</option><option value="autonomous">Autonomo</option></select></label>
+          <label>Conferme<select id="agentApprovalPolicy"><option value="always_confirm">Conferma sempre</option><option value="risk_based">In base al rischio</option><option value="trusted_low_risk">Basso rischio affidabile</option></select></label>
           <label>Timezone<input id="agentTimezone" maxlength="100"></label>
           <label>Lingua<input id="agentLanguage" maxlength="16"></label>
           <label class="wide agentos-check"><input id="agentNotifications" type="checkbox" checked> Notifiche interne NEXUS abilitate</label>
         </div>
         <div class="execution-settings">
-          <h4>AI & execution</h4>
+          <h4>IA ed esecuzione</h4>
           <div class="agentos-defaults">
-            <label>Modalità predefinita<select id="defaultWorkMode"><option value="auto">Auto</option><option value="chat">Chat</option><option value="agent">Agent</option><option value="work">Work</option><option value="code">Code</option></select></label>
-            <label>Stile risposta<select id="responseStyle"><option value="concise">Concise</option><option value="balanced">Balanced</option><option value="detailed">Detailed</option></select></label>
+            <label>Modalità predefinita<select id="defaultWorkMode"><option value="auto">Auto</option><option value="chat">Chat</option><option value="agent">Agent</option><option value="work">Lavoro</option><option value="code">Code</option></select></label>
+            <label>Stile risposta<select id="responseStyle"><option value="concise">Conciso</option><option value="balanced">Bilanciato</option><option value="detailed">Dettagliato</option></select></label>
             <label>Agent effort<select id="agentEffort"><option value="smart">Smart</option><option value="deep">Deep</option></select></label>
             <label>Work effort<select id="workEffort"><option value="smart">Smart</option><option value="deep">Deep</option></select></label>
             <label>Code effort<select id="codeEffort"><option value="smart">Smart</option><option value="deep">Deep</option></select></label>
@@ -488,7 +489,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <section class="agentos-pane" data-agentos-pane="projects" hidden>
       <div class="agentos-grid">
         <div class="agentos-panel">
-          <div class="beta-detail-head"><strong>Projects</strong><button class="iconbtn" id="newProject" type="button">＋ Nuovo</button></div>
+          <div class="beta-detail-head"><strong>Progetti</strong><button class="iconbtn" id="newProject" type="button">＋ Nuovo</button></div>
           <div class="agentos-list" id="agentProjectsList"></div>
         </div>
         <div class="agentos-panel agentos-form">
@@ -505,7 +506,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <section class="agentos-pane" data-agentos-pane="agents" hidden>
       <div class="agentos-grid">
         <div class="agentos-panel">
-          <div class="beta-detail-head"><strong>Persistent Agents</strong><button class="iconbtn" id="newAgent" type="button">＋ Nuovo</button></div>
+          <div class="beta-detail-head"><strong>Agenti persistenti</strong><button class="iconbtn" id="newAgent" type="button">＋ Nuovo</button></div>
           <div class="agentos-list" id="agentAgentsList"></div>
         </div>
         <div class="agentos-panel agentos-form">
@@ -515,9 +516,9 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
           <label>Descrizione<textarea id="agentDescription" maxlength="4000"></textarea></label>
           <label>Missione persistente<textarea class="tall" id="agentMission" maxlength="20000" placeholder="Obiettivi e limiti permanenti dell’agente"></textarea></label>
           <div class="agentos-defaults">
-            <label>Routing<select id="agentRouting"><option value="local_first">Local first</option><option value="balanced">Balanced</option><option value="max">Max</option></select></label>
-            <label>Autonomia<select id="agentAutonomy"><option value="assist">Assist</option><option value="supervised">Supervised</option><option value="autonomous">Autonomous</option></select></label>
-            <label>Conferme<select id="agentApproval"><option value="always_confirm">Always confirm</option><option value="risk_based">Risk based</option><option value="trusted_low_risk">Trusted low risk</option></select></label>
+            <label>Routing<select id="agentRouting"><option value="local_first">Prima locale</option><option value="balanced">Bilanciato</option><option value="max">Massimo</option></select></label>
+            <label>Autonomia<select id="agentAutonomy"><option value="assist">Assistenza</option><option value="supervised">Supervisionato</option><option value="autonomous">Autonomo</option></select></label>
+            <label>Conferme<select id="agentApproval"><option value="always_confirm">Conferma sempre</option><option value="risk_based">In base al rischio</option><option value="trusted_low_risk">Basso rischio affidabile</option></select></label>
           </div>
           <label>Skill assegnate<div class="agentos-checks" id="agentSkillAssignments"></div></label>
           <div class="agentos-actions"><button class="iconbtn enable" id="saveAgent" type="button">Salva Agent</button><button class="iconbtn" id="agentArchive" type="button" hidden>Archivia</button></div>
@@ -528,7 +529,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <section class="agentos-pane" data-agentos-pane="skills" hidden>
       <div class="agentos-grid">
         <div class="agentos-panel">
-          <div class="beta-detail-head"><strong>Skills</strong><button class="iconbtn" id="newSkill" type="button">＋ Nuova</button></div>
+          <div class="beta-detail-head"><strong>Competenze</strong><button class="iconbtn" id="newSkill" type="button">＋ Nuova</button></div>
           <div class="agentos-list" id="agentSkillsList"></div>
         </div>
         <div class="agentos-panel agentos-form">
@@ -537,13 +538,13 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
             <label>Nome<input id="skillName" maxlength="160" placeholder="es. SEO Audit"></label>
             <label>Slug<input id="skillSlug" maxlength="120" placeholder="seo-audit"></label>
             <label>Versione<input id="skillVersion" maxlength="40" value="1.0.0"></label>
-            <label>Scope<select id="skillScope"><option value="personal">Personal</option><option value="project">Project</option><option value="agent">Agent</option></select></label>
+            <label>Scope<select id="skillScope"><option value="personal">Personale</option><option value="project">Project</option><option value="agent">Agent</option></select></label>
           </div>
           <label>Descrizione<textarea id="skillDescription" maxlength="4000"></textarea></label>
           <label>Istruzioni / workflow<textarea class="tall" id="skillInstructions" maxlength="30000" placeholder="Procedura riutilizzabile che NEXUS segue quando la skill è attiva"></textarea></label>
           <label class="agentos-check"><input id="skillEnabled" type="checkbox" checked> Skill abilitata</label>
-          <label>Projects<div class="agentos-checks" id="skillProjectAssignments"></div></label>
-          <label>Agents<div class="agentos-checks" id="skillAgentAssignments"></div></label>
+          <label>Progetti<div class="agentos-checks" id="skillProjectAssignments"></div></label>
+          <label>Agenti<div class="agentos-checks" id="skillAgentAssignments"></div></label>
           <div class="agentos-actions"><button class="iconbtn enable" id="saveSkill" type="button">Salva Skill</button><button class="iconbtn" id="skillArchive" type="button" hidden>Archivia</button></div>
         </div>
       </div>
@@ -551,7 +552,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 
     <section class="agentos-pane" data-agentos-pane="connectors" hidden>
       <div class="agentos-panel">
-        <h3>Connectors & Plugins</h3>
+        <h3>Connettori e plugin</h3>
         <p>Il catalogo Tools resta il registro unico di OAuth, MCP, API e capacità native. Agent OS lo usa senza duplicare le credenziali.</p>
         <div class="notice">Nessun secret viene copiato nel Settings Hub: le credenziali restano nel bridge server-side già esistente.</div>
         <div class="agentos-actions"><button class="iconbtn enable" id="agentOpenPlugins" type="button">Apri Tools & Connectors</button></div>
@@ -564,35 +565,35 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 
 <div class="modal" id="pluginsModal">
   <div class="modal-card jobs-card">
-    <h2>Connectors</h2>
-    <p>Connect real external tools to NEXUS. Operational connectors are shown first; future integrations stay separated as Preview.</p>
+    <h2>Connettori</h2>
+    <p>Collega strumenti esterni reali a NEXUS. I connettori operativi sono mostrati per primi; quelli futuri restano separati come anteprima.</p>
     <div class="notice" style="margin:12px 0">
-      <strong>Connect anything with MCP — available now.</strong><br>
+      <strong>Collega servizi tramite MCP — disponibile ora.</strong><br>
       If a service exposes a compatible HTTPS MCP server, you do not need to wait for a dedicated NEXUS integration.
-      <div class="plugin-actions" style="margin-top:9px"><button class="enable" id="addCustomMcp" type="button">＋ Add custom MCP server</button></div>
+      <div class="plugin-actions" style="margin-top:9px"><button class="enable" id="addCustomMcp" type="button">＋ Aggiungi server MCP personalizzato</button></div>
     </div>
-    <h3>Core tools</h3>
-    <div class="small" id="coreToolsSummary">Loading NEXUS capabilities…</div>
-    <div class="joblist" id="coreToolsList"><div class="small">Loading…</div></div>
-    <h3 style="margin-top:18px">Connectors</h3>
+    <h3>Strumenti principali</h3>
+    <div class="small" id="coreToolsSummary">Caricamento funzionalità NEXUS…</div>
+    <div class="joblist" id="coreToolsList"><div class="small">Caricamento…</div></div>
+    <h3 style="margin-top:18px">Connettori</h3>
     <div class="plugin-tools">
       <input class="historysearch" id="pluginSearch" type="search" placeholder="Search connectors…" autocomplete="off" aria-label="Search connectors">
-      <select id="pluginCategory" aria-label="Connector category"><option value="">All categories</option></select>
+      <select id="pluginCategory" aria-label="Connector category"><option value="">Tutte le categorie</option></select>
     </div>
-    <div class="small" id="pluginSummary">Loading connector catalog…</div>
-    <div class="plugin-actions"><button id="pluginCatalogToggle" type="button">Show planned connectors</button></div>
-    <div class="joblist" id="pluginsList"><div class="small">Loading…</div></div>
-    <div class="notice" style="margin-top:12px">External services must be connected through a server-side OAuth/MCP bridge. NEXUS will not store third-party secrets in the browser.</div>
+    <div class="small" id="pluginSummary">Caricamento catalogo connettori…</div>
+    <div class="plugin-actions"><button id="pluginCatalogToggle" type="button">Mostra connettori futuri</button></div>
+    <div class="joblist" id="pluginsList"><div class="small">Caricamento…</div></div>
+    <div class="notice" style="margin-top:12px">I servizi esterni vanno collegati tramite il bridge OAuth/MCP lato server. NEXUS non salva le credenziali di terzi nel browser.</div>
     <div class="modal-actions">
-      <button class="iconbtn" id="refreshPlugins" type="button">Refresh</button>
-      <button class="iconbtn" id="closePlugins" type="button">Close</button>
+      <button class="iconbtn" id="refreshPlugins" type="button">Aggiorna</button>
+      <button class="iconbtn" id="closePlugins" type="button">Chiudi</button>
     </div>
   </div>
 </div>
 
 <div class="modal" id="socialModal">
   <div class="modal-card jobs-card">
-    <h2>Social Publisher</h2>
+    <h2>Pubblicazione social</h2>
     <p>Prepara contenuti con NEXUS AI e pubblicali tramite la condivisione nativa o i link ufficiali dei social. Nessun account viene dichiarato connesso finché non esiste un OAuth reale verificato.</p>
     <div class="social-grid">
       <select id="socialPlatform" aria-label="Piattaforma">
@@ -642,7 +643,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
           <option value="critical">Critica</option><option value="high">Alta</option><option value="medium" selected>Media</option><option value="low">Bassa</option>
         </select>
         <select id="betaComponent" class="wide" aria-label="Componente">
-          <option value="OTHER">Componente: non so / altro</option><option value="AUTH">Login / account</option><option value="CHAT">Chat</option><option value="ROUTING">Routing IA</option><option value="PC_WORKER">Worker PC</option><option value="JOBS">Job</option><option value="UPLOAD">Upload</option><option value="LIBRARY">Library</option><option value="CREDITS">Crediti</option><option value="CONNECTORS">Connettori</option><option value="BETA">Centro Beta</option><option value="ADMIN">Admin</option><option value="UI">Interfaccia</option><option value="SEO">SEO</option>
+          <option value="OTHER">Componente: non so / altro</option><option value="AUTH">Login / account</option><option value="CHAT">Chat</option><option value="ROUTING">Routing IA</option><option value="PC_WORKER">Worker PC</option><option value="JOBS">Job</option><option value="UPLOAD">Upload</option><option value="LIBRARY">Libreria</option><option value="CREDITS">Crediti</option><option value="CONNECTORS">Connettori</option><option value="BETA">Centro Beta</option><option value="ADMIN">Admin</option><option value="UI">Interfaccia</option><option value="SEO">SEO</option>
         </select>
         <input class="wide" id="betaTitle" maxlength="240" placeholder="Titolo breve del problema" required>
         <textarea class="wide" id="betaDescription" maxlength="12000" placeholder="Che cosa è successo?" required></textarea>
@@ -703,7 +704,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <h2>NEXUS Admin Center</h2>
     <p>Owner controls for access, credits and beta feedback. Every change is audited server-side.</p>
     <div class="small" id="adminSummary">Loading users…</div>
-    <div class="joblist admin-grid" id="adminUsers"><div class="small">Loading…</div></div>
+    <div class="joblist admin-grid" id="adminUsers"><div class="small">Caricamento…</div></div>
     <h3 style="margin-top:18px">Beta Live</h3>
     <div class="plugin-tools">
       <select id="adminBetaStatusFilter" aria-label="Filtra ticket beta">
@@ -717,24 +718,24 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <div class="joblist" id="adminBetaConversations"><div class="small">Caricamento conversazioni beta…</div></div>
     <div id="adminBetaConversationDetail" hidden></div>
     <div class="modal-actions">
-      <button class="iconbtn" id="refreshAdmin" type="button">Refresh</button>
-      <button class="iconbtn" id="closeAdmin" type="button">Close</button>
+      <button class="iconbtn" id="refreshAdmin" type="button">Aggiorna</button>
+      <button class="iconbtn" id="closeAdmin" type="button">Chiudi</button>
     </div>
   </div>
 </div>
 
 <div class="modal" id="connectorKeyModal">
   <div class="modal-card">
-    <h2 id="connectorKeyTitle">Connect service</h2>
-    <p id="connectorKeyHelp">Use a provider credential scoped as narrowly as possible. NEXUS verifies it before storing it encrypted.</p>
-    <label class="small" id="connectorPrimaryLabel" for="connectorProjectId">Project ID</label>
+    <h2 id="connectorKeyTitle">Collega servizio</h2>
+    <p id="connectorKeyHelp">Usa credenziali con i permessi minimi necessari. NEXUS le verifica prima di archiviarle cifrate.</p>
+    <label class="small" id="connectorPrimaryLabel" for="connectorProjectId">ID progetto</label>
     <input class="historysearch" id="connectorProjectId" type="text" autocomplete="off" placeholder="Optional for a project-scoped key">
-    <label class="small" id="connectorSecretLabel" for="connectorApiKey" style="display:block;margin-top:12px">API key</label>
+    <label class="small" id="connectorSecretLabel" for="connectorApiKey" style="display:block;margin-top:12px">Chiave API</label>
     <input class="historysearch" id="connectorApiKey" type="password" autocomplete="new-password" placeholder="Paste the project-scoped key">
-    <div class="notice" id="connectorKeyNotice" style="margin-top:12px">The key is verified through the NEXUS connector bridge and stored encrypted only after verification.</div>
+    <div class="notice" id="connectorKeyNotice" style="margin-top:12px">La chiave viene verificata tramite il bridge NEXUS e salvata cifrata soltanto dopo la verifica.</div>
     <div class="modal-actions">
-      <button class="iconbtn" id="cancelConnectorKey" type="button">Cancel</button>
-      <button class="iconbtn enable" id="verifyConnectorKey" type="button">Verify & connect</button>
+      <button class="iconbtn" id="cancelConnectorKey" type="button">Annulla</button>
+      <button class="iconbtn enable" id="verifyConnectorKey" type="button">Verifica e collega</button>
     </div>
   </div>
 </div>
@@ -746,6 +747,8 @@ import * as AgentOS from './agent-os.js';
 import * as LaunchOS from './launch-os.js';
 import * as TaskRuntime from './task-runtime.js';
 import * as ProjectWorkspace from './project-workspace.js';
+import * as I18n from './i18n.js';
+I18n.init();
 
 const client = createClient('https://ep-sparkling-forest-b2v7x4ux.c-6.eu-central-1.aws.neon.tech/neondb');
 
@@ -777,7 +780,8 @@ const ROUTER_URL='https://nexus-ai-router.ilario-coppola.workers.dev/chat';
 const FILES_URL='https://br-jolly-scene-b2wyu6gt-nexusfiles.compute.c-6.eu-central-1.aws.neon.tech/';
 const STATUS_URL='https://br-jolly-scene-b2wyu6gt-nexusstatus.compute.c-6.eu-central-1.aws.neon.tech/';
 const CONNECTOR_BRIDGE_URL='https://nexus-connectors.ilario-coppola.workers.dev';
-const UI_IT=(navigator.language||'').toLowerCase().startsWith('it');
+let UI_IT=I18n.getLanguage()==='it';
+window.addEventListener('nexus-language-change',e=>{UI_IT=e.detail?.language==='it'});
 const BETA_BUILD='beta-live-v1';
 const nexusDiagnostic=(()=>{
   const events=[];
