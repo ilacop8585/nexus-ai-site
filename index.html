@@ -1765,6 +1765,7 @@ async function refreshAccountData(){
  }
 }
 function setLoggedOutUI(){
+ document.body.classList.remove('nexus-authenticated');
  currentBalance=0;currentAccess=null;renderHistory([]);
  document.getElementById('loginBtn').textContent='Sign in';
  document.getElementById('creditBalance').textContent='—';document.getElementById('creditAllowance').textContent=' / —';document.getElementById('creditBar').style.width='0%';
@@ -1784,6 +1785,7 @@ function updateRoleNavGroups(){
  toggle('collaborationNav');toggle('ownerNav');
 }
 function applyAccessUI(){
+ document.body.classList.toggle('nexus-authenticated',!!currentUser);
  const a=currentAccess||{},badge=document.getElementById('roleBadge');
  document.getElementById('betaBtn').hidden=!(a.is_beta||a.is_admin);
  document.getElementById('adminBtn').hidden=!a.is_admin;
