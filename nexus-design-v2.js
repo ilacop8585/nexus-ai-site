@@ -18,8 +18,8 @@ function init(){
   menu?.setAttribute('aria-controls','nexusSidebar');
   menu?.setAttribute('aria-expanded','false');
   if(sidebar)sidebar.id='nexusSidebar';
-  menu?.addEventListener('click',()=>requestAnimationFrame(syncMenu));
-  backdrop?.addEventListener('click',()=>requestAnimationFrame(syncMenu));
+  menu?.addEventListener('click',syncMenu);
+  backdrop?.addEventListener('click',syncMenu);
   sidebar?.addEventListener('click',event=>{
     if(event.target.closest('.navbtn,.newchat,.historyitem,.historymore')){
       if(backdrop?.classList.contains('show'))backdrop.click();
