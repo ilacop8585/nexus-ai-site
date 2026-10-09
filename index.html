@@ -172,6 +172,13 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 <aside class="side">
   <div class="brand"><span class="mark"><img src="./nexus-mark.svg" alt="" width="33" height="33"></span><span class="brand-copy"><span>NEXUS <em>WORD</em></span><small>BETA PUBBLICA</small></span></div>
   <button class="newchat" id="newChat">＋ Nuova chat</button>
+  <div class="navgroup" id="ownerNav">
+    <div class="navlabel">Titolare</div>
+    <div class="snav">
+      <button class="navbtn" id="adminBtn" hidden><span>Centro amministrazione</span><span class="small">OWNER</span></button>
+    </div>
+  </div>
+
 
   <div class="navgroup">
     <div class="navlabel">Lavoro</div>
@@ -199,12 +206,6 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     </div>
   </div>
 
-  <div class="navgroup" id="ownerNav">
-    <div class="navlabel">Titolare</div>
-    <div class="snav">
-      <button class="navbtn" id="adminBtn" hidden><span>Centro amministrazione</span><span class="small">OWNER</span></button>
-    </div>
-  </div>
   <div class="historybox">
     <div class="historytitle">Le tue chat</div>
     <input class="historysearch" id="historySearch" type="search" placeholder="Search chats" autocomplete="off" aria-label="Search chats">
@@ -732,9 +733,14 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 
 <div class="modal" id="adminModal">
   <div class="modal-card jobs-card">
-    <h2>NEXUS Admin Center</h2>
-    <p>Owner controls for access, credits and beta feedback. Every change is audited server-side.</p>
-    <div class="small" id="adminSummary">Loading users…</div>
+    <h2>Centro amministrazione NEXUS</h2>
+    <p>Gestione utenti, ruoli Beta Tester, crediti e segnalazioni. Le modifiche sono registrate dal server.</p>
+    <div class="small" id="adminSummary">Caricamento utenti…</div>
+    <div class="nexus-admin-search">
+      <label for="adminUserSearch">Trova un utente registrato</label>
+      <input id="adminUserSearch" type="search" placeholder="Cerca per nome o indirizzo email…" autocomplete="off" spellcheck="false">
+      <span id="adminUserSearchResult" class="small" role="status" aria-live="polite"></span>
+    </div>
     <div class="joblist admin-grid" id="adminUsers"><div class="small">Caricamento…</div></div>
     <h3 style="margin-top:18px">Beta Live</h3>
     <div class="plugin-tools">
@@ -2057,13 +2063,13 @@ function adminUserRow(u){
  const title=document.createElement('strong');title.textContent=u.display_name||u.name||u.email;
  const status=document.createElement('span');status.className='jobstatus '+(u.unlimited?'completed':'');status.textContent=String(u.staff_role||'user').replaceAll('_',' ').toUpperCase();head.append(title,status);row.appendChild(head);
  const meta=document.createElement('div');meta.className='jobmeta';meta.textContent=u.email+' · '+u.credits+' credits'+(u.unlimited?' · unlimited':'')+(u.email_verified?' · verified email':' · email not verified');row.appendChild(meta);
- const name=document.createElement('input');name.className='admin-name-input';name.value=u.display_name||u.name||'';name.placeholder='Display name';
- const saveName=document.createElement('button');saveName.type='button';saveName.textContent='Save name';saveName.onclick=async()=>{const x=await client.rpc('nexus_admin_set_display_name',{p_target:u.user_id,p_display_name:name.value});if(x.error)alert(x.error.message);else await loadAdmin()};
+ const name=document.createElement('input');name.className='admin-name-input';name.value=u.display_name||u.name||'';name.placeholder='Nome visualizzato';
+ const saveName=document.createElement('button');saveName.type='button';saveName.textContent='Salva nome';saveName.onclick=async()=>{const x=await client.rpc('nexus_admin_set_display_name',{p_target:u.user_id,p_display_name:name.value});if(x.error)alert(x.error.message);else await loadAdmin()};
  const actions=document.createElement('div');actions.className='admin-actions';
  const amount=document.createElement('input');amount.className='admin-credit-input';amount.type='number';amount.min='1';amount.max='1000000';amount.value='100';
- const grant=document.createElement('button');grant.type='button';grant.textContent='Add credits';grant.onclick=async()=>{const x=await client.rpc('nexus_admin_grant_credits',{p_target:u.user_id,p_amount:Number(amount.value),p_reason:'admin_panel'});if(x.error)alert(x.error.message);else await loadAdmin()};
- const beta=document.createElement('button');beta.type='button';beta.textContent=u.staff_role==='beta_tester'?'Remove beta':'Make beta';beta.disabled=u.staff_role==='owner';beta.onclick=async()=>{const x=await client.rpc('nexus_admin_set_beta',{p_target:u.user_id,p_enabled:u.staff_role!=='beta_tester'});if(x.error)alert(x.error.message);else await loadAdmin()};
- const unlimited=document.createElement('button');unlimited.type='button';unlimited.textContent=u.unlimited?'Disable unlimited':'Enable unlimited';unlimited.disabled=u.staff_role==='owner';unlimited.onclick=async()=>{const x=await client.rpc('nexus_admin_set_unlimited',{p_target:u.user_id,p_unlimited:!u.unlimited});if(x.error)alert(x.error.message);else await loadAdmin()};
+ const grant=document.createElement('button');grant.type='button';grant.textContent='Assegna crediti';grant.onclick=async()=>{const x=await client.rpc('nexus_admin_grant_credits',{p_target:u.user_id,p_amount:Number(amount.value),p_reason:'admin_panel'});if(x.error)alert(x.error.message);else await loadAdmin()};
+ const beta=document.createElement('button');beta.type='button';beta.textContent=u.staff_role==='beta_tester'?'Rimuovi Beta Tester':'Assegna Beta Tester';beta.disabled=u.staff_role==='owner';beta.onclick=async()=>{const x=await client.rpc('nexus_admin_set_beta',{p_target:u.user_id,p_enabled:u.staff_role!=='beta_tester'});if(x.error)alert(x.error.message);else await loadAdmin()};
+ const unlimited=document.createElement('button');unlimited.type='button';unlimited.textContent=u.unlimited?'Disattiva illimitato':'Attiva illimitato';unlimited.disabled=u.staff_role==='owner';unlimited.onclick=async()=>{const x=await client.rpc('nexus_admin_set_unlimited',{p_target:u.user_id,p_unlimited:!u.unlimited});if(x.error)alert(x.error.message);else await loadAdmin()};
  actions.append(amount,grant,beta,unlimited);row.append(name,saveName,actions);return row;
 }
 function adminNextBetaStates(status){return {APERTO:['IN_ANALISI','CHIUSO'],IN_ANALISI:['IN_CORREZIONE','CHIUSO'],IN_CORREZIONE:['DA_VERIFICARE','IN_ANALISI'],DA_VERIFICARE:['IN_ANALISI','RISOLTO'],RISOLTO:['CHIUSO','IN_ANALISI'],CHIUSO:[]}[status]||[]}
@@ -2148,6 +2154,7 @@ async function loadAdmin(){
  if(users.error){usersBox.innerHTML='<div class="notice">'+escapeHtml(String(users.error.message||users.error))+'</div>';return}
  usersBox.innerHTML='';(users.data||[]).forEach(u=>usersBox.appendChild(adminUserRow(u)));
  summary.textContent=(users.data||[]).length+' users · '+(users.data||[]).filter(x=>x.unlimited).length+' unlimited · '+(users.data||[]).filter(x=>x.staff_role==='beta_tester').length+' beta tester';
+ filterAdminUsers();
  if(tickets.error){feedbackBox.innerHTML='<div class="notice">'+escapeHtml(String(tickets.error.message||tickets.error))+'</div>';return}
  adminBetaTicketsCache=tickets.data||[];renderAdminBetaTickets(adminBetaTicketsCache);
  if(convos.error){convBox.innerHTML='<div class="notice">Beta Workspace non disponibile: '+escapeHtml(String(convos.error.message||convos.error))+'</div>';return}
@@ -2635,6 +2642,24 @@ document.getElementById('socialWhatsApp').onclick=()=>openShareUrl('whatsapp');
 document.getElementById('socialTelegram').onclick=()=>openShareUrl('telegram');
 document.getElementById('closeAdmin').onclick=()=>adminModal.classList.remove('show');
 document.getElementById('refreshAdmin').onclick=loadAdmin;
+// Visual-only filter of the owner-authorized users list already returned by the existing RPC.
+function filterAdminUsers(){
+ const search=document.getElementById('adminUserSearch');
+ const indicator=document.getElementById('adminUserSearchResult');
+ const query=(search?.value||'').trim().toLocaleLowerCase('it');
+ const rows=[...document.querySelectorAll('#adminUsers .admin-user')];
+ let found=0;
+ for(const row of rows){
+   const title=row.querySelector('.jobhead strong')?.textContent||'';
+   const meta=row.querySelector('.jobmeta')?.textContent||'';
+   const match=!query||(title+' '+meta).toLocaleLowerCase('it').includes(query);
+   row.hidden=!match;
+   if(match)found++;
+ }
+ if(indicator)indicator.textContent=rows.length?(found+' di '+rows.length+' utenti visualizzati'):'';
+}
+document.getElementById('adminUserSearch').addEventListener('input',filterAdminUsers);
+
 betaModal.onclick=e=>{if(e.target.id==='betaModal')betaModal.classList.remove('show')};
 adminModal.onclick=e=>{if(e.target.id==='adminModal')adminModal.classList.remove('show')};
 document.getElementById('socialModal').onclick=e=>{if(e.target.id==='socialModal')document.getElementById('socialModal').classList.remove('show')};
