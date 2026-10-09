@@ -1,7 +1,7 @@
 /* NEXUS Word first viewport: app usability over illustrative decoration.
    Addresses observable off-screen quick actions on short laptops and phones.
    Pure responsive layout; no auth, data or payment changes. */
-@media (min-width:821px) and (max-height:820px){
+@media (min-width:821px) and (max-height:950px){
   .stage{padding-top:8px;padding-bottom:10px}
   .intro{padding-top:5px!important;padding-bottom:9px!important;margin:0!important}
   .intro::before{height:420px;top:33%;opacity:.68}
@@ -52,7 +52,7 @@
   body.nexus-authenticated #intro .aether-story{text-align:left}
   .main:has(#intro:not([style*="display: none"])) .composer-wrap{padding-top:7px}
 }
-@media(min-width:821px) and (max-width:1150px) and (max-height:820px){
+@media(min-width:821px) and (max-width:1150px) and (max-height:950px){
   .intro .quick,
   body.nexus-authenticated #intro .quick{grid-template-columns:repeat(2,minmax(0,1fr))}
   .intro .quick button,
