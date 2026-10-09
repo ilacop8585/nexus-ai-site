@@ -11,7 +11,7 @@
 <link rel="canonical" href="https://nexusword.it/">
 <meta property="og:type" content="website"><meta property="og:site_name" content="NEXUS Word"><meta property="og:title" content="NEXUS Word Beta — Chat IA, agenti e progetti"><meta property="og:description" content="Piattaforma IA in beta pubblica con chat inclusa e attività Agent, Work, Code e file a crediti trasparenti."><meta property="og:url" content="https://nexusword.it/">
 <meta name="theme-color" content="#05070b">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%23080b12%27/%3E%3Cpath d=%27M17 47V17h8l14 19V17h8v30h-8L25 28v19z%27 fill=%27%2378f4bd%27/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="./nexus-mark.svg">
 <link rel="alternate" hreflang="it" href="https://nexusword.it/"><link rel="alternate" hreflang="en" href="https://nexusword.it/?lang=en">
 <link rel="alternate" hreflang="x-default" href="https://nexusword.it/">
 <script type="application/ld+json">
@@ -162,12 +162,13 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 
 .language-switch{display:inline-flex;align-items:center;gap:7px;margin-left:auto;flex:0 0 auto;color:#bfcfe0;font-size:10px;font-weight:800}.language-switch select{min-width:120px;max-width:145px;border:1px solid #40546b;border-radius:7px;padding:4px 7px;background:#111d29;color:#f4f7fa;font:700 11px system-ui;cursor:pointer;outline-offset:2px}.language-switch select:focus-visible{outline:2px solid #78f4bd}.beta-release-strip{justify-content:flex-start}.beta-release-strip>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.beta-release-strip>button{white-space:nowrap}@media(max-width:640px){.beta-release-strip{gap:5px;padding:0 8px}.beta-release-strip>span{display:none}.beta-release-strip>button{font-size:10px;padding:4px}.language-switch{gap:4px}.language-switch>span{display:none}.language-switch select{min-width:118px;padding:5px 5px;font-size:11px}}@media(max-width:360px){.beta-release-strip>strong{font-size:9px}.language-switch select{min-width:103px}}
 </style>
+<link rel="stylesheet" href="./nexus-design-v2.css">
 </head>
 <body>
 <div class="beta-release-strip" id="betaReleaseStrip"><strong>BETA · IN SVILUPPO</strong><span>NEXUS Word è online: stiamo ampliando agenti, connettori e applicazioni.</span><button id="openBetaWelcome" type="button">Cosa significa</button><label class="language-switch" for="nexusLanguage"><span>Lingua</span><select id="nexusLanguage" aria-label="Seleziona la lingua dell'interfaccia"><option value="it">🇮🇹 Italiano</option><option value="en">🇬🇧 English</option></select></label></div>
 <div class="app">
 <aside class="side">
-  <div class="brand"><span class="mark">N</span><span class="brand-copy"><span>NEXUS WORD</span><small>BETA PUBBLICA</small></span></div>
+  <div class="brand"><span class="mark"><img src="./nexus-mark.svg" alt="" width="33" height="33"></span><span class="brand-copy"><span>NEXUS <em>WORD</em></span><small>BETA PUBBLICA</small></span></div>
   <button class="newchat" id="newChat">＋ Nuova chat</button>
 
   <div class="navgroup">
@@ -219,7 +220,9 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 <div class="side-backdrop" id="sideBackdrop" aria-hidden="true"></div>
 <main class="main">
   <header class="top">
+    <div class="mobile-brand" aria-label="NEXUS Word"><img src="./nexus-mark.svg" alt="" width="30" height="30"><span>NEXUS WORD</span></div>
     <div class="mode-shell">
+      <label class="mobile-mode-control" for="mobileModeSelect"><span>Modalità</span><select id="mobileModeSelect" aria-label="Seleziona modalità di esecuzione"><option value="auto">Auto</option><option value="chat">Chat</option><option value="agent">Agent</option><option value="work">Lavoro</option><option value="code">Code</option></select></label>
       <div class="mode-switch" aria-label="NEXUS execution mode">
         <button type="button" data-nexus-mode="auto" aria-pressed="true">Auto</button>
         <button type="button" data-nexus-mode="chat" aria-pressed="false">Chat</button>
@@ -232,7 +235,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     </div>
     <div class="account">
       <span class="compute-pill internal-status" id="computeStatus" aria-hidden="true"><i></i><span>Verifica in corso…</span></span>
-      <button class="mobile-only" id="mobileChatsBtn" type="button">Chat</button>
+      <button class="mobile-only" id="mobileChatsBtn" type="button" aria-controls="nexusSidebar" aria-expanded="false">☰ Menu</button>
       <button id="topNewChat" type="button">Nuova chat</button>
       <button id="topJobsBtn" type="button">Lavori</button>
       <button id="topBuyCredits" type="button">Acquista crediti</button>
@@ -2698,4 +2701,5 @@ async function resumePendingIntents(){
 }
 loadSession().then(async()=>{await loadPlugins();await resumePendingIntents();await pollCreditTopup()});
 </script>
+<script type="module" src="./nexus-design-v2.js"></script>
 </body></html>
