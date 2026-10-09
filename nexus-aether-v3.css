@@ -1,0 +1,145 @@
+/* NEXUS Word — AETHER visual language V3
+   Inspired by FORMWORK AETHER, copyright (c) 2026 bswxyz, MIT license.
+   License copy: third_party_licenses/FORMWORK-AETHER-MIT.txt.
+   App data, controls, IDs and job handling are preserved; visuals only. */
+:root{
+  --bg:#070b15;--panel:#101a2c;--panel2:#121c30;
+  --line:rgba(176,208,239,.17);--line2:rgba(190,222,250,.25);
+  --text:#f2f6ff;--muted:#acbfd7;--accent:#83ebd8;
+  --aether-ink:#f5f8ff;--aether-dim:#b5c8df;--aether-cyan:#49deec;--aether-violet:#8d7cff;
+  --aether-glass:rgba(17,29,52,.67);--aether-glass-line:rgba(190,225,251,.17);
+}
+html{color-scheme:dark}
+body{background:#070b15}
+body::before{inset:36px 0 0;background:
+ radial-gradient(ellipse 46% 43% at 77% 23%,rgba(53,176,206,.18),transparent 75%),
+ radial-gradient(ellipse 51% 43% at 31% 70%,rgba(116,91,231,.17),transparent 74%),
+ radial-gradient(ellipse 35% 31% at 81% 90%,rgba(53,120,169,.10),transparent 74%)}
+.side{background:linear-gradient(165deg,rgba(12,22,42,.97),rgba(7,12,24,.99) 83%);border-color:var(--aether-glass-line);box-shadow:inset -1px 0 rgba(255,255,255,.015)}
+.brand .mark,.mobile-brand img{border-color:rgba(126,234,220,.48);background:linear-gradient(145deg,rgba(66,211,210,.22),rgba(122,104,255,.2));box-shadow:0 0 26px rgba(67,178,223,.11)}
+.brand-copy>span,.mobile-brand span{color:#eef7ff;letter-spacing:.095em}
+.newchat{background:linear-gradient(120deg,#b1f6e9,#8bdef3 56%,#acacff);box-shadow:0 8px 28px rgba(90,176,249,.15);color:#071426}
+.newchat:hover{background:linear-gradient(120deg,#c5fff3,#abe9ff,#c5bcff)}
+.navgroup .navbtn{color:#c6d9ec}
+.navgroup .navbtn:hover,.navgroup .navbtn.active{background:linear-gradient(90deg,rgba(80,191,220,.14),rgba(135,109,236,.08));border-color:rgba(134,207,227,.17)}
+.credit{background:linear-gradient(145deg,rgba(23,42,68,.84),rgba(16,24,45,.93));border-color:rgba(140,206,237,.27)}
+.top{background:rgba(9,17,32,.87);border-color:rgba(159,204,239,.16);box-shadow:0 8px 40px rgba(2,6,15,.12)}
+.mode-switch{border-color:rgba(164,206,241,.19);background:rgba(8,16,34,.8)}
+.mode-switch button.active{background:linear-gradient(125deg,rgba(62,141,168,.55),rgba(105,93,165,.42));box-shadow:inset 0 0 0 1px rgba(191,224,255,.20)}
+.account #loginBtn,.buycredit{border-color:rgba(120,233,218,.31);background:rgba(84,165,165,.10);color:#c0faef}
+.account button:hover,.buycredit:hover{border-color:rgba(154,232,233,.45)}
+.stage{width:min(100%,1390px);padding:16px 38px 180px;scrollbar-color:rgba(111,172,195,.37) transparent;scrollbar-width:thin}
+.intro{isolation:isolate;position:relative;overflow:visible;text-align:left;max-width:none;padding:54px 0 40px;margin:0;min-height:auto}
+.intro::before{width:130%;height:800px;top:22%;left:54%;background:
+ radial-gradient(ellipse 29% 36% at 64% 40%,rgba(62,202,224,.25),transparent 90%),
+ radial-gradient(ellipse 35% 37% at 37% 24%,rgba(104,88,235,.30),transparent 88%),
+ radial-gradient(ellipse 33% 31% at 35% 67%,rgba(41,108,207,.16),transparent 90%);filter:blur(37px);opacity:.8;animation:nexus-aether-aura 17s ease-in-out infinite alternate}
+.intro::after{height:510px;inset:11% -5% auto;background-size:35px 35px;opacity:.3}
+@keyframes nexus-aether-aura{0%{transform:translate(-49%,-49%) rotate(-3deg) scale(1)}100%{transform:translate(-51%,-51%) rotate(3deg) scale(1.07)}}
+.aether-hero{display:grid;grid-template-columns:minmax(0,1.13fr) minmax(0,.87fr);gap:clamp(20px,3vw,56px);align-items:center;max-width:1450px;min-height:430px}
+.aether-story,.aether-showcase{min-width:0;position:relative}
+.aether-eyebrow{display:inline-flex;align-items:center;gap:9px;padding:8px 13px;background:rgba(30,51,79,.68);border:1px solid rgba(171,206,244,.26);border-radius:30px;font-size:10px;letter-spacing:.115em;font-weight:800;color:#c5e5f1;text-transform:uppercase}
+.aether-eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:#6bebdd;box-shadow:0 0 15px rgba(103,237,231,.9)}
+.intro .aether-story h1{max-width:790px;font-size:clamp(40px,4.3vw,72px);line-height:1.055;letter-spacing:-.060em;margin:22px 0 20px;color:#f6f9ff;background:none;-webkit-text-fill-color:currentColor}
+.intro .aether-story h1 .aether-gradient{display:block;background:linear-gradient(106deg,#c9bbff 6%,#9d91ff 27%,#62d7f1 69%,#b8f9e9 100%);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.intro .aether-story>p{font-size:clamp(13px,1.13vw,16px);max-width:570px;line-height:1.75;margin:0 0 23px;color:#bdcde0}
+.aether-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.aether-action{display:inline-flex;align-items:center;justify-content:center;min-height:46px;border:1px solid rgba(159,202,230,.25);border-radius:12px;padding:12px 19px;font-size:12px;font-weight:800;color:#eaf4ff;background:rgba(22,37,61,.72);cursor:pointer;box-shadow:none}
+.aether-action.primary{background:linear-gradient(110deg,#a9f9e7 0%,#62dce9 68%,#aea5ff);color:#06152b;border-color:transparent;box-shadow:0 12px 32px rgba(74,200,218,.20)}
+.aether-action:hover{transform:translateY(-2px);border-color:rgba(173,235,237,.6)}
+.aether-action.primary:hover{box-shadow:0 15px 40px rgba(74,200,218,.32)}
+.aether-pledges{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:21px;color:#adc2d5;font-size:10px;font-weight:600}
+.aether-pledges span::before{content:"✓";margin-right:6px;color:#7cebd9}
+.aether-orbit{position:absolute;z-index:-1;left:10%;top:-17%;width:76%;aspect-ratio:1;border:1px solid rgba(110,218,249,.18);border-radius:50%;box-shadow:0 0 0 44px rgba(140,139,253,.033),0 0 0 90px rgba(129,217,247,.025),0 0 90px rgba(88,168,237,.22)}
+.aether-window{position:relative;width:100%;border:1px solid rgba(181,221,251,.32);border-radius:22px;overflow:hidden;background:linear-gradient(146deg,rgba(23,43,72,.95),rgba(9,21,42,.95));box-shadow:0 34px 85px rgba(0,4,18,.37),inset 0 1px rgba(255,255,255,.07);backdrop-filter:blur(20px)}
+.aether-window-top{display:flex;align-items:center;gap:9px;min-height:48px;padding:0 15px;border-bottom:1px solid rgba(205,228,252,.11);background:rgba(7,17,37,.6)}
+.aether-window-dots{display:flex;gap:5px}.aether-window-dots i{width:7px;height:7px;border-radius:50%;background:#7898b473}
+.aether-window-top strong{margin-left:5px;font-size:11px;color:#e3f6ff;letter-spacing:.08em}
+.aether-window-top em{margin-left:auto;font-style:normal;font-size:9px;color:#9af8de;border:1px solid rgba(111,225,202,.25);background:rgba(40,146,149,.10);padding:5px 8px;border-radius:30px;white-space:nowrap}
+.aether-window-body{display:grid;grid-template-columns:100px minmax(0,1fr);height:283px}
+.aether-window-nav{padding:20px 9px;background:rgba(9,21,43,.66);border-right:1px solid rgba(188,220,241,.11);display:flex;flex-direction:column;gap:6px}
+.aether-window-nav b{font-size:9px;color:#83a2bf;letter-spacing:.1em;margin-bottom:11px}
+.aether-window-nav span{font-size:10px;padding:9px 7px;color:#a9c4d7;border-radius:8px}
+.aether-window-nav .selected{background:rgba(75,215,206,.13);color:#b3f5e4}
+.aether-window-dialog{display:flex;flex-direction:column;gap:11px;padding:22px 16px;min-width:0}
+.aether-bubble{font-size:11px;padding:12px 13px;line-height:1.55;border-radius:12px;border:1px solid rgba(194,213,250,.12);background:rgba(30,57,83,.6);color:#d5e7fa;max-width:99%}
+.aether-bubble.user{align-self:flex-end;max-width:90%;background:rgba(115,101,218,.22);border-color:rgba(180,167,251,.25);color:#e8e2ff}
+.aether-bubble b{display:block;color:#a5f4e1;font-size:10px;margin-bottom:4px}
+.aether-chips{display:flex;gap:6px;flex-wrap:wrap}.aether-chips span{font-size:9px;color:#b5e7ec;border-radius:7px;padding:5px 7px;border:1px solid rgba(121,213,226,.25);background:rgba(80,169,182,.11)}
+.aether-window-input{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid rgba(170,221,249,.20);border-radius:11px;background:rgba(9,20,39,.72);color:#8fadc4;font-size:10px;padding:11px}
+.aether-window-input i{font-size:10px;font-style:normal;background:#9dece2;color:#051b23;border-radius:7px;padding:5px 8px;font-weight:900}
+.aether-demo-label{position:absolute;bottom:-13px;right:14px;border:1px solid rgba(134,230,219,.32);border-radius:10px;padding:7px 10px;background:#11263b;color:#a9d8e0;font-size:9px;box-shadow:0 12px 25px rgba(0,0,0,.25);font-weight:700}
+.aether-section-heading{text-align:left;margin:28px 0 19px;padding-left:1px}
+.aether-section-heading small{display:block;color:#87e4df;text-transform:uppercase;font-size:10px;font-weight:800;letter-spacing:.14em}
+.aether-section-heading h2{color:#e9f3ff;font-size:clamp(20px,2vw,29px);letter-spacing:-.045em;font-weight:760;margin:6px 0 0}
+.intro .quick{grid-template-columns:repeat(4,minmax(0,1fr));max-width:none;gap:11px;margin-top:0}
+.intro .quick button{min-height:103px;border-radius:17px;padding:19px 39px 19px 15px;font-size:12px;line-height:1.45;background:linear-gradient(140deg,rgba(26,48,75,.80),rgba(13,24,44,.83));border:1px solid rgba(166,215,237,.18);box-shadow:inset 0 1px rgba(255,255,255,.05),0 9px 25px rgba(0,0,0,.10)}
+.intro .quick button::after{color:#79e4df}.intro .quick button:hover{background:linear-gradient(140deg,rgba(40,75,102,.89),rgba(25,41,69,.90));border-color:rgba(129,231,220,.44)}
+.aether-footer-note{margin:17px 0 0;font-size:11px;color:#90afc3;display:flex;flex-wrap:wrap;gap:8px}
+.aether-footer-note span{padding:6px 10px;border-radius:30px;background:rgba(14,28,49,.7);border:1px solid rgba(151,203,228,.17)}
+/* Product-wide controls: visual changes only — do not alter event handlers or auth flows. */
+.composer{background:linear-gradient(140deg,rgba(20,36,58,.98),rgba(11,23,42,.98));border-color:rgba(165,213,248,.28);box-shadow:0 30px 75px rgba(2,6,18,.39),inset 0 1px rgba(255,255,255,.07)}
+.send{background:linear-gradient(110deg,#abf6e6,#7adfe7 63%,#b6abff);color:#081a27;border:0}
+.messages .msg,.messages .message{border-radius:15px}
+.modal-card{background:linear-gradient(145deg,rgba(22,40,65,.98),rgba(10,20,37,.98));border-color:rgba(168,215,247,.25);box-shadow:0 34px 100px rgba(0,4,15,.52);border-radius:21px}
+.modal-card input,.modal-card textarea,.modal-card select{border-radius:10px}
+.project-workspace,.task-runtime-panel{background:linear-gradient(140deg,#15253d,#0a1426)}
+.project-ws-content,.runtime-scroll{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;min-height:0;overflow-y:auto;scrollbar-color:rgba(105,185,199,.55) transparent}
+.project-kpi,.project-card,.project-item,.project-nav-item,.runtime-step{background:linear-gradient(135deg,rgba(28,49,73,.82),rgba(14,27,49,.86));border-color:rgba(146,209,231,.19);border-radius:14px}
+.project-card:hover,.project-item:hover,.project-nav-item:hover{border-color:rgba(126,228,217,.4)}
+/* Keep the Beta warning clear, not hidden or cosmetically minimized. */
+.beta-release-strip{background:rgba(8,15,29,.97);border-color:rgba(155,190,223,.17)}
+@media(max-width:1300px) and (min-width:821px){
+  .stage{padding-left:27px;padding-right:27px}
+  .aether-hero{grid-template-columns:minmax(0,1.04fr) minmax(0,.96fr);gap:22px}
+  .intro .aether-story h1{font-size:clamp(39px,4.2vw,59px)}
+  .aether-window-body{height:260px}
+}
+@media(max-width:1100px) and (min-width:821px){
+  .aether-hero{grid-template-columns:1fr}
+  .aether-showcase{width:min(100%,650px);margin:9px auto}
+  .intro .quick{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:820px){
+  .stage{padding:16px 19px 177px;max-width:100%;min-width:0}
+  .intro{padding:29px 0 35px;min-height:0;overflow:visible}
+  .intro::before{width:120%;height:720px;top:23%;filter:blur(30px)}
+  .aether-hero{grid-template-columns:minmax(0,1fr);gap:25px}
+  .intro .aether-story h1{max-width:600px;font-size:clamp(38px,7vw,59px);margin:19px 0}
+  .intro .aether-story>p{font-size:14px;line-height:1.7}
+  .aether-showcase{max-width:620px;margin:10px auto 0;width:100%}
+  .aether-window-body{height:260px}
+  .aether-orbit{width:78%;left:11%;top:-15%}
+  .intro .quick{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .intro .quick button{min-height:78px;padding:14px 32px 14px 13px}
+  .aether-section-heading{margin-top:29px}
+  .composer-wrap{background:linear-gradient(180deg,transparent,rgba(7,11,21,.92) 24%,#070b15)}
+}
+@media(max-width:560px){
+  .stage{padding:8px 15px 180px}
+  .intro{padding:29px 0 28px}
+  .intro .aether-story h1{font-size:clamp(37px,9.5vw,51px);letter-spacing:-.053em;line-height:1.075;margin:19px 0}
+  .intro .aether-story>p{font-size:13px;line-height:1.72}
+  .aether-eyebrow{font-size:9px;letter-spacing:.08em}
+  .aether-actions .aether-action{font-size:11px;min-height:44px;flex:1 1 138px;padding:11px}
+  .aether-pledges{font-size:9px;gap:6px 11px}
+  .aether-showcase{margin:7px auto 0}
+  .aether-window{border-radius:17px}
+  .aether-window-top{min-height:43px;padding:0 11px}
+  .aether-window-body{grid-template-columns:66px minmax(0,1fr);height:244px}
+  .aether-window-nav{padding:15px 5px}
+  .aether-window-nav b{font-size:8px}
+  .aether-window-nav span{font-size:8px;padding:8px 4px}
+  .aether-window-dialog{padding:12px 9px;gap:9px}
+  .aether-bubble{font-size:10px;padding:10px}
+  .aether-bubble b{font-size:9px}
+  .aether-chips span{font-size:8px}
+  .aether-window-input{font-size:9px;padding:8px}
+  .aether-demo-label{right:8px;font-size:8px}
+  .aether-section-heading{margin:30px 0 14px}
+  .aether-section-heading h2{font-size:22px}
+  .intro .quick{grid-template-columns:minmax(0,1fr);gap:9px}
+  .intro .quick button{min-height:66px;padding:14px 36px 14px 16px;font-size:12px}
+  .aether-footer-note{font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){.intro::before{animation:none!important}.aether-action,.intro .quick button{transition:none!important}}

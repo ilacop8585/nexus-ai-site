@@ -3,6 +3,28 @@
 const KEY='nexus_ui_language_v1';
 const SUPPORTED=new Set(['it','en']);
 const DICTIONARY={
+  "Your ideas.": "Le tue idee.",
+  "A universe of intelligence.": "Un universo di intelligenza.",
+  "From your first question to your most ambitious projects. Talk to NEXUS, work with AI agents, and organize your tasks in one place, built to grow with you.": "Dalla prima domanda ai progetti più ambiziosi. Conversa con NEXUS, lavora con gli agenti IA e organizza le attività in un unico spazio, progettato per crescere con te.",
+  "Start creating": "Inizia a creare",
+  "Explore projects": "Esplora i progetti",
+  "Text chat included": "Chat testuale inclusa",
+  "Credit estimate before starting work": "Preventivo crediti prima dei lavori",
+  "Italian and English": "Italiano e inglese",
+  "Illustrative preview of the NEXUS workspace": "Anteprima illustrativa del workspace NEXUS",
+  "Can you help me develop a project?": "Puoi aiutarmi a sviluppare un progetto?",
+  "We can start with your idea, organize the materials, and prepare the work to be done.": "Possiamo partire dalla tua idea, organizzare i materiali e preparare il lavoro da svolgere.",
+  "Write your next project…": "Scrivi il tuo prossimo progetto…",
+  "Illustrative preview · not a live chat": "Anteprima illustrativa · non una chat attiva",
+  "CREATE · EXPLORE · BUILD": "CREA · ESPLORA · COSTRUISCI",
+  "Much more than chat. A new way to create.": "Molto più di una chat. Un modo nuovo di creare.",
+  "Chat available": "Chat disponibile",
+  "Agent, Work and Code with upfront credit estimates": "Agent, Work e Code con preventivo crediti",
+  "Connectors and native apps evolving": "Connettori e app native in evoluzione",
+  "▣ Projects": "▣ Progetti",
+  "◷ Tasks": "◷ Attività",
+  "⌘ Connectors": "⌘ Connettori",
+
   "BETA · ACTIVE DEVELOPMENT": "BETA · IN SVILUPPO",
   "NEXUS Word is live while we expand agents, connectors and apps.": "NEXUS Word è online: stiamo ampliando agenti, connettori e applicazioni.",
   "What this means": "Cosa significa",
