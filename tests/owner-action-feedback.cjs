@@ -54,6 +54,9 @@ const server=http.createServer((req,res)=>{const p=(req.url||'/').split('?')[0],
     };
     clickAction('Assegna Beta Tester');clickAction('Assegna Beta Tester');await wait();
     const beta={role:state.users[0].staff_role,unlimited:state.users[0].unlimited,notice:notice.textContent,invocations:state.calls.filter(x=>x.name==='nexus_admin_set_beta').length};
+    // Beta automatically enabled unlimited; exercise separate toggle both ways.
+    clickAction('Disattiva illimitato');await wait();
+    if(state.users[0].unlimited!==false)throw Error('Separate unlimited off toggle failed');
     clickAction('Attiva illimitato');await wait();
     const unlimited={value:state.users[0].unlimited,notice:notice.textContent};
     clickAction('Assegna crediti');await wait();
