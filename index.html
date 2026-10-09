@@ -738,6 +738,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <h2>Centro amministrazione NEXUS</h2>
     <p>Gestione utenti, ruoli Beta Tester, crediti e segnalazioni. Le modifiche sono registrate dal server.</p>
     <div class="small" id="adminSummary">Caricamento utenti…</div>
+    <div id="adminActionFeedback" class="notice nexus-admin-action-feedback" role="status" aria-live="polite" hidden></div>
     <div class="nexus-admin-search">
       <label for="adminUserSearch">Trova un utente registrato</label>
       <input id="adminUserSearch" type="search" placeholder="Cerca per nome o indirizzo email…" autocomplete="off" spellcheck="false">
@@ -2071,20 +2072,117 @@ async function submitBetaFeedback(e){
  status.textContent='Ticket '+String(row?.public_code||'').trim()+' creato. Puoi continuare direttamente dal thread Beta Live.';
  await loadMyBetaTickets();setBetaPane('tickets');if(row?.ticket_id)await openBetaTicket(row.ticket_id);
 }
+// Single-source-of-truth: an Owner action is confirmed only after a fresh
+// server-authorized read returns the expected value. No browser-side role grant.
+let adminUserMutationPending=false;
+function adminActionNotice(message,kind='info'){
+ const box=document.getElementById('adminActionFeedback');
+ if(!box)return;
+ box.textContent=message;
+ box.dataset.kind=kind;
+ box.hidden=false;
+}
+function renderAdminUserData(data){
+ const rows=Array.isArray(data)?data:[];
+ const usersBox=document.getElementById('adminUsers');
+ usersBox.replaceChildren();
+ rows.forEach(u=>usersBox.appendChild(adminUserRow(u)));
+ const summary=document.getElementById('adminSummary');
+ summary.textContent=rows.length+' utenti · '+rows.filter(x=>x.unlimited).length+' illimitati · '+rows.filter(x=>x.staff_role==='beta_tester').length+' Beta Tester';
+ filterAdminUsers();
+}
+async function fetchAdminUserData(){
+ const res=await client.rpc('nexus_admin_list_users');
+ if(res.error)throw Error(String(res.error.message||res.error));
+ if(!Array.isArray(res.data))throw Error('Risposta elenco utenti non valida');
+ return res.data;
+}
+async function runAdminUserAction(u,action){
+ if(adminUserMutationPending)return;
+ const initialUserId=String(u.user_id);
+ const confirmMessage='La modifica è stata inviata. Verifico ora il valore salvato sul server…';
+ adminUserMutationPending=true;
+ const buttons=[...document.querySelectorAll('#adminUsers button')];
+ const initialDisabled=buttons.map(b=>b.disabled);
+ buttons.forEach(b=>{b.disabled=true});
+ adminActionNotice('Aggiornamento in corso per '+(u.display_name||u.name||u.email||'utente')+'…','pending');
+ const slow=setTimeout(()=>adminActionNotice('Il server sta impiegando più del previsto. Non ripetere l’operazione: sto aspettando l’esito.','pending'),10000);
+ try{
+   const res=await client.rpc(action.rpc,action.args);
+   if(res.error)throw Error(String(res.error.message||res.error));
+   adminActionNotice(confirmMessage,'pending');
+   // Fetch ONLY the user list, never block on Beta tickets/conversations.
+   const fresh=await fetchAdminUserData();
+   const updated=fresh.find(row=>String(row.user_id)===initialUserId);
+   renderAdminUserData(fresh);
+   if(!updated||!action.verify(updated)){
+     adminActionNotice('Modifica inviata, ma non ancora confermata dalla lettura del server. Controlla lo stato aggiornato prima di ripetere.','warning');
+     return;
+   }
+   adminActionNotice(action.success(updated),'success');
+ }catch(err){
+   adminActionNotice('Operazione non confermata: '+String(err?.message||err)+'. Aggiorna l’elenco prima di riprovare.','error');
+ }finally{
+   clearTimeout(slow);
+   buttons.forEach((button,index)=>{if(button.isConnected)button.disabled=initialDisabled[index]});
+   adminUserMutationPending=false;
+ }
+}
 function adminUserRow(u){
  const row=document.createElement('div');row.className='jobrow admin-user';
  const head=document.createElement('div');head.className='jobhead';
  const title=document.createElement('strong');title.textContent=u.display_name||u.name||u.email;
- const status=document.createElement('span');status.className='jobstatus '+(u.unlimited?'completed':'');status.textContent=String(u.staff_role||'user').replaceAll('_',' ').toUpperCase();head.append(title,status);row.appendChild(head);
- const meta=document.createElement('div');meta.className='jobmeta';meta.textContent=u.email+' · '+u.credits+' credits'+(u.unlimited?' · unlimited':'')+(u.email_verified?' · verified email':' · email not verified');row.appendChild(meta);
- const name=document.createElement('input');name.className='admin-name-input';name.value=u.display_name||u.name||'';name.placeholder='Nome visualizzato';
- const saveName=document.createElement('button');saveName.type='button';saveName.textContent='Salva nome';saveName.onclick=async()=>{const x=await client.rpc('nexus_admin_set_display_name',{p_target:u.user_id,p_display_name:name.value});if(x.error)alert(x.error.message);else await loadAdmin()};
+ const status=document.createElement('span');status.className='jobstatus '+(u.unlimited?'completed':'');
+ status.textContent=String(u.staff_role||'user').replaceAll('_',' ').toUpperCase();
+ head.append(title,status);row.appendChild(head);
+ const meta=document.createElement('div');meta.className='jobmeta';
+ meta.textContent=u.email+' · '+u.credits+' crediti'+(u.unlimited?' · ILLIMITATO':'')+(u.email_verified?' · email verificata':' · email non verificata');
+ row.appendChild(meta);
+ const name=document.createElement('input');name.className='admin-name-input';
+ name.value=u.display_name||u.name||'';name.placeholder='Nome visualizzato';
+ const saveName=document.createElement('button');saveName.type='button';saveName.textContent='Salva nome';
+ saveName.onclick=()=>runAdminUserAction(u,{
+   rpc:'nexus_admin_set_display_name',args:{p_target:u.user_id,p_display_name:name.value},
+   verify:r=>String(r.display_name||'').trim()===name.value.trim(),
+   success:()=> 'Nome aggiornato e confermato dal server.'
+ });
  const actions=document.createElement('div');actions.className='admin-actions';
- const amount=document.createElement('input');amount.className='admin-credit-input';amount.type='number';amount.min='1';amount.max='1000000';amount.value='100';
- const grant=document.createElement('button');grant.type='button';grant.textContent='Assegna crediti';grant.onclick=async()=>{const x=await client.rpc('nexus_admin_grant_credits',{p_target:u.user_id,p_amount:Number(amount.value),p_reason:'admin_panel'});if(x.error)alert(x.error.message);else await loadAdmin()};
- const beta=document.createElement('button');beta.type='button';beta.textContent=u.staff_role==='beta_tester'?'Rimuovi Beta Tester':'Assegna Beta Tester';beta.disabled=u.staff_role==='owner';beta.onclick=async()=>{const x=await client.rpc('nexus_admin_set_beta',{p_target:u.user_id,p_enabled:u.staff_role!=='beta_tester'});if(x.error)alert(x.error.message);else await loadAdmin()};
- const unlimited=document.createElement('button');unlimited.type='button';unlimited.textContent=u.unlimited?'Disattiva illimitato':'Attiva illimitato';unlimited.disabled=u.staff_role==='owner';unlimited.onclick=async()=>{const x=await client.rpc('nexus_admin_set_unlimited',{p_target:u.user_id,p_unlimited:!u.unlimited});if(x.error)alert(x.error.message);else await loadAdmin()};
- actions.append(amount,grant,beta,unlimited);row.append(name,saveName,actions);return row;
+ const amount=document.createElement('input');amount.className='admin-credit-input';amount.type='number';
+ amount.min='1';amount.max='1000000';amount.step='1';amount.value='100';
+ const grant=document.createElement('button');grant.type='button';grant.textContent='Assegna crediti';
+ grant.onclick=()=>{
+   const qty=Number(amount.value);
+   if(!Number.isSafeInteger(qty)||qty<1||qty>1000000){
+     adminActionNotice('Inserisci una quantità intera di crediti da 1 a 1.000.000.','error');return;
+   }
+   const before=Number(u.credits);
+   runAdminUserAction(u,{
+     rpc:'nexus_admin_grant_credits',
+     args:{p_target:u.user_id,p_amount:qty,p_reason:'admin_panel'},
+     verify:r=>Number.isFinite(before)&&Number(r.credits)>=before+qty,
+     success:r=>'Accredito confermato: +'+qty+' crediti. Saldo attuale: '+r.credits+'.'
+   });
+ };
+ const beta=document.createElement('button');beta.type='button';
+ const wasBeta=u.staff_role==='beta_tester';
+ beta.textContent=wasBeta?'Rimuovi Beta Tester':'Assegna Beta Tester';
+ // Never offer downgrading OWNER/ADMIN via a Beta switch.
+ beta.disabled= !['user','beta_tester',null,undefined].includes(u.staff_role);
+ beta.onclick=()=>runAdminUserAction(u,{
+   rpc:'nexus_admin_set_beta',args:{p_target:u.user_id,p_enabled:!wasBeta},
+   verify:r=>wasBeta?r.staff_role!=='beta_tester':r.staff_role==='beta_tester',
+   success:()=>wasBeta?'Rimozione Beta Tester confermata dal server.':'Ruolo BETA TESTER confermato dal server.'
+ });
+ const unlimited=document.createElement('button');unlimited.type='button';
+ unlimited.textContent=u.unlimited?'Disattiva illimitato':'Attiva illimitato';
+ unlimited.disabled=u.staff_role==='owner';
+ unlimited.onclick=()=>runAdminUserAction(u,{
+   rpc:'nexus_admin_set_unlimited',args:{p_target:u.user_id,p_unlimited:!u.unlimited},
+   verify:r=>Boolean(r.unlimited)===!Boolean(u.unlimited),
+   success:()=>u.unlimited?'Disattivazione illimitato confermata dal server.':'Accesso ILLIMITATO confermato dal server.'
+ });
+ actions.append(amount,grant,beta,unlimited);
+ row.append(name,saveName,actions);return row;
 }
 function adminNextBetaStates(status){return {APERTO:['IN_ANALISI','CHIUSO'],IN_ANALISI:['IN_CORREZIONE','CHIUSO'],IN_CORREZIONE:['DA_VERIFICARE','IN_ANALISI'],DA_VERIFICARE:['IN_ANALISI','RISOLTO'],RISOLTO:['CHIUSO','IN_ANALISI'],CHIUSO:[]}[status]||[]}
 async function adminBetaTransition(id,next){
@@ -2162,17 +2260,25 @@ function renderAdminBetaTickets(rows){
  });
 }
 async function loadAdmin(){
- const usersBox=document.getElementById('adminUsers'),feedbackBox=document.getElementById('adminFeedback'),convBox=document.getElementById('adminBetaConversations'),summary=document.getElementById('adminSummary');
- usersBox.innerHTML='<div class="small">Loading users…</div>';feedbackBox.innerHTML='<div class="small">Loading Beta Live…</div>';convBox.innerHTML='<div class="small">Caricamento conversazioni beta…</div>';
- const [users,tickets,convos]=await Promise.all([client.rpc('nexus_admin_list_users'),client.rpc('nexus_beta_admin_list_tickets'),client.rpc('nexus_beta_admin_list_conversations',{p_limit:100})]);
- if(users.error){usersBox.innerHTML='<div class="notice">'+escapeHtml(String(users.error.message||users.error))+'</div>';return}
- usersBox.innerHTML='';(users.data||[]).forEach(u=>usersBox.appendChild(adminUserRow(u)));
- summary.textContent=(users.data||[]).length+' users · '+(users.data||[]).filter(x=>x.unlimited).length+' unlimited · '+(users.data||[]).filter(x=>x.staff_role==='beta_tester').length+' beta tester';
- filterAdminUsers();
- if(tickets.error){feedbackBox.innerHTML='<div class="notice">'+escapeHtml(String(tickets.error.message||tickets.error))+'</div>';return}
- adminBetaTicketsCache=tickets.data||[];renderAdminBetaTickets(adminBetaTicketsCache);
- if(convos.error){convBox.innerHTML='<div class="notice">Beta Workspace non disponibile: '+escapeHtml(String(convos.error.message||convos.error))+'</div>';return}
- adminBetaConversationsCache=convos.data||[];renderAdminBetaConversations(adminBetaConversationsCache);
+ const usersBox=document.getElementById('adminUsers'),
+       feedbackBox=document.getElementById('adminFeedback'),
+       convBox=document.getElementById('adminBetaConversations');
+ usersBox.innerHTML='<div class="small">Caricamento utenti…</div>';
+ feedbackBox.innerHTML='<div class="small">Caricamento Beta Live…</div>';
+ convBox.innerHTML='<div class="small">Caricamento conversazioni Beta…</div>';
+ // Independent queries: slow QA threads must never block user/credit management.
+ const usersRequest=fetchAdminUserData().then(renderAdminUserData).catch(err=>{
+   usersBox.innerHTML='<div class="notice">Impossibile caricare gli utenti: '+escapeHtml(String(err?.message||err))+'</div>';
+ });
+ const ticketsRequest=client.rpc('nexus_beta_admin_list_tickets').then(tickets=>{
+   if(tickets.error){feedbackBox.innerHTML='<div class="notice">'+escapeHtml(String(tickets.error.message||tickets.error))+'</div>';return}
+   adminBetaTicketsCache=tickets.data||[];renderAdminBetaTickets(adminBetaTicketsCache);
+ }).catch(err=>{feedbackBox.innerHTML='<div class="notice">Beta Live non disponibile: '+escapeHtml(String(err?.message||err))+'</div>'});
+ const convosRequest=client.rpc('nexus_beta_admin_list_conversations',{p_limit:100}).then(convos=>{
+   if(convos.error){convBox.innerHTML='<div class="notice">Beta Workspace non disponibile: '+escapeHtml(String(convos.error.message||convos.error))+'</div>';return}
+   adminBetaConversationsCache=convos.data||[];renderAdminBetaConversations(adminBetaConversationsCache);
+ }).catch(err=>{convBox.innerHTML='<div class="notice">Conversazioni Beta non disponibili: '+escapeHtml(String(err?.message||err))+'</div>'});
+ await Promise.allSettled([usersRequest,ticketsRequest,convosRequest]);
 }
 async function openBeta(){if(!(currentAccess?.is_beta||currentAccess?.is_admin))return;applyAccessUI();document.getElementById('betaModal').classList.add('show');setBetaPane('new');await loadMyBetaTickets()}
 async function openAdmin(){if(!currentAccess?.is_admin)return;document.getElementById('adminModal').classList.add('show');await loadAdmin()}
