@@ -215,6 +215,10 @@ const DICTIONARY={
 };
 DICTIONARY['You selected a compute-backed execution mode.']='Hai selezionato una modalità di elaborazione che utilizza risorse IA.';
 DICTIONARY['NEXUS detected that this request goes beyond ordinary conversation and would benefit from a tracked task.']='NEXUS ha rilevato una richiesta più complessa di una normale conversazione: puoi eseguirla come attività tracciabile.';
+DICTIONARY['Mode']='Modalità';
+DICTIONARY['Select execution mode']='Seleziona modalità di esecuzione';
+DICTIONARY['Open NEXUS menu']='Apri menu NEXUS';
+DICTIONARY['Close NEXUS menu']='Chiudi menu NEXUS';
 DICTIONARY['Language']='Lingua';
 DICTIONARY['Select interface language']="Seleziona la lingua dell'interfaccia";
 const REVERSE=Object.fromEntries(Object.entries(DICTIONARY).map(([en,it])=>[it,en]));
