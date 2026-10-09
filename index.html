@@ -852,7 +852,7 @@ function closeBetaWelcome({remember=false}={}){betaWelcomeModal.classList.remove
 document.getElementById('openBetaWelcome').onclick=openBetaWelcome;
 document.getElementById('acceptBetaWelcome').onclick=()=>closeBetaWelcome({remember:true});
 betaWelcomeModal.onclick=e=>{if(e.target.id==='betaWelcomeModal')closeBetaWelcome({remember:true})};
-try{if(!localStorage.getItem('nexus_beta_notice_seen_v2'))setTimeout(openBetaWelcome,250)}catch{setTimeout(openBetaWelcome,250)}
+// First visit opens directly into NEXUS. The persistent BETA banner and its 'Cosa significa' link disclose the status without blocking navigation.
 
 let computeDecisionResolve=null;
 function decideCompute(value){
@@ -1870,10 +1870,20 @@ function renderOwnerNotifications(rows){
 async function loadOwnerNotifications(){
  if(currentAccess?.staff_role!=='owner')return;
  const box=document.getElementById('notificationsList');box.innerHTML='<div class="small">Caricamento notifiche…</div>';
- const r=await client.rpc('nexus_owner_notifications_list',{p_limit:100});
- if(r.error){box.innerHTML='<div class="notice">'+escapeHtml(String(r.error.message||r.error))+'</div>';return}
- ownerNotifications=r.data||[];renderOwnerNotifications(ownerNotifications);
- await refreshOwnerNotificationBadge(false);
+ let timer;
+ try{
+   const r=await Promise.race([
+     client.rpc('nexus_owner_notifications_list',{p_limit:100}),
+     new Promise(resolve=>{timer=setTimeout(()=>resolve({timedOut:true}),12000)})
+   ]);
+   if(r.timedOut){box.innerHTML='<div class="notice">Il caricamento delle notifiche sta impiegando troppo tempo. Premi “Aggiorna” per riprovare. I dati non sono stati modificati.</div>';return}
+   if(r.error){box.innerHTML='<div class="notice">Impossibile caricare le notifiche: '+escapeHtml(String(r.error.message||r.error))+'</div>';return}
+   ownerNotifications=r.data||[];renderOwnerNotifications(ownerNotifications);
+   await refreshOwnerNotificationBadge(false);
+ }catch(error){
+   box.innerHTML='<div class="notice">Errore temporaneo di rete nel caricamento notifiche. Premi “Aggiorna” per riprovare.</div>';
+   console.warn('NEXUS owner notifications read failed',String(error?.message||error));
+ }finally{clearTimeout(timer)}
 }
 async function markOwnerNotificationRead(id){
  const r=await client.rpc('nexus_owner_notifications_mark_read',{p_notification_id:id});
