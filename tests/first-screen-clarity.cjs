@@ -20,10 +20,11 @@ try{for(const [width,height] of [[1440,900],[1280,680],[1024,650],[768,730],[390
  showcaseDisplay:getComputedStyle(show).display,viewport:innerWidth,root:document.documentElement.scrollWidth,composerTop:composer.top,stageBottom:stage.bottom,style}});
  assert.equal(r.style,true,'clarity CSS loaded '+width);total++;
  assert.ok(r.root<=width+1,'no horizontal overflow '+width+' '+JSON.stringify(r));total++;
- if(width<=1280){
+ if(width<=1440){
   assert.equal(r.showcaseDisplay,'none','fake chat must not displace actions '+width);total++;
   assert.ok(r.first.top<=r.stage.bottom-30,'first quick action must be visible without scrolling '+width+' '+JSON.stringify(r));total++;
   assert.ok(r.quick.top<=r.stage.bottom-30,'quick actions must not start outside stage '+width);total++;
+  assert.ok(r.quick.bottom<=r.stage.bottom+2,'last quick action should be visible without scrolling '+width+' '+JSON.stringify(r));total++;
  }
  assert.ok(r.composerTop>=r.stageBottom-3,'composer must not overlap section '+width);total++;
  assert.deepEqual(errors,[],'browser errors '+width);total++;
