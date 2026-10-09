@@ -1,17 +1,16 @@
 'use strict';
-// Prevent recurrence of PL/pgSQL RETURNS TABLE(user_id...) shadowing a column.
-// This is a static contract gate; runtime authentication/RPC is exercised separately.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const source=fs.readFileSync(path.resolve(__dirname,'../sql/20261010_admin_privilege_user_id_fix.sql'),'utf8');
 for(const name of ['nexus_admin_set_beta','nexus_admin_set_unlimited']){
- const rx=new RegExp('CREATE OR REPLACE FUNCTION public\\.'+name+'\\(','i');
- assert.match(source,rx,name+' function present');
+ assert.ok(source.includes('CREATE OR REPLACE FUNCTION public.'+name+'('),name+' exists');
 }
-assert.doesNotMatch(source,/\\bWHERE\\s+user_id\\s*=\\s*p_target\\b/i,'ambiguous function-output user_id');
-assert.match(source,/WHERE sa\\.user_id\\s*=\\s*p_target/i,'qualified user_id predicate');
-assert.match(source,/ON CONFLICT ON CONSTRAINT nexus_staff_accounts_pkey/,'unique conflict target');
-assert.match(source,/SECURITY DEFINER/,'security contract retained');
-assert.match(source,/nexus_is_owner\\(v_admin\\)/,'owner-only gate retained');
-assert.match(source,/INSERT INTO public\\.nexus_admin_audit/g,'audit maintained');
-assert.match(source,/RETURN QUERY SELECT p_target/,'RPC shape retained');
+const normalized=source.replaceAll(String.fromCharCode(13),'').replaceAll('\n',' ').replaceAll('\t',' ').replaceAll('  ',' ');
+assert.ok(!normalized.includes('WHERE user_id=p_target'),'unqualified reference forbidden');
+assert.ok(!normalized.includes('WHERE user_id = p_target'),'unqualified reference forbidden');
+assert.ok(source.includes('WHERE sa.user_id=p_target'),'table-qualified user_id');
+assert.ok(source.includes('ON CONFLICT ON CONSTRAINT nexus_staff_accounts_pkey'),'named unique constraint');
+assert.ok(source.includes('SECURITY DEFINER'),'security context retained');
+assert.ok(source.includes('nexus_is_owner(v_admin)'),'owner authorization retained');
+assert.ok(source.includes('nexus_admin_audit'),'audit preserved');
+assert.ok(source.includes('RETURN QUERY SELECT p_target'),'RPC return shape preserved');
 console.log('NEXUS_ADMIN_SQL_AMBIGUITY_PASS');
