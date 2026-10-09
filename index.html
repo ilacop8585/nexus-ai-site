@@ -172,6 +172,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 <aside class="side">
   <div class="brand"><span class="mark"><img src="./nexus-mark.svg" alt="" width="33" height="33"></span><span class="brand-copy"><span>NEXUS <em>WORD</em></span><small>BETA PUBBLICA</small></span></div>
   <button class="newchat" id="newChat">＋ Nuova chat</button>
+  <button type="button" id="ownerQuickAdmin" class="nexus-owner-quick" hidden aria-label="Apri Centro amministrazione, gestione utenti, crediti e Beta Tester"><span>⚙ Gestisci utenti e Beta</span><span class="small">ADMIN</span></button>
 
   <div class="navgroup">
     <div class="navlabel">Lavoro</div>
@@ -1574,6 +1575,7 @@ document.getElementById('closeJobs').onclick=()=>{jobsModal.classList.remove('sh
 jobsModal.onclick=e=>{if(e.target.id==='jobsModal'){jobsModal.classList.remove('show');clearInterval(jobsPoll);jobsPoll=null}};
 
 const modal=document.getElementById('loginModal');
+document.getElementById('ownerQuickAdmin').onclick=()=>{const original=document.getElementById('adminBtn');if(!original.hidden)original.click()};
 document.getElementById('loginBtn').onclick=()=>{if(!currentUser){openAuth();return}if(confirm('Sign out of NEXUS?'))signOut()};
 document.getElementById('closeLogin').onclick=()=>modal.classList.remove('show');
 modal.onclick=e=>{if(e.target.id==='loginModal')modal.classList.remove('show')};
@@ -1763,7 +1765,8 @@ function setLoggedOutUI(){
  document.getElementById('creditBalance').textContent='—';document.getElementById('creditAllowance').textContent=' / —';document.getElementById('creditBar').style.width='0%';
  document.getElementById('creditStatus').textContent='Sign in to load your real NEXUS balance.';
  const badge=document.getElementById('roleBadge');badge.hidden=true;badge.textContent='';
- document.getElementById('betaBtn').hidden=true;document.getElementById('privateBtn').hidden=true;document.getElementById('adminBtn').hidden=true;document.getElementById('socialBtn').hidden=true;document.getElementById('notificationsBtn').hidden=true;
+ document.getElementById('betaBtn').hidden=true;document.getElementById('privateBtn').hidden=true;document.getElementById('adminBtn').hidden=true;
+ document.getElementById('ownerQuickAdmin').hidden=true;document.getElementById('socialBtn').hidden=true;document.getElementById('notificationsBtn').hidden=true;
  stopOwnerNotificationPolling();updateNotificationBadge(0);
  NexusPrivate.reset();
  AgentOS.reset();
@@ -1780,6 +1783,7 @@ function applyAccessUI(){
  const a=currentAccess||{},badge=document.getElementById('roleBadge');
  document.getElementById('betaBtn').hidden=!(a.is_beta||a.is_admin);
  document.getElementById('adminBtn').hidden=!a.is_admin;
+ document.getElementById('ownerQuickAdmin').hidden=!a.is_admin;
  document.getElementById('socialBtn').hidden=!a.is_admin;
  document.getElementById('notificationsBtn').hidden=a.staff_role!=='owner';
  if(a.staff_role==='owner')startOwnerNotificationPolling();else stopOwnerNotificationPolling();
