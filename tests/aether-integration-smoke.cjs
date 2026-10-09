@@ -23,6 +23,7 @@ const server=http.createServer((req,res)=>{
   const page=await browser.newPage(); const issues=[];
   page.on('pageerror',e=>issues.push('JS: '+e.message));
   page.on('requestfailed',req=>{if(req.url().startsWith(url))issues.push('LOCAL: '+req.url())});
+  await page.evaluateOnNewDocument(()=>{try{localStorage.removeItem('nexus_ui_language_v1')}catch{}});
   await page.setViewport({width,height:850,isMobile:width<=768,hasTouch:width<=768});
   await page.goto(url,{waitUntil:'networkidle2',timeout:25000});
   const data=await page.evaluate(()=>{
