@@ -248,10 +248,10 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
       <p>Le conversazioni semplici sono rapide e incluse. Ricerche, programmazione, file e lavori complessi diventano attività tracciabili, con costi in crediti espliciti.</p>
       <div class="launch-status"><span class="live">● Chat attiva</span><span class="live">● Progetti e agenti attivi</span><span class="live">● Area Beta attiva</span><span class="beta">Connettori in ampliamento</span><span class="beta">App native in sviluppo</span></div>
       <div class="quick">
-        <button data-mode="work" data-prompt="Analyse this document and tell me the important points.">📄 Analizza un documento</button>
-        <button data-mode="work" data-prompt="I want to work with an image. I will attach it and describe what I need.">🖼️ Lavora su un'immagine</button>
-        <button data-mode="code" data-prompt="I need help modifying a software project or source file.">💻 Lavora sul codice</button>
-        <button data-mode="agent" data-prompt="I want to hand off a longer task to NEXUS.">⚙️ Avvia un'attività Agent</button>
+        <button data-mode="work" data-prompt="Analyse this document and tell me the important points." data-prompt-it="Analizza questo documento e dimmi i punti più importanti.">📄 Analizza un documento</button>
+        <button data-mode="work" data-prompt="I want to work with an image. I will attach it and describe what I need." data-prompt-it="Voglio lavorare su un'immagine. La allegherò e spiegherò cosa mi serve.">🖼️ Lavora su un'immagine</button>
+        <button data-mode="code" data-prompt="I need help modifying a software project or source file." data-prompt-it="Ho bisogno di modificare un progetto software o un file di codice.">💻 Lavora sul codice</button>
+        <button data-mode="agent" data-prompt="I want to hand off a longer task to NEXUS." data-prompt-it="Voglio affidare a NEXUS un'attività più complessa.">⚙️ Avvia un'attività Agent</button>
       </div>
     </div>
     <div class="messages" id="messages"></div>
@@ -823,15 +823,17 @@ function decideCompute(value){
   if(resolve)resolve(value);
 }
 async function confirmComputeTask({mode,level,credits,reason,allowBasicChat=true,details=''}) {
-  document.getElementById('computeConfirmTitle').textContent=reason==='attachments'?'Process attached files?':'Run as '+LaunchOS.modeLabel(mode)+' task?';
+  document.getElementById('computeConfirmTitle').textContent=reason==='attachments'
+    ? (UI_IT?'Elaborare i file allegati?':'Process attached files?')
+    : (UI_IT?'Avviare come attività '+LaunchOS.modeLabel(mode)+'?':'Run as '+LaunchOS.modeLabel(mode)+' task?');
   document.getElementById('computeConfirmBody').textContent=reason==='attachments'
-    ? 'File processing requires a NEXUS job. '+details
+    ? (UI_IT?'Per elaborare file occorre un’attività NEXUS. ':'File processing requires a NEXUS job. ')+details
     : reason==='explicit_mode'
-      ? 'You selected a compute-backed execution mode.'
-      : 'NEXUS detected that this request goes beyond ordinary conversation and would benefit from a tracked task.';
+      ? (UI_IT?'Hai selezionato una modalità che utilizza risorse IA.':'You selected a compute-backed execution mode.')
+      : (UI_IT?'Questa richiesta va oltre una conversazione normale: puoi avviarla come attività tracciabile.':'NEXUS detected that this request goes beyond ordinary conversation and would benefit from a tracked task.');
   document.getElementById('basicChatInstead').hidden=!allowBasicChat;
-  document.getElementById('computeConfirmCost').textContent=currentAccess?.unlimited?'0 credits':String(credits)+' credits';
-  document.getElementById('computeConfirmMode').textContent=reason==='attachments'?'File task · '+(level==='deep'?'Deep':level==='smart'?'Smart':'Basic'):LaunchOS.modeLabel(mode)+' · '+(level==='deep'?'Deep':'Smart');
+  document.getElementById('computeConfirmCost').textContent=String(currentAccess?.unlimited?0:credits)+' '+(UI_IT?'crediti':'credits');
+  document.getElementById('computeConfirmMode').textContent=reason==='attachments'?(UI_IT?'Attività file · ':'File task · ')+(level==='deep'?'Deep':level==='smart'?'Smart':'Basic'):LaunchOS.modeLabel(mode)+' · '+(level==='deep'?'Deep':'Smart');
   document.getElementById('computeConfirmModal').classList.add('show');
   return await new Promise(resolve=>{computeDecisionResolve=resolve});
 }
@@ -980,11 +982,13 @@ async function generateSocialCopy(){
     notice.textContent='Generazione IA temporaneamente non disponibile. Puoi comunque scrivere il post e condividerlo subito.';
   }finally{btn.disabled=false;btn.textContent='Genera con NEXUS AI'}
 }
-function setLevel(next='free'){level=['free','smart','deep'].includes(next)?next:'free';document.getElementById('levelHint').textContent='Chat '+level+' · jobs use credits · up to 250 MB each · 5 files per job'}
+function setLevel(next='free'){level=['free','smart','deep'].includes(next)?next:'free';document.getElementById('levelHint').textContent=UI_IT
+ ? 'Chat '+level+' · attività a crediti · fino a 250 MB per file · massimo 5 file'
+ : 'Chat '+level+' · jobs use credits · up to 250 MB each · 5 files per job'}
 document.getElementById('attachBtn').onclick=()=>{
   if(!currentUser){
     sessionStorage.setItem('nexus_pending_attach','1');
-    setAuthNotice('Sign in before attaching files. Browsers cannot safely preserve selected files across the Google sign-in redirect.');
+    setAuthNotice(UI_IT?'Accedi prima di allegare file: il browser non può conservare con sicurezza gli allegati durante l’accesso Google.':'Sign in before attaching files. Browsers cannot safely preserve selected files across the Google sign-in redirect.');
     openAuth();
     return;
   }
@@ -993,17 +997,17 @@ document.getElementById('attachBtn').onclick=()=>{
 input.onchange=()=>{
   const candidate=[...input.files];
   if(candidate.length>MAX_FILES_PER_JOB){
-    selectedFiles=[];input.value='';filesEl.innerHTML='<span class="filechip">Maximum '+MAX_FILES_PER_JOB+' files per job.</span>';filesEl.classList.add('has');return;
+    selectedFiles=[];input.value='';filesEl.innerHTML='<span class="filechip">'+(UI_IT?'Massimo ':'Maximum ')+MAX_FILES_PER_JOB+(UI_IT?' file per attività.':' files per job.')+'</span>';filesEl.classList.add('has');return;
   }
   const tooBig=candidate.find(f=>f.size>MAX_FILE_BYTES);
   if(tooBig){
-    selectedFiles=[];input.value='';filesEl.innerHTML='<span class="filechip">'+escapeHtml(tooBig.name)+' exceeds the 250 MB per-file limit.</span>';filesEl.classList.add('has');return;
+    selectedFiles=[];input.value='';filesEl.innerHTML='<span class="filechip">'+escapeHtml(tooBig.name)+(UI_IT?' supera il limite di 250 MB per file.':' exceeds the 250 MB per-file limit.')+'</span>';filesEl.classList.add('has');return;
   }
   selectedFiles=candidate;
   filesEl.innerHTML=selectedFiles.map(f=>'<span class="filechip">'+escapeHtml(f.name)+' · '+formatBytes(f.size)+'</span>').join('');
   filesEl.classList.toggle('has',selectedFiles.length>0);
 };
-document.querySelectorAll('[data-prompt]').forEach(b=>b.onclick=()=>{if(b.dataset.mode)LaunchOS.setMode(b.dataset.mode);promptEl.value=b.dataset.prompt;promptEl.focus()});
+document.querySelectorAll('[data-prompt]').forEach(b=>b.onclick=()=>{if(b.dataset.mode)LaunchOS.setMode(b.dataset.mode);promptEl.value=UI_IT&&b.dataset.promptIt?b.dataset.promptIt:b.dataset.prompt;promptEl.focus()});
 const creditModal=document.getElementById('creditModal');
 function openCredits(){
   document.querySelectorAll('[data-credit-link]').forEach(a=>{
