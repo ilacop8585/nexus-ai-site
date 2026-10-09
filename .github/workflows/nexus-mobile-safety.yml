@@ -1,0 +1,23 @@
+name: NEXUS Mobile Shell Safety
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'tests/mobile-shell-smoke.mjs'
+      - '.github/workflows/nexus-mobile-safety.yml'
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'tests/mobile-shell-smoke.mjs'
+      - '.github/workflows/nexus-mobile-safety.yml'
+jobs:
+  mobile-shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify mobile modes and beta controls
+        run: node tests/mobile-shell-smoke.mjs
