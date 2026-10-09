@@ -2278,7 +2278,10 @@ async function loadAdmin(){
    if(convos.error){convBox.innerHTML='<div class="notice">Beta Workspace non disponibile: '+escapeHtml(String(convos.error.message||convos.error))+'</div>';return}
    adminBetaConversationsCache=convos.data||[];renderAdminBetaConversations(adminBetaConversationsCache);
  }).catch(err=>{convBox.innerHTML='<div class="notice">Conversazioni Beta non disponibili: '+escapeHtml(String(err?.message||err))+'</div>'});
- await Promise.allSettled([usersRequest,ticketsRequest,convosRequest]);
+ // The user list is independently usable; do not delay owner controls for QA threads.
+ // The two background requests already handle their own failures.
+ void ticketsRequest; void convosRequest;
+ await usersRequest;
 }
 async function openBeta(){if(!(currentAccess?.is_beta||currentAccess?.is_admin))return;applyAccessUI();document.getElementById('betaModal').classList.add('show');setBetaPane('new');await loadMyBetaTickets()}
 async function openAdmin(){if(!currentAccess?.is_admin)return;document.getElementById('adminModal').classList.add('show');await loadAdmin()}
