@@ -26,7 +26,7 @@ const server=http.createServer((req,res)=>{const part=decodeURIComponent((req.ur
      document.getElementById('ownerNav').hidden=false;
      document.getElementById('adminBtn').onclick=()=>{document.body.dataset.ownerShortcutTest='clicked'};
    });
-   if(width<800)await page.click('#mobileChatsBtn');
+   if(width<800){await page.click('#mobileChatsBtn');await new Promise(r=>setTimeout(r,350));}
    const state=await page.evaluate(()=>{
      const side=document.querySelector('.side'),quick=document.querySelector('#ownerQuickAdmin'),owner=document.querySelector('#ownerNav'),admin=document.querySelector('#adminBtn');
      let q=quick.getBoundingClientRect(),s=side.getBoundingClientRect(),a=admin.getBoundingClientRect();
