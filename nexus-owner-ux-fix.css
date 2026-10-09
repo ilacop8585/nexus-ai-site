@@ -142,3 +142,33 @@ body.nexus-authenticated #intro .aether-footer-note{
  body.nexus-authenticated #intro .quick button{min-height:66px;padding:9px 20px 9px 8px;font-size:10px}
  body.nexus-authenticated #intro .aether-footer-note{font-size:8px;gap:5px}
 }
+
+/* Owner admin action feedback: values shown here are read back from server. */
+#adminModal .nexus-admin-action-feedback{
+ margin:10px 0;
+ padding:12px 14px;
+ border-radius:12px;
+ font-size:12px;
+ line-height:1.5;
+ background:rgba(21,53,68,.88);
+ border:1px solid rgba(121,209,217,.35);
+ color:#cceef2;
+}
+#adminModal .nexus-admin-action-feedback[hidden]{display:none!important}
+#adminModal .nexus-admin-action-feedback[data-kind="success"]{
+ border-color:rgba(108,230,188,.52);
+ background:rgba(20,64,56,.88);
+ color:#bdffe2;
+}
+#adminModal .nexus-admin-action-feedback[data-kind="warning"]{
+ border-color:rgba(230,186,102,.55);
+ background:rgba(71,52,25,.89);
+ color:#ffe5b8;
+}
+#adminModal .nexus-admin-action-feedback[data-kind="error"]{
+ border-color:rgba(237,145,150,.53);
+ background:rgba(74,30,41,.9);
+ color:#ffd6dc;
+}
+#adminModal .admin-user button:disabled{cursor:wait;opacity:.55}
+#adminModal .admin-user .admin-actions button:not(:disabled){min-width:130px}
