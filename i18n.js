@@ -213,6 +213,8 @@ const DICTIONARY={
   "NEXUS is replying in chat…": "NEXUS sta rispondendo in chat…",
   "Task runtime unavailable": "Esecuzione attività non disponibile"
 };
+DICTIONARY['You selected a compute-backed execution mode.']='Hai selezionato una modalità di elaborazione che utilizza risorse IA.';
+DICTIONARY['NEXUS detected that this request goes beyond ordinary conversation and would benefit from a tracked task.']='NEXUS ha rilevato una richiesta più complessa di una normale conversazione: puoi eseguirla come attività tracciabile.';
 DICTIONARY['Language']='Lingua';
 DICTIONARY['Select interface language']="Seleziona la lingua dell'interfaccia";
 const REVERSE=Object.fromEntries(Object.entries(DICTIONARY).map(([en,it])=>[it,en]));
@@ -253,7 +255,8 @@ function transformText(node){
 function transformAttrs(root){
  const list=[root,...root.querySelectorAll('[placeholder],[aria-label],[title]')];
  for(const item of list){
-  if(item.closest(SKIP_SELECTOR))continue;
+  // A textarea's *content* is private user input, but its UI placeholder/label is translatable.
+  if(item.closest(SKIP_SELECTOR)&&item.id!=='prompt')continue;
   for(const attr of ['placeholder','aria-label','title']){
    const value=item.getAttribute?.(attr);
    if(!value)continue;
