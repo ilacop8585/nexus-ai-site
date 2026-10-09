@@ -213,6 +213,8 @@ const DICTIONARY={
   "NEXUS is replying in chat…": "NEXUS sta rispondendo in chat…",
   "Task runtime unavailable": "Esecuzione attività non disponibile"
 };
+DICTIONARY['Language']='Lingua';
+DICTIONARY['Select interface language']="Seleziona la lingua dell'interfaccia";
 const REVERSE=Object.fromEntries(Object.entries(DICTIONARY).map(([en,it])=>[it,en]));
 const ROOT_SELECTORS=[
   '#betaReleaseStrip','.side','.top','#intro','.composer',
@@ -220,7 +222,7 @@ const ROOT_SELECTORS=[
   '#creditsModal','#jobsModal','#libraryModal','#pluginsModal',
   '#agentOsModal','#projectWorkspace','#taskRuntimePanel'
 ];
-const SKIP_SELECTOR='#messages,#historyList,#chatList,#prompt,#projectWorkspaceNotice,#projectPaneChats,#projectPaneTasks,#projectPaneFiles,#projectPaneAgents,#projectPaneSkills,#taskRuntimeResult,#taskRuntimeRequest,.msg,.jobsummary,[contenteditable="true"]';
+const SKIP_SELECTOR='#messages,#historyList,#chatList,#prompt,#projectWorkspaceNotice,#projectWorkspaceTitle,#taskRuntimeResult,#taskRuntimeRequest,.project-item-head,.project-item-body,.project-list,.msg,.jobsummary,[contenteditable="true"]';
 let locale='it';
 try{
   const param=new URLSearchParams(location.search).get('lang');
@@ -278,9 +280,13 @@ function apply(){
  const select=document.getElementById('nexusLanguage');
  if(select)select.value=locale;
  for(const selector of ROOT_SELECTORS){
-  const root=document.querySelector(selector);
-  if(root)translateRoot(root);
+  for(const root of document.querySelectorAll(selector))translateRoot(root);
  }
+ document.title=locale==='it'?'NEXUS Word Beta — Chat IA, agenti e progetti':'NEXUS Word Beta — AI Chat, Agents & Projects';
+ const desc=document.querySelector('meta[name="description"]');
+ if(desc)desc.content=locale==='it'
+  ?"NEXUS Word è una piattaforma IA in beta pubblica: chat inclusa, agenti, programmazione, progetti e lavori con crediti dichiarati prima dell’esecuzione."
+  :"NEXUS Word is a public-beta AI workspace with included chat, agents, coding, projects and transparent credit-based tasks.";
 }
 function schedule(){
  if(scheduled)return;scheduled=true;
@@ -290,6 +296,10 @@ function setLanguage(next,{persist=true}={}){
  if(!SUPPORTED.has(next))return;
  const changed=next!==locale;locale=next;
  if(persist)try{localStorage.setItem(KEY,next)}catch{}
+ if(persist)try{
+   const u=new URL(location.href);if(next==='it')u.searchParams.delete('lang');else u.searchParams.set('lang',next);
+   history.replaceState(history.state,'',u.pathname+u.search+u.hash);
+ }catch{}
  apply();
  if(changed)window.dispatchEvent(new CustomEvent('nexus-language-change',{detail:{language:locale}}));
 }
@@ -297,7 +307,14 @@ function init(){
  const select=document.getElementById('nexusLanguage');
  if(select)select.addEventListener('change',()=>setLanguage(select.value));
  apply();
- observer=new MutationObserver(()=>schedule());
+ observer=new MutationObserver(records=>{
+   const relevant=records.some(record=>{
+     const node=record.target.nodeType===Node.TEXT_NODE?record.target.parentElement:record.target;
+     if(!node||node.closest?.(SKIP_SELECTOR))return false;
+     return ROOT_SELECTORS.some(selector=>node.closest?.(selector));
+   });
+   if(relevant)schedule();
+ });
  observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['placeholder','title','aria-label']});
 }
 export {init,setLanguage,apply};
