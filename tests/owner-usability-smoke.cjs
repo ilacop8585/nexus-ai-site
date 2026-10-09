@@ -59,7 +59,7 @@ try{for(const [width,height] of [[1440,800],[1280,680],[1024,650],[768,730],[390
   const composer=document.querySelector('#prompt');
   return {before,after,composerVisible:composer.getBoundingClientRect().width>0,headline:document.querySelector('#intro h1')?.textContent.trim()};
  });
- assert.notEqual(authenticated.before,'none','guest design should retain a demo');
+ assert.equal(authenticated.before,'none','compact guest layout must avoid misleading decorative chat '+width);
  assert.equal(authenticated.after,'none','real users must not see duplicate fake chat '+width);checks++;
  assert.equal(authenticated.composerVisible,true,'actual chat input available '+width);checks++;
  assert.deepEqual(errors,[],'no JS/load errors '+width);checks++;
