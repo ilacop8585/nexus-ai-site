@@ -20,7 +20,7 @@ const server=http.createServer((req,res)=>{
  const browser=await puppeteer.launch({headless:true,...(chrome?{executablePath:chrome}:{}),args:['--no-sandbox','--disable-dev-shm-usage']});
  let count=0;
  try{
-  for(const width of [1440,768,390,320]){
+  for(const width of [1920,1440,1024,768,390,320]){
    const page=await browser.newPage();
    const errors=[];page.on('pageerror',e=>errors.push(e.message));
    page.on('requestfailed',r=>{if(r.url().startsWith(url))errors.push('failed-local '+r.url())});
@@ -71,6 +71,16 @@ const server=http.createServer((req,res)=>{
    });
    assert.ok(scrolls.runtime.scrollHeight>scrolls.runtime.clientHeight && scrolls.runtime.scrollTop>0,'task runtime scroll fails: '+JSON.stringify(scrolls));
    assert.ok(scrolls.project.scrollHeight>scrolls.project.clientHeight && scrolls.project.scrollTop>0,'project workspace scroll fails: '+JSON.stringify(scrolls));
+   // In-place language switching must not discard mobile navigation or the work mode.
+   await page.select('#nexusLanguage','en');
+   await new Promise(r=>setTimeout(r,180));
+   const english=await page.evaluate(()=>({lang:document.documentElement.lang,modeLabel:document.querySelector('.mobile-mode-control span')?.textContent?.trim(),menu:document.getElementById('mobileChatsBtn')?.textContent?.trim(),title:document.title}));
+   assert.equal(english.lang,'en','English switch '+width);
+   if(width<=768)assert.equal(english.modeLabel,'Mode','English mobile mode label '+width);
+   await page.select('#nexusLanguage','it');
+   await new Promise(r=>setTimeout(r,150));
+   assert.equal(await page.evaluate(()=>document.documentElement.lang),'it');
+   count+=3;
    assert.deepEqual(errors,[],'browser errors at '+width);
    count+=3;
    console.log('PASS',width,JSON.stringify({initial,scrolls}));
