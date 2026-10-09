@@ -42,6 +42,17 @@ try{for(const [width,height] of [[1440,800],[1280,680],[1024,650],[768,730],[390
  });
  assert.equal(search.found,1,'search filters matching registered-user rows '+width);checks++;
  assert.ok(search.searchVisible&&search.summary.startsWith('1 di 2'),'owner search UX available '+width);checks++;
+ const authenticated=await page.evaluate(()=>{
+  const demo=document.querySelector('#intro .aether-showcase');
+  const before=getComputedStyle(demo).display;
+  document.body.classList.add('nexus-authenticated');
+  const after=getComputedStyle(demo).display;
+  const composer=document.querySelector('#prompt');
+  return {before,after,composerVisible:composer.getBoundingClientRect().width>0,headline:document.querySelector('#intro h1')?.textContent.trim()};
+ });
+ assert.notEqual(authenticated.before,'none','guest design should retain a demo');
+ assert.equal(authenticated.after,'none','real users must not see duplicate fake chat '+width);checks++;
+ assert.equal(authenticated.composerVisible,true,'actual chat input available '+width);checks++;
  assert.deepEqual(errors,[],'no JS/load errors '+width);checks++;
  if(process.env.NEXUS_OWNER_SCREENSHOT_DIR){await page.evaluate(()=>{document.getElementById('adminModal').classList.remove('show');document.querySelector('.side').scrollTop=0;document.getElementById('betaWelcomeModal').classList.remove('show')});fs.mkdirSync(process.env.NEXUS_OWNER_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.NEXUS_OWNER_SCREENSHOT_DIR,'owner-'+width+'.png')})}
  console.log('OWNER_UX_PASS',width,JSON.stringify(state));await page.close();
