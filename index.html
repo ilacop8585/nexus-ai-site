@@ -287,6 +287,22 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     </div>
     <div class="messages" id="messages"></div>
   </section>
+<div class="composer-wrap">
+  <div class="composer">
+    <div class="composer-mode-line"><span class="mode-current">Modalità di esecuzione</span><span class="mode-cost" id="modeHintComposer">Auto · chat semplice inclusa; i lavori complessi diventano attività</span></div>
+    <div class="files" id="files"></div>
+    <div class="notice" id="betaWorkspaceNotice" hidden style="margin-bottom:9px">Workspace Beta monitorato da NEXUS AI e Owner per finalità QA. Le chat di lavoro Beta non sono NEXUS Private E2EE.</div>
+    <textarea id="prompt" aria-label="NEXUS message" placeholder="Ask NEXUS or describe what you want done…" rows="2"></textarea>
+    <div class="compose-actions">
+      <div class="left-actions">
+        <button class="iconbtn" id="attachBtn" type="button" aria-label="Attach files">＋ Allega</button>
+        <input id="fileInput" type="file" multiple hidden>
+        <span class="beta" id="levelHint">Qualsiasi tipo di file · fino a 250 MB ciascuno · 5 file per attività</span>
+      </div>
+      <button class="send" id="sendBtn" type="button" aria-label="Send message">Invia</button>
+    </div>
+  </div>
+</div>
 </main>
 </div>
 
@@ -342,22 +358,6 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
   </div>
 </aside>
 
-<div class="composer-wrap">
-  <div class="composer">
-    <div class="composer-mode-line"><span class="mode-current">Modalità di esecuzione</span><span class="mode-cost" id="modeHintComposer">Auto · chat semplice inclusa; i lavori complessi diventano attività</span></div>
-    <div class="files" id="files"></div>
-    <div class="notice" id="betaWorkspaceNotice" hidden style="margin-bottom:9px">Workspace Beta monitorato da NEXUS AI e Owner per finalità QA. Le chat di lavoro Beta non sono NEXUS Private E2EE.</div>
-    <textarea id="prompt" aria-label="NEXUS message" placeholder="Ask NEXUS or describe what you want done…" rows="2"></textarea>
-    <div class="compose-actions">
-      <div class="left-actions">
-        <button class="iconbtn" id="attachBtn" type="button" aria-label="Attach files">＋ Allega</button>
-        <input id="fileInput" type="file" multiple hidden>
-        <span class="beta" id="levelHint">Qualsiasi tipo di file · fino a 250 MB ciascuno · 5 file per attività</span>
-      </div>
-      <button class="send" id="sendBtn" type="button" aria-label="Send message">Invia</button>
-    </div>
-  </div>
-</div>
 
 <div class="modal" id="betaWelcomeModal">
   <div class="modal-card beta-welcome-card">
