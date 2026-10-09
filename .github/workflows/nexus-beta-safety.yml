@@ -20,3 +20,5 @@ jobs:
           node-version: '22'
       - name: Verify routing, credits, runtime, and deprecated RPCs
         run: node tests/credit-routing-smoke.mjs
+      - name: Verify SQL admin RPC user-id ambiguity regression
+        run: node tests/admin-sql-ambiguity-contract.cjs

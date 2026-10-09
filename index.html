@@ -738,6 +738,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
     <h2>Centro amministrazione NEXUS</h2>
     <p>Gestione utenti, ruoli Beta Tester, crediti e segnalazioni. Le modifiche sono registrate dal server.</p>
     <div class="small" id="adminSummary">Caricamento utenti…</div>
+    <div class="small nexus-admin-shortcut-note">ℹ️ <strong>Assegna Beta Tester</strong> abilita automaticamente anche l’accesso illimitato: un solo clic, con conferma dal server.</div>
     <div id="adminActionFeedback" class="notice nexus-admin-action-feedback" role="status" aria-live="polite" hidden></div>
     <div class="nexus-admin-search">
       <label for="adminUserSearch">Trova un utente registrato</label>
@@ -2166,12 +2167,13 @@ function adminUserRow(u){
  const beta=document.createElement('button');beta.type='button';
  const wasBeta=u.staff_role==='beta_tester';
  beta.textContent=wasBeta?'Rimuovi Beta Tester':'Assegna Beta Tester';
+ beta.title=wasBeta?'La rimozione Beta disattiva anche l’accesso illimitato.':'Un solo clic attiva Beta Tester e accesso illimitato.';
  // Never offer downgrading OWNER/ADMIN via a Beta switch.
  beta.disabled= !['user','beta_tester',null,undefined].includes(u.staff_role);
  beta.onclick=()=>runAdminUserAction(u,{
    rpc:'nexus_admin_set_beta',args:{p_target:u.user_id,p_enabled:!wasBeta},
-   verify:r=>wasBeta?r.staff_role!=='beta_tester':r.staff_role==='beta_tester',
-   success:()=>wasBeta?'Rimozione Beta Tester confermata dal server.':'Ruolo BETA TESTER confermato dal server.'
+   verify:r=>wasBeta?(r.staff_role!=='beta_tester'&&!r.unlimited):(r.staff_role==='beta_tester'&&Boolean(r.unlimited)),
+   success:()=>wasBeta?'Rimozione Beta Tester e illimitato confermata dal server.':'Ruolo BETA TESTER e accesso ILLIMITATO confermati dal server.'
  });
  const unlimited=document.createElement('button');unlimited.type='button';
  unlimited.textContent=u.unlimited?'Disattiva illimitato':'Attiva illimitato';
