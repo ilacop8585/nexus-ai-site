@@ -9,6 +9,15 @@ let checks=0;
 try{for(const [width,height] of [[1440,800],[1280,680],[1024,650],[768,730],[390,844],[320,700]]){
  const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('requestfailed',r=>{if(r.url().startsWith('http://127.0.0.1'))errors.push(r.url())});
  await page.setViewport({width,height,isMobile:width<=768,hasTouch:width<=768});await page.goto('http://127.0.0.1:'+server.address().port+'/',{waitUntil:'networkidle2',timeout:25000});
+ await new Promise(r=>setTimeout(r,420));
+ const onboarding=await page.evaluate(()=>({
+   blocked:document.getElementById('betaWelcomeModal').classList.contains('show'),
+   banner:document.getElementById('betaReleaseStrip')?.textContent.includes('BETA'),
+   infoLink:!!document.getElementById('openBetaWelcome')
+ }));
+ assert.equal(onboarding.blocked,false,'first visit must not require dismissing Beta modal '+width);checks++;
+ assert.equal(onboarding.banner,true,'prominent beta disclosure must remain '+width);checks++;
+ assert.equal(onboarding.infoLink,true,'on-demand Beta information must remain '+width);checks++;
  let state=await page.evaluate(()=>{
   const owner=document.getElementById('ownerNav'),btn=document.getElementById('adminBtn');
   const guestHidden=owner.hidden&&btn.hidden, guestStyle=getComputedStyle(owner).display;
