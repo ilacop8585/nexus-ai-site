@@ -34,7 +34,7 @@ const server=http.createServer((req,res)=>{const p=(req.url||'/').split('?')[0],
       if(!state.skipNextMutation){
         state.mutations++;
         let u=state.users[0];
-        if(name==='nexus_admin_set_beta')u.staff_role=args.p_enabled?'beta_tester':'user';
+        if(name==='nexus_admin_set_beta'){u.staff_role=args.p_enabled?'beta_tester':'user';u.unlimited=!!args.p_enabled;}
         if(name==='nexus_admin_set_unlimited')u.unlimited=args.p_unlimited;
         if(name==='nexus_admin_grant_credits')u.credits+=args.p_amount;
       }else state.skipNextMutation=false;
@@ -53,7 +53,7 @@ const server=http.createServer((req,res)=>{const p=(req.url||'/').split('?')[0],
       throw Error('No action completion: '+notice.textContent);
     };
     clickAction('Assegna Beta Tester');clickAction('Assegna Beta Tester');await wait();
-    const beta={role:state.users[0].staff_role,notice:notice.textContent,invocations:state.calls.filter(x=>x.name==='nexus_admin_set_beta').length};
+    const beta={role:state.users[0].staff_role,unlimited:state.users[0].unlimited,notice:notice.textContent,invocations:state.calls.filter(x=>x.name==='nexus_admin_set_beta').length};
     clickAction('Attiva illimitato');await wait();
     const unlimited={value:state.users[0].unlimited,notice:notice.textContent};
     clickAction('Assegna crediti');await wait();
@@ -65,7 +65,8 @@ const server=http.createServer((req,res)=>{const p=(req.url||'/').split('?')[0],
   },source);
   assert.equal(info.beta.role,'beta_tester');
   assert.equal(info.beta.invocations,1,'double click blocked');
-  assert.ok(info.beta.notice.includes('confermato'));
+  assert.equal(info.beta.unlimited,true);
+  assert.ok(info.beta.notice.includes('confermat'));
   assert.equal(info.unlimited.value,true);
   assert.ok(info.unlimited.notice.includes('confermato'));
   assert.equal(info.credits.value,110);
