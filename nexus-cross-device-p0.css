@@ -1,0 +1,190 @@
+/* NEXUS Word P0: cross-device experience — Android phone, Fold, iPhone/iPad,
+   laptop/desktop. Responsive behavior only: no billing, roles, backend or crypto. */
+html,body{min-width:0;max-width:100%;overflow-x:clip}
+button,input,select,textarea{box-sizing:border-box}
+.modal-card,.jobrow,.jobsummary,.jobresult,.runtime-request,.runtime-event,.beta-message,
+.private-security,.private-fingerprint,.agentos-panel{overflow-wrap:anywhere}
+.modal.show{z-index:145}
+.modal .modal-card{min-width:0;max-width:100%;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.modal .modal-card input,.modal .modal-card select,.modal .modal-card textarea{max-width:100%;min-width:0}
+.modal .jobhead,.modal .jobmeta,.modal .admin-actions,.modal .modal-actions{min-width:0}
+.modal .jobhead{flex-wrap:wrap}
+.modal .jobactions{display:flex;flex-wrap:wrap;gap:8px}
+.modal .jobactions button{min-height:38px}
+.modal .modal-actions{flex-wrap:wrap}
+.modal .modal-actions button{min-height:40px}
+.modal .notice,.modal .small{overflow-wrap:anywhere}
+.modal .pack{flex-wrap:wrap;gap:10px}
+.modal .pack a{white-space:normal;text-align:center}
+.agentos-tabs,.beta-tabs{scrollbar-width:thin;scrollbar-color:rgba(122,174,212,.44) transparent}
+.agentos-list,.project-list,.private-messages,.runtime-scroll{overscroll-behavior:contain}
+#adminModal .admin-user .admin-actions button{white-space:normal;overflow-wrap:anywhere;line-height:1.25}
+#adminModal .nexus-admin-search{max-width:100%;min-width:0}
+#adminModal .nexus-admin-shortcut-note{line-height:1.5}
+.task-runtime-panel,.project-workspace{max-width:100vw;min-width:0}
+.runtime-scroll,.project-ws-body,.project-ws-content{min-width:0}
+@media(max-width:1024px){
+  .modal{padding:12px}
+  .modal .modal-card{max-height:calc(100dvh - 26px)}
+  .jobs-card,.agentos-card,.private-card,.beta-live-card{width:min(100%,940px)}
+  .agentos-grid{grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}
+  .agentos-context{white-space:normal;max-width:100%}
+  .agentos-actions,.project-ws-actions{flex-wrap:wrap}
+  .agentos-form input,.agentos-form select,.agentos-form textarea{min-width:0}
+}
+@media(max-width:820px){
+  .app,.main{min-width:0;width:100%}
+  /* Two predictable header rows: brand + account, then an accessible mode selector. */
+  .top{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    grid-template-areas:"brand actions" "mode mode"!important;
+    gap:6px 8px!important;
+    padding:8px 11px!important;
+    min-height:0!important;height:auto!important;
+    align-items:center!important;align-content:center;
+  }
+  .mobile-brand{grid-area:brand;min-width:0;max-width:100%}
+  .mode-shell{grid-area:mode;min-width:0;width:100%!important}
+  .account{grid-area:actions;display:flex!important;align-items:center;justify-content:flex-end!important;
+    flex-wrap:nowrap!important;width:auto!important;min-width:0;gap:5px!important;margin:0!important}
+  .account #topNewChat,.account #topJobsBtn,.account #topBuyCredits{display:none!important}
+  .account button{width:auto!important;min-width:0;max-width:110px;padding:8px 10px!important;min-height:38px}
+  .account #mobileChatsBtn{display:inline-flex!important;align-items:center;justify-content:center}
+  .account #roleBadge{max-width:105px;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mobile-mode-control{min-height:42px;padding:5px 10px}
+  .mobile-mode-control select{min-height:32px;max-width:100%;font-size:14px}
+  .mode-shell .mode-switch{display:none!important}
+  .stage{overflow-x:hidden;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+  .side{padding-bottom:max(20px,env(safe-area-inset-bottom));overflow-y:auto!important;
+    scrollbar-width:thin;overscroll-behavior:contain}
+  /* Modals stay below the clear beta banner and fit into the *visual* viewport. */
+  .modal{inset:36px 0 0;padding:8px;align-items:center;justify-content:center;
+    max-height:calc(var(--nexus-visible-viewport,100dvh) - 36px);
+    overflow:hidden}
+  .modal .modal-card{width:100%!important;max-width:100%!important;min-width:0!important;
+    max-height:calc(var(--nexus-visible-viewport,100dvh) - 52px)!important;
+    padding:14px;overflow-y:auto!important;overflow-x:hidden}
+  #adminModal .modal-card{width:100%!important;max-height:calc(var(--nexus-visible-viewport,100dvh) - 52px)!important}
+  #adminModal #adminUsers{max-height:none!important;overflow-y:visible!important;min-height:0}
+  #adminModal .nexus-admin-search{position:relative;top:auto;grid-template-columns:minmax(0,1fr);gap:6px}
+  #adminModal .nexus-admin-search input{font-size:16px}
+  #adminModal .admin-user .admin-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  #adminModal .admin-user .admin-credit-input,
+  #adminModal .admin-user .admin-actions button:nth-child(2){grid-column:1/-1}
+  #adminModal .admin-user .admin-actions button{min-height:44px;min-width:0!important;font-size:12px;padding:9px 7px}
+  #adminModal .admin-name-input{font-size:16px}
+  #adminModal .admin-user{padding:11px}
+  .agentos-head,.beta-detail-head{flex-wrap:wrap;gap:8px}
+  .agentos-grid{grid-template-columns:1fr!important}
+  .agentos-pane{min-height:0!important}
+  .agentos-list{max-height:30dvh}
+  .agentos-tabs{display:flex;flex-wrap:nowrap!important;overflow-x:auto;max-width:100%;
+    padding-bottom:7px;gap:6px;overscroll-behavior-x:contain}
+  .agentos-tabs button{white-space:nowrap;flex:0 0 auto;min-height:42px;padding:9px 11px}
+  .agentos-form input,.agentos-form select,.agentos-form textarea{font-size:16px}
+  .private-layout{display:grid;grid-template-columns:minmax(0,1fr)!important;gap:10px}
+  .private-sidebar{min-width:0;max-height:23dvh;overflow-y:auto;flex:0 0 auto}
+  .private-main{min-width:0}
+  .private-owner-tools{display:grid;grid-template-columns:minmax(0,1fr)!important;gap:7px}
+  .private-owner-tools button,.private-owner-tools select{min-height:42px;width:100%;font-size:13px}
+  .private-messages{min-height:130px;max-height:33dvh}
+  .private-compose textarea{min-height:52px;font-size:16px}
+  .social-grid{display:grid;grid-template-columns:minmax(0,1fr)!important}
+  .social-grid .wide{grid-column:auto!important}
+  .social-grid textarea,.social-grid input,.social-grid select{font-size:16px}
+  .social-actions button{min-height:43px}
+  .beta-grid{grid-template-columns:1fr}
+  .beta-grid .wide{grid-column:auto}
+  .project-workspace{inset:36px 0 0;max-height:calc(100dvh - 36px)}
+  .project-ws-head{padding:11px;gap:8px;flex-wrap:wrap}
+  .project-ws-title h2{font-size:19px}
+  .project-ws-body{display:flex;flex-direction:column;overflow-y:auto;min-height:0}
+  .project-sidebar{flex:0 0 auto;min-height:0;max-height:190px;padding:9px;
+    border-right:0;border-bottom:1px solid var(--line)}
+  .project-sidebar h3{margin:1px 0 2px}
+  .project-list{max-height:95px;min-height:0;overflow-y:auto}
+  .project-ws-content{flex:1 1 auto;min-height:160px;overflow-y:auto;padding:12px}
+  .task-runtime-panel{top:36px;bottom:0;max-height:calc(100dvh - 36px);
+    width:100%!important;max-width:100vw;z-index:75}
+  .runtime-head{padding:11px}
+  .runtime-scroll{padding:11px}
+  /* Keep the real composer reachable above mobile soft-keyboards. */
+  .composer-wrap{max-width:100%;min-width:0}
+  .composer-wrap[style]{max-width:100%}
+  .composer textarea,#prompt{font-size:16px}
+  .composer .compose-actions button{min-height:40px}
+  #jobsModal .jobrow .jobsummary{max-height:none}
+}
+@media(max-width:560px){
+  .mobile-brand span{display:none!important}
+  .mobile-brand{flex:0 0 auto}
+  .account #roleBadge{max-width:80px}
+  .account #notificationsBtn{padding:7px!important;min-width:37px}
+  .account #loginBtn{max-width:88px!important;padding:8px!important}
+  .account #mobileChatsBtn{max-width:84px!important;min-height:38px}
+  .beta-release-strip .language-switch select{max-width:119px}
+  .modal{padding:5px}
+  .modal .modal-card{border-radius:14px;padding:12px;max-height:calc(var(--nexus-visible-viewport,100dvh) - 45px)!important}
+  #adminModal .modal-card{max-height:calc(var(--nexus-visible-viewport,100dvh) - 45px)!important}
+  .modal-card h2{font-size:clamp(19px,5.6vw,24px);line-height:1.15}
+  .modal-card p{font-size:12px;line-height:1.45}
+  .jobrow{padding:10px}
+  .jobhead strong{font-size:12px}
+  .jobmeta{font-size:10px;overflow-wrap:anywhere}
+  .jobactions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px!important}
+  .jobactions button{width:100%;min-width:0;font-size:11px;padding:8px 5px;white-space:normal}
+  .modal .modal-actions button{flex:1 1 auto;min-width:70px;white-space:normal}
+  .plugin-tools{grid-template-columns:minmax(0,1fr)}
+  .beta-tabs{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;padding-bottom:7px}
+  .beta-tabs button{white-space:nowrap;min-height:40px}
+  .composer-mode-line{gap:4px}
+  .composer-mode-line .mode-cost{max-width:50%;font-size:9px}
+  .compose-actions{grid-template-columns:minmax(0,1fr) auto;gap:6px}
+  .left-actions{flex-wrap:nowrap}
+  .iconbtn{min-height:39px}
+  #prompt{min-height:45px;max-height:calc(var(--nexus-visible-viewport,100dvh) * .28)}
+  .private-compose{grid-template-columns:minmax(0,1fr) auto}
+  .private-compose button{min-height:43px}
+}
+@media(max-height:650px){
+  .modal{align-items:flex-start;padding-top:4px}
+  .modal .modal-card{max-height:calc(var(--nexus-visible-viewport,100dvh) - 44px)!important}
+  .modal .modal-card h2{margin:0 0 5px}
+  .agentos-tabs{margin:9px 0}
+  .project-ws-head{padding:8px}
+  .private-messages{min-height:100px;max-height:23dvh}
+}
+@media(prefers-reduced-motion:reduce){
+  .side,.task-runtime-panel,.project-workspace,.side-backdrop{transition:none!important}
+}
+
+/* Accessible, always reachable close button for modal pages on touch screens. */
+.nexus-modal-mobile-close{display:none}
+@media(max-width:820px){
+ .nexus-modal-mobile-close{display:flex;justify-content:flex-end;position:sticky;top:-14px;z-index:8;
+   margin:-14px -14px 7px;padding:7px 11px;
+   background:linear-gradient(180deg,rgba(13,24,42,.98),rgba(13,24,42,.92));
+   border-bottom:1px solid rgba(149,205,228,.15)}
+ .nexus-modal-mobile-close button{min-height:39px;min-width:85px;padding:8px 13px;
+   border:1px solid rgba(148,208,220,.36);border-radius:10px;
+   background:#1b3046;color:#e2f7ff;font-size:12px;font-weight:750;cursor:pointer}
+ .nexus-soft-keyboard .composer-wrap:not(.unused){
+   bottom:var(--nexus-keyboard-occlusion,0px);
+ }
+ .nexus-soft-keyboard .composer-wrap:has(#prompt:focus){
+   z-index:49;
+ }
+}
+@media(max-width:560px){
+ .nexus-modal-mobile-close{top:-12px;margin:-12px -12px 6px;padding:6px 8px}
+ .nexus-soft-keyboard .composer-mode-line .mode-cost{display:none}
+ .nexus-soft-keyboard #prompt{max-height:90px}
+}
+
+.nexus-job-failure{border-left:3px solid rgba(241,185,94,.85);background:rgba(84,54,31,.16);
+ padding:9px 12px;border-radius:10px;line-height:1.5;color:#e9d6bc}
+.nexus-job-technical{margin:9px 0 3px;padding:8px 11px;border:1px solid rgba(158,198,226,.20);
+ border-radius:10px;background:rgba(7,13,26,.38);font-size:11px;color:#b4cee2;overflow-wrap:anywhere}
+.nexus-job-technical summary{cursor:pointer;font-weight:700;min-height:25px;line-height:25px}
+.nexus-job-technical code{display:block;margin-top:6px;font-size:11px;user-select:text;white-space:pre-wrap}
