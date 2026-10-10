@@ -47,6 +47,11 @@ try{
     assert.ok(box.card.top>=-2&&box.card.bottom<=height+2,'modal vertical clipping '+label+' '+modalId+' '+JSON.stringify(box));checks++;
     if(width<=820){
       assert.ok(box.close?.visible&&box.close.height>=35,'mobile close accessible '+label+' '+modalId);checks++;
+      if(modalId==='jobsModal'||modalId==='adminModal'){
+        await page.click('#'+modalId+' [data-nexus-mobile-close]');
+        const closed=await page.evaluate(id=>!document.getElementById(id).classList.contains('show'),modalId);
+        assert.equal(closed,true,'mobile close button invokes existing handler '+label+' '+modalId);checks++;
+      }
       if(modalId==='adminModal'){
         const input=await page.evaluate(()=>({font:parseFloat(getComputedStyle(document.getElementById('adminUserSearch')).fontSize),width:document.getElementById('adminUserSearch').getBoundingClientRect().width}));
         assert.ok(input.font>=16&&input.width>100,'iOS input zoom avoided '+label);checks++;
@@ -59,6 +64,10 @@ try{
     await page.setViewport({width,height:Math.min(520,height),isMobile:true,hasTouch:true});
     const keyboard=await page.evaluate(()=>{const e=document.getElementById('prompt').getBoundingClientRect(),c=document.querySelector('.composer-wrap').getBoundingClientRect();return{height:innerHeight,promptTop:e.top,promptBottom:e.bottom,composeTop:c.top,composeBottom:c.bottom}});
     assert.ok(keyboard.composeBottom<=keyboard.height+3,'composer clipped on reduced viewport '+label+' '+JSON.stringify(keyboard));checks++;
+  }
+  if(process.env.NEXUS_RESPONSIVE_SHOTS){
+    const dir=process.env.NEXUS_RESPONSIVE_SHOTS;fs.mkdirSync(dir,{recursive:true});
+    await page.screenshot({path:path.join(dir,'nexus-'+label+'.png')});
   }
   console.log('NEXUS_DEVICE_PASS '+label+' checks='+checks+' '+JSON.stringify(info));
   await page.close();
