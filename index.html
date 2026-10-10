@@ -167,6 +167,7 @@ textarea{width:100%;resize:none;min-height:58px;max-height:180px;background:tran
 <link rel="stylesheet" href="./nexus-first-visit-hotfix.css">
 <link rel="stylesheet" href="./nexus-owner-ux-fix.css">
 <link rel="stylesheet" href="./nexus-first-screen-clarity.css">
+<link rel="stylesheet" href="./nexus-cross-device-p0.css">
 </head>
 <body>
 <div class="beta-release-strip" id="betaReleaseStrip"><strong>BETA · IN SVILUPPO</strong><span>NEXUS Word è online: stiamo ampliando agenti, connettori e applicazioni.</span><button id="openBetaWelcome" type="button">Cosa significa</button><label class="language-switch" for="nexusLanguage"><span>Lingua</span><select id="nexusLanguage" aria-label="Seleziona la lingua dell'interfaccia"><option value="it">🇮🇹 Italiano</option><option value="en">🇬🇧 English</option></select></label></div>
@@ -1539,22 +1540,35 @@ async function loadJobs(){
    if(j.input_summary){const s=document.createElement('div');s.className='jobsummary';s.textContent=String(j.input_summary).replace(/^\[TEXT_TASK\s+(AGENT|WORK|CODE)\]\s*/i,'');row.appendChild(s)}
    let resultBox=null;
    if(j.output_summary){
-     const reveal=document.createElement('button');reveal.type='button';reveal.textContent='Show result';reveal.setAttribute('aria-expanded','false');
+     const reveal=document.createElement('button');reveal.type='button';reveal.textContent=UI_IT?'Mostra risultato':'Show result';reveal.setAttribute('aria-expanded','false');
      resultBox=document.createElement('div');resultBox.className='jobresult';resultBox.textContent=j.output_summary;resultBox.hidden=true;
-     reveal.onclick=()=>{resultBox.hidden=!resultBox.hidden;reveal.textContent=resultBox.hidden?'Show result':'Hide result';reveal.setAttribute('aria-expanded',String(!resultBox.hidden))};
+     reveal.onclick=()=>{resultBox.hidden=!resultBox.hidden;reveal.textContent=resultBox.hidden?(UI_IT?'Mostra risultato':'Show result'):(UI_IT?'Nascondi risultato':'Hide result');reveal.setAttribute('aria-expanded',String(!resultBox.hidden))};
      row.appendChild(reveal);row.appendChild(resultBox);
    }
-   if(j.error_code){const e=document.createElement('div');e.className='jobresult';e.textContent=(UI_IT?'Errore: ':'Error: ')+j.error_code;row.appendChild(e)}
+   if(j.error_code){
+     const explanations={
+       CLIENT_WORKER_ERROR:'Il worker che esegue l’attività non l’ha completata. Il lavoro è fallito: apri i dettagli per la diagnosi; non inviare duplicati senza verificarne lo stato.',
+       QA_GATE_FAILED:'Il controllo di qualità non ha approvato il risultato. Il lavoro non è stato consegnato come completato.',
+       CHAT_LOCAL_KIND_NOT_CLAIMED:'Il worker locale non ha preso in carico questa attività. Non è una risposta della chat.',
+     };
+     const explanation=document.createElement('div');explanation.className='jobresult nexus-job-failure';
+     explanation.textContent=UI_IT?(explanations[j.error_code]||'Attività non completata. Consulta il dettaglio tecnico per la diagnosi.'):'This task did not finish successfully. Open technical details for diagnosis.';
+     row.appendChild(explanation);
+     const diagnostic=document.createElement('details');diagnostic.className='nexus-job-technical';
+     const toggle=document.createElement('summary');toggle.textContent=UI_IT?'Dettaglio tecnico':'Technical detail';
+     const code=document.createElement('code');code.textContent=String(j.error_code);
+     diagnostic.append(toggle,code);row.appendChild(diagnostic);
+   }
    if(['image_edit','video_edit','audio_task'].includes(j.kind)&&j.status==='queued'){const wait=document.createElement('div');wait.className='jobmeta';wait.textContent='Queued for processing · '+(j.charged_credits>0?j.charged_credits+' credits reserved':'no credits reserved');row.appendChild(wait)}
    if(j.completed_at){const done=document.createElement('div');done.className='jobmeta';done.textContent='Completed '+fmtDate(j.completed_at);row.appendChild(done)}
    const actions=document.createElement('div');actions.className='jobactions';
-   const runtime=document.createElement('button');runtime.type='button';runtime.textContent='Open runtime';runtime.onclick=async()=>{jobsModal.classList.remove('show');clearInterval(jobsPoll);jobsPoll=null;await TaskRuntime.open(j.id)};actions.appendChild(runtime);
+   const runtime=document.createElement('button');runtime.type='button';runtime.textContent=UI_IT?'Dettagli attività':'Open runtime';runtime.onclick=async()=>{jobsModal.classList.remove('show');clearInterval(jobsPoll);jobsPoll=null;await TaskRuntime.open(j.id)};actions.appendChild(runtime);
    if(j.conversation_id){
-     const open=document.createElement('button');open.type='button';open.textContent='Open chat';open.onclick=async()=>{jobsModal.classList.remove('show');clearInterval(jobsPoll);jobsPoll=null;await loadConversation(j.conversation_id,j.level||'free')};actions.appendChild(open);
+     const open=document.createElement('button');open.type='button';open.textContent=UI_IT?'Apri chat':'Open chat';open.onclick=async()=>{jobsModal.classList.remove('show');clearInterval(jobsPoll);jobsPoll=null;await loadConversation(j.conversation_id,j.level||'free')};actions.appendChild(open);
    }
    if(j.output_summary){
-     const copy=document.createElement('button');copy.type='button';copy.textContent='Copy result';copy.onclick=async()=>{try{await navigator.clipboard.writeText(j.output_summary);copy.textContent='Copied';setTimeout(()=>copy.textContent='Copy result',1200)}catch{copy.textContent='Copy failed'}};actions.appendChild(copy);
-     const dl=document.createElement('button');dl.type='button';dl.textContent='Download result';dl.onclick=()=>{
+     const copy=document.createElement('button');copy.type='button';copy.textContent=UI_IT?'Copia risultato':'Copy result';copy.onclick=async()=>{try{await navigator.clipboard.writeText(j.output_summary);copy.textContent='Copied';setTimeout(()=>copy.textContent='Copy result',1200)}catch{copy.textContent='Copy failed'}};actions.appendChild(copy);
+     const dl=document.createElement('button');dl.type='button';dl.textContent=UI_IT?'Scarica risultato':'Download result';dl.onclick=()=>{
        const blob=new Blob([j.output_summary],{type:'text/plain;charset=utf-8'});const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download='NEXUS-'+String(j.id).slice(0,8)+'-result.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);
      };actions.appendChild(dl);
    }
@@ -2881,4 +2895,5 @@ loadSession().then(async()=>{await loadPlugins();await resumePendingIntents();aw
 </script>
 <script type="module" src="./nexus-design-v2.js"></script>
 <script defer src="./nexus-aether-v3.js"></script>
+<script defer src="./nexus-cross-device-p0.js"></script>
 </body></html>
