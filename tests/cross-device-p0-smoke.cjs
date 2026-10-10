@@ -47,14 +47,14 @@ try{
     assert.ok(box.card.top>=-2&&box.card.bottom<=height+2,'modal vertical clipping '+label+' '+modalId+' '+JSON.stringify(box));checks++;
     if(width<=820){
       assert.ok(box.close?.visible&&box.close.height>=35,'mobile close accessible '+label+' '+modalId);checks++;
+      if(modalId==='adminModal'){
+        const input=await page.evaluate(()=>({font:parseFloat(getComputedStyle(document.getElementById('adminUserSearch')).fontSize),width:document.getElementById('adminUserSearch').getBoundingClientRect().width}));
+        assert.ok(input.font>=16&&input.width>100,'iOS input zoom avoided '+label);checks++;
+      }
       if(modalId==='jobsModal'||modalId==='adminModal'){
         await page.click('#'+modalId+' [data-nexus-mobile-close]');
         const closed=await page.evaluate(id=>!document.getElementById(id).classList.contains('show'),modalId);
         assert.equal(closed,true,'mobile close button invokes existing handler '+label+' '+modalId);checks++;
-      }
-      if(modalId==='adminModal'){
-        const input=await page.evaluate(()=>({font:parseFloat(getComputedStyle(document.getElementById('adminUserSearch')).fontSize),width:document.getElementById('adminUserSearch').getBoundingClientRect().width}));
-        assert.ok(input.font>=16&&input.width>100,'iOS input zoom avoided '+label);checks++;
       }
     }
   }
