@@ -13,6 +13,13 @@ function fmt(v){
 function cleanSummary(v){
   return String(v||'').replace(/^\[TEXT_TASK\s+(AGENT|WORK|CODE)\]\s*/i,'').replace(/^\[CHAT_LOCAL\]\s*/i,'').trim();
 }
+function taskFailureExplanation(code){
+  return ({
+    CLIENT_WORKER_ERROR:'Il worker non ha completato l’attività. Il problema riguarda l’esecuzione, non la chat. Controlla il servizio worker prima di ritentare.',
+    QA_GATE_FAILED:'Il risultato non ha superato il controllo di qualità: questa attività non è stata consegnata.',
+    CHAT_LOCAL_KIND_NOT_CLAIMED:'Questa attività non è stata presa in carico dal worker locale.',
+  })[String(code||'')]||'Attività non completata. Consulta il dettaglio tecnico e lo stato del worker.';
+}
 function statusLabel(s){
   return ({queued:'Queued',claimed:'Worker assigned',running:'Running',qa:'Quality check',completed:'Completed',failed:'Failed',cancelled:'Cancelled'})[s]||String(s||'Task');
 }
@@ -90,8 +97,17 @@ function render(payload){
   const result=el('taskRuntimeResult');
   if(job.status==='completed'&&job.output_summary){
     result.hidden=false;result.textContent=job.output_summary;
-  }else if(job.status==='failed'){
-    result.hidden=false;result.textContent='Task failed'+(job.error_code?': '+job.error_code:'');
+  }else if(job.status==='failed'||job.status==='cancelled'){
+    result.hidden=false;result.replaceChildren();
+    const message=document.createElement('div');
+    message.textContent=job.status==='cancelled'?'Attività annullata.':taskFailureExplanation(job.error_code);
+    result.appendChild(message);
+    if(job.error_code){
+      const detail=document.createElement('details');detail.className='nexus-job-technical';
+      const summary=document.createElement('summary');summary.textContent='Codice tecnico';
+      const code=document.createElement('code');code.textContent=String(job.error_code);
+      detail.append(summary,code);result.appendChild(detail);
+    }
   }else result.hidden=true;
   const sig=JSON.stringify([job.status,job.output_summary,(payload.events||[]).map(e=>e.id)]);
   lastSignature=sig;
