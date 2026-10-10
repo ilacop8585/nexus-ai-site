@@ -181,3 +181,10 @@ button,input,select,textarea{box-sizing:border-box}
  .nexus-soft-keyboard .composer-mode-line .mode-cost{display:none}
  .nexus-soft-keyboard #prompt{max-height:90px}
 }
+
+.nexus-job-failure{border-left:3px solid rgba(241,185,94,.85);background:rgba(84,54,31,.16);
+ padding:9px 12px;border-radius:10px;line-height:1.5;color:#e9d6bc}
+.nexus-job-technical{margin:9px 0 3px;padding:8px 11px;border:1px solid rgba(158,198,226,.20);
+ border-radius:10px;background:rgba(7,13,26,.38);font-size:11px;color:#b4cee2;overflow-wrap:anywhere}
+.nexus-job-technical summary{cursor:pointer;font-weight:700;min-height:25px;line-height:25px}
+.nexus-job-technical code{display:block;margin-top:6px;font-size:11px;user-select:text;white-space:pre-wrap}
