@@ -1,0 +1,13 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const src = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf8');
+const cloud = src.match(/async function callNexus\(payload\)\s*\{([\s\S]*?)\n\}/);
+assert.ok(cloud, 'cloud chat function exists');
+const literal = cloud[1].match(/setTimeout\(\(\)=>controller\.abort\(\),(\d+)\)/);
+const symbolic = cloud[1].includes('NEXUS_CHAT_CLOUD_TIMEOUT_MS');
+if (literal) assert.ok(Number(literal[1]) >= 30000, 'Cloud chat must not abort before 30 seconds');
+else assert.ok(symbolic && src.includes('NEXUS_CHAT_CLOUD_TIMEOUT_MS=30000'), 'Expected a bounded 30s timeout');
+assert.ok(cloud[1].includes('clearTimeout(timer)'), 'Timeout must be cleaned up');
+console.log('NEXUS_CHAT_TIMEOUT_REGRESSION_PASS');
